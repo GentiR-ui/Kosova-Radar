@@ -1,0 +1,3 @@
+# HUMAN-OWNED. Requirements whose acceptance tests verify.sh may skip, e.g. while a disputed test
+# waits for an --amend or an external credential is missing. One per line: "REQ-004 | reason".
+# Claude cannot edit this file. Keep it empty for a real release.

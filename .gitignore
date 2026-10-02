@@ -1,0 +1,15 @@
+bin/
+obj/
+node_modules/
+dist/
+TestResults/
+test-results/
+playwright-report/
+coverage/
+.vs/
+.idea/
+*.user
+.env
+.env.local
+.env.production
+.factory/state/

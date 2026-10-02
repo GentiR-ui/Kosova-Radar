@@ -1,0 +1,8 @@
+<Project>
+  <!-- Shared by every project. src/Directory.Build.props adds stricter rules for production code. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

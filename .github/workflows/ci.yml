@@ -1,0 +1,42 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The starter kit itself has no app yet; every step below runs only in product repos.
+      - if: hashFiles('App.slnx') != ''
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - if: hashFiles('App.slnx') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - if: hashFiles('App.slnx') != ''
+        run: dotnet tool restore
+      - if: hashFiles('App.slnx') != ''
+        run: npm ci
+        working-directory: web
+      - if: hashFiles('App.slnx') != ''
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - if: hashFiles('App.slnx') != ''
+        run: ./scripts/verify.sh
+        env:
+          CI: "true"
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-logs
+          path: |
+            .factory/state/verify
+            web/playwright-report
