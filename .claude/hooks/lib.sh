@@ -20,7 +20,9 @@ normpath_v() {
 }
 normpath() { normpath_v "$1"; printf '%s' "$_NP"; }
 
-ROOT_L="$(normpath "${CLAUDE_PROJECT_DIR:-$(pwd)}")"
+_PD="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+if [[ "$_PD" =~ ^[A-Za-z]: ]] && command -v cygpath >/dev/null 2>&1; then _PD="$(cygpath -u "$_PD")"; fi
+ROOT_L="$(normpath "$_PD")"
 ROOT_P="$(cd "$ROOT_L" 2>/dev/null && pwd -P || printf '%s' "$ROOT_L")"
 ROOT="$ROOT_L"
 FACTORY_DIR="$ROOT/.factory"
@@ -56,6 +58,7 @@ relpath_v() {
   local p="$1" base="${2:-$ROOT_L}" r
   _REL=""
   [[ -z "$p" ]] && return 0
+  if [[ "$p" =~ ^[A-Za-z]: ]] && command -v cygpath >/dev/null 2>&1; then p="$(cygpath -u "$p")"; fi
   [[ "$p" != /* ]] && p="$base/$p"
   normpath_v "$p"
   for r in "$ROOT_L" "$ROOT_P"; do
