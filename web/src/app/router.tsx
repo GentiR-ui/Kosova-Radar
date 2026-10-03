@@ -7,6 +7,7 @@ import PublicLayout, { PageTitle } from '../features/public/PublicLayout'
 const LoginPage = lazy(() => import('../features/auth/LoginPage'))
 const AdminLayout = lazy(() => import('../features/admin/AdminLayout'))
 const DashboardPage = lazy(() => import('../features/admin/DashboardPage'))
+const UsersPage = lazy(() => import('../features/admin/users/UsersPage'))
 const RequireAdmin = lazy(() =>
   import('../features/admin/AdminLayout').then((m) => ({ default: m.RequireAdmin })),
 )
@@ -39,7 +40,7 @@ export const router = createBrowserRouter([
       { path: 'review', element: <PageTitle title={t.admin.nav.review} /> },
       { path: 'published', element: <PageTitle title={t.admin.nav.published} /> },
       { path: 'sources', element: adminOnly(<PageTitle title={t.admin.nav.sources} />) },
-      { path: 'users', element: adminOnly(<PageTitle title={t.admin.nav.users} />) },
+      { path: 'users', element: adminOnly(<UsersPage />) },
     ],
   },
 ])

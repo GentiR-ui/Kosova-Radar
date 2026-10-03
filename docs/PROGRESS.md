@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-03 · T012 done
+- Built: `GET/POST /api/admin/users`, `POST /api/admin/users/{id}/deactivate` (Admin policy; 409 duplicate, 400 self-deactivation, idempotent 204, 404), `UserAdmin` service (create = user + role + audit in one transaction; deactivate = `IsActive=false` + security-stamp rotation + audit in one save; concurrency failure treated as already deactivated), `/admin/users` page (form, table, deactivate, loading/empty/error states), ADR-022 (password policy = length only, so any 12+ character password works, REQ-001).
+- Tests: integration 33 (+5: audit without password, duplicate/validation, 6 parallel creates, Reviewer 403/anonymous 401, rollback on failed role), vitest 14 (+5), Playwright flow `users.spec.ts`. Acceptance: P01/P02/P06, REQ-002, REQ-004 and the other REQ-001/003 tests green (13/16); 3 fail only at their last assertions on `/api/admin/candidates` (T016b) and `/api/admin/sources` (T013), which do not exist yet.
+- Verify: quick PASS. Reviewer: 0 HIGH/MEDIUM, LOWs applied (concurrent deactivate, visible loading text, header cell, aria-invalid, button hidden until `/me` loads, stronger tests). Security-reviewer: 0 HIGH/MEDIUM; left as notes: no "last active admin" guard (two admins can deactivate each other), no CSRF header on body-less POSTs (SameSite=Strict only; consider an `X-Requested-With` check app-wide in T043/T090), user list unpaginated (design §5), no confirm step before deactivating.
+- Note: `dotnet format` rewrote line endings in unrelated files again; reverted (use `--include` for the touched files).
+- Next: T013.
+
 ## 2026-10-03 · T011 done
 - Built: `AuditLog` entity + migration (jsonb `{ before, after }`, UserEmail snapshot, append-only guard in `SaveChanges`), `IAuditWriter.Record` (joins the caller's `SaveChanges`; actor from `ICurrentUser` claims; secret-like keys dropped), `GET /api/admin/audit` (Reviewer policy, `entityId`, paging, newest first), shared `PagedResult<T>`/`Paging.Parse` (ADR-021).
 - Tests: unit 50 (AuditChanges, Paging), integration 28 (write/read, ordering, redaction, 401/200 by role, paging incl. int overflow, real cookie claims, rollback atomicity, append-only). No acceptance test is owned by T011 (REQ-072 is closed in T030).

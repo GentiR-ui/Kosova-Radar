@@ -28,6 +28,8 @@ public static class DependencyInjection
             {
                 o.Password.RequiredLength = 12;
                 o.User.RequireUniqueEmail = true;
+                // REQ-001: the only password rule is the length; complexity rules are off (ADR-022).
+                o.Password.RequireDigit = o.Password.RequireLowercase = o.Password.RequireUppercase = o.Password.RequireNonAlphanumeric = false;
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<AppDbContext>()
@@ -45,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<ReferenceDataSeeder>();
         services.AddScoped<BootstrapAdmin>();
+        services.AddScoped<UserAdmin>();
         return services;
     }
 }
