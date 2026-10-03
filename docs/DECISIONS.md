@@ -95,3 +95,10 @@
 - Date: 2026-10-03 · Status: accepted · Task: spec
 - Context: The starter's REQ-P06 counts all attempts; acceptance suites log in as the same admin from 127.0.0.1 many times per minute and would get 429s.
 - Decision: Count failed attempts per (client IP, normalized email), 10 per minute. Brute-force protection is unchanged; legitimate repeated logins are not blocked.
+
+## ADR-017 — Server-side sessions (in-memory ticket store); 8 h sliding cookie
+- Date: 2026-10-03 · Status: accepted · Task: T001
+- Context: REQ-P11 requires ending the session; clearing the browser cookie leaves replayed copies valid. Rotating the security stamp on logout would end all of the user's sessions, which breaks parallel Playwright workers sharing the bootstrap admin (reviewer findings).
+- Options: stamp rotation on logout · `ITicketStore` in memory · `ITicketStore` in a database table.
+- Decision: Cookie `SessionStore` = in-memory `ITicketStore`; logout removes only that session, replayed copies get 401, other sessions stay valid. Stamp rotation remains the mechanism for deactivation (REQ-003). Cookie lifetime 8 h sliding.
+- Consequences: Memory grows by one entry per login (≤ 8 h each), fine for a small team. Sessions end on restart/redeploy (users sign in again) — acceptable for a single instance (ADR-004). Moving to multiple instances needs a database-backed store.
