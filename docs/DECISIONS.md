@@ -122,3 +122,9 @@
 - Decision: Punctuation is a word separator in `TextNormalizer.Fold` (used for city matching, duplicate similarity and search). design.md §4 updated accordingly.
 - Consequences: Hyphenated and spaced spellings match; similarity works on the visible words.
 
+
+## ADR-021 — Audit entries join the action's transaction; email snapshot; wall-clock time
+- Date: 2026-10-03 · Status: accepted · Task: T011
+- Context: `IAuditWriter` must record the acting user and `{ before, after }` for every audited action (REQ-072). `AuditEntryDto` needs `userEmail`, but Application cannot see the Identity user table; the `X-Test-Now` hook would otherwise shift `At` away from the real time of the action.
+- Decision: `IAuditWriter.Record` only adds the entry to the DbContext, so the caller's own `SaveChangesAsync` commits action and audit together. The actor comes from `ICurrentUser` (claims of the request; throws without a user). `AuditLog` stores a `UserEmail` snapshot (design.md §4 updated). `At` uses `TimeProvider`, not `IClock`. `Id` is a UUIDv7, used only as a tie-breaker for equal `At` (ordered to the millisecond, not strictly monotonic). Password-like properties (any name containing "password") are dropped when serializing, whatever the caller passes. Shared `PagedResult<T>`/`Paging.Parse` implement the `Page<T>` contract for all lists.
+- Consequences: Use cases must call `Record` before their single `SaveChangesAsync`. A use case with several saves must not audit between them. Entries keep the email of the time even if accounts change.

@@ -128,7 +128,7 @@ When disabled, the header is ignored and `/api/_test/**` responds 404. The sched
 | Event | Id, Title, Description?, VenueId?, CityId, CategoryId?, StartsAt, EndsAt?, PriceText?, PriceAmount?, Currency?, ImageUrl?, Status (`Published`/`Expired`/`Withdrawn`), PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: StartsAt, CityId, CategoryId, Status, PrimarySourceId, Fingerprint |
 | Deal | Id, Title, Description?, MerchantName?, CityId?, CategoryId?, OldPrice?, NewPrice?, PriceText?, Currency?, DiscountPercent?, ValidFrom?, ValidUntil?, ImageUrl?, Status, PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: ValidUntil, Status, PrimarySourceId, Fingerprint |
 | ItemSource | Id, ItemKind, ItemId, SourceId, SourceUrl, Fingerprint, CandidateId, AddedAt | all sources of a published item (merge adds rows) |
-| AuditLog | Id, UserId, Action, EntityType, EntityId, Changes (jsonb `{ before, after }`), At | append-only |
+| AuditLog | Id (UUIDv7), UserId, UserEmail (snapshot), Action, EntityType, EntityId, Changes (jsonb `{ before, after }`), At (wall clock) | append-only; written in the same `SaveChanges` as the action (ADR-021) |
 | JobExecution | Id, JobName (`SourceFetch`/`Expiration`), SourceId?, Trigger (`Schedule`/`Manual`), StartedAt, FinishedAt?, Status (`Running`/`Succeeded`/`Failed`), Received, Created, Updated, Unchanged, Failed, ErrorCode?, Error?, CorrelationId | run history |
 | AiCall | Id, CandidateId, Provider, Model, RequestId?, Success, ErrorCode?, Confidence?, InputTokens?, OutputTokens?, StartedAt, DurationMs | cost/audit |
 

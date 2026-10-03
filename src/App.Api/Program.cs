@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using App.Api.Endpoints;
 using App.Api.Http;
 using App.Api.Testing;
+using App.Application.Abstractions;
 using App.Application.Auth;
 using App.Infrastructure;
 using App.Infrastructure.Identity;
@@ -30,6 +31,7 @@ builder.Services.AddValidation();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddPublicRateLimiting(builder.Configuration);
 builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>();
@@ -97,6 +99,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 app.MapHealthChecks("/health").AllowAnonymous(); // liveness for the host and the reverse proxy
 app.MapAuthEndpoints();
 app.MapReferenceEndpoints();
+app.MapAuditEndpoints();
 if (testHooks) app.MapTestHookEndpoints();
 
 // Unknown admin routes require a signed-in user first (401), then 404; other unknown API routes are 404.

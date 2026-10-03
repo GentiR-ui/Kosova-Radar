@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-03 · T011 done
+- Built: `AuditLog` entity + migration (jsonb `{ before, after }`, UserEmail snapshot, append-only guard in `SaveChanges`), `IAuditWriter.Record` (joins the caller's `SaveChanges`; actor from `ICurrentUser` claims; secret-like keys dropped), `GET /api/admin/audit` (Reviewer policy, `entityId`, paging, newest first), shared `PagedResult<T>`/`Paging.Parse` (ADR-021).
+- Tests: unit 50 (AuditChanges, Paging), integration 28 (write/read, ordering, redaction, 401/200 by role, paging incl. int overflow, real cookie claims, rollback atomicity, append-only). No acceptance test is owned by T011 (REQ-072 is closed in T030).
+- Verify: quick PASS. Reviewer: 3 MEDIUM (page overflow, claims untested, atomicity untested) fixed + LOWs (wording, conditional filter, tests moved); security-reviewer: 0 HIGH/MEDIUM, LOWs applied (wider secret-key denylist, append-only guard); left as notes: size cap of `Changes`, index on `At` for the unfiltered list. Re-review of the fixes not run (verified by the new tests).
+- Note: `dotnet format` rewrote line endings in unrelated files; those were reverted. Consumers of `IAuditWriter` (T012+) must call `Record` before the action's single `SaveChanges` and pass allowlisted DTOs, not entities.
+- Next: T012.
+
 ## 2026-10-03 · T010 done
 - Built: TextNormalizer (fold/slug, punctuation = word separator, ADR-020), City/Category/ItemKind, CityMatcher (prebuilt folded lookup), idempotent ReferenceDataSeeder (38 municipalities with aliases, 14 categories) on every start, GET /api/cities and /api/categories?kind= (ordered by slug, 400 on unknown kind), camelCase enum JSON.
 - Tests: unit 43, integration 19; acceptance REQ-088 green.

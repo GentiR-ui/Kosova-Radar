@@ -1,4 +1,6 @@
 using App.Application.Abstractions;
+using App.Application.Audit;
+using App.Infrastructure.Audit;
 using App.Infrastructure.Identity;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Time;
@@ -40,6 +42,7 @@ public static class DependencyInjection
             .Configure<ITicketStore>((o, store) => o.SessionStore = store);
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<ReferenceDataSeeder>();
         services.AddScoped<BootstrapAdmin>();
         return services;
