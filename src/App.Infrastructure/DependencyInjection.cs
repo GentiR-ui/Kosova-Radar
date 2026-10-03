@@ -3,6 +3,7 @@ using App.Infrastructure.Identity;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Time;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +16,11 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         services.AddSingleton<IClock, AppClock>();
-        services.AddDbContext<AppDbContext>(o => o.UseNpgsql(config.GetConnectionString("Default")));
+        var connectionString = config.GetConnectionString("Default");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings__Default is not set.");
+        services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
+        services.AddDataProtection().SetApplicationName("KosovaRadar").PersistKeysToDbContext<AppDbContext>();
 
         services.AddIdentityCore<AppUser>(o =>
             {

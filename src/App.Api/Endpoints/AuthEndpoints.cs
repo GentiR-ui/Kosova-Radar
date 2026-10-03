@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using App.Api.Http;
 using App.Application.Auth;
 using App.Infrastructure.Identity;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -33,10 +34,22 @@ public static class AuthEndpoints
         TypedResults.Problem(title: "Invalid credentials", detail: "Email or password is incorrect.",
             statusCode: StatusCodes.Status401Unauthorized);
 
+    private static ProblemHttpResult TooManyAttempts() =>
+        TypedResults.Problem(title: "Too many attempts", detail: "Too many failed sign-in attempts. Try again later.",
+            statusCode: StatusCodes.Status429TooManyRequests);
+
     private static async Task<Results<Ok<MeDto>, ProblemHttpResult>> Login(
-        LoginRequest req, UserManager<AppUser> users, SignInManager<AppUser> signIn, ILoggerFactory loggers)
+        LoginRequest req, HttpContext http, LoginThrottle throttle,
+        UserManager<AppUser> users, SignInManager<AppUser> signIn, ILoggerFactory loggers)
     {
         var logger = loggers.CreateLogger("App.Api.Auth");
+        var clientIp = http.Connection.RemoteIpAddress?.ToString();
+        if (!throttle.TryBegin(clientIp, req.Email!)) // reserves this attempt; released below on success
+        {
+            logger.LogWarning("Login throttled");
+            http.Response.Headers.RetryAfter = "60";
+            return TooManyAttempts();
+        }
         var user = await users.FindByEmailAsync(req.Email!);
         if (user is null || !user.IsActive)
         {
@@ -53,6 +66,7 @@ public static class AuthEndpoints
             return InvalidCredentials();
         }
 
+        throttle.Release(clientIp, req.Email!);
         return TypedResults.Ok(me);
     }
 

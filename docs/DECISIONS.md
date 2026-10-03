@@ -102,3 +102,17 @@
 - Options: stamp rotation on logout · `ITicketStore` in memory · `ITicketStore` in a database table.
 - Decision: Cookie `SessionStore` = in-memory `ITicketStore`; logout removes only that session, replayed copies get 401, other sessions stay valid. Stamp rotation remains the mechanism for deactivation (REQ-003). Cookie lifetime 8 h sliding.
 - Consequences: Memory grows by one entry per login (≤ 8 h each), fine for a small team. Sessions end on restart/redeploy (users sign in again) — acceptable for a single instance (ADR-004). Moving to multiple instances needs a database-backed store.
+
+## ADR-018 — Per-email failed-login cap across all IPs
+- Date: 2026-10-03 · Status: accepted · Task: T002
+- Context: The REQ-P06 limiter is keyed on (client IP, email); an attacker rotating IPs could guess one admin password without limit (security-review finding).
+- Options: Identity lockout · per-email cap across IPs · CAPTCHA.
+- Decision: In addition to REQ-P06, more than 50 failed logins for one email from any IPs within an hour block logins for that email until the hour ends. In memory, real clock.
+- Consequences: An attacker can deliberately lock an admin out for up to an hour; acceptable for V1 (other Admins can still sign in; restart clears it). Failed logins are logged as warnings for monitoring.
+
+## ADR-019 — Per-IP failed-login cap; Data Protection keys unencrypted at rest
+- Date: 2026-10-03 · Status: accepted · Task: T002
+- Context: Every failed login costs a PBKDF2 hash (also for unknown emails, to avoid a timing oracle); one client rotating random emails was never throttled and could saturate the CPU (security-review finding). Separately, Data Protection keys sit unencrypted in PostgreSQL.
+- Decision: A third window counts failed logins per client IP across all emails: more than `Login:MaxFailuresPerIpPerMinute` (Production 30, Development/Testing 1000 because all test traffic comes from one IP) → 429 with `Retry-After`. Keys stay unencrypted: cookies carry only a reference to a server-side session (ADR-017), so a leaked key cannot forge a session; revisit (ProtectKeysWithCertificate) when tokens or protected payloads are added.
+- Consequences: Several users behind one NAT share the per-IP budget for failures only (successes never count). Database backups must be treated as sensitive (RUNBOOK, T043).
+

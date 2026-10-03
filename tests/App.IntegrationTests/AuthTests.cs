@@ -150,4 +150,23 @@ public class AuthTests(AppFactory app)
         Assert.Equal(HttpStatusCode.Unauthorized, (await first.GetAsync("/api/me")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await second.GetAsync("/api/me")).StatusCode);
     }
+
+    [Fact]
+    public async Task Login_throttle_counts_failures_only_and_answers_429_after_eleven()
+    {
+        var user = await SeedUserAsync(Roles.Reviewer);
+        var client = app.CreateClient();
+
+        // Invalid bodies (400) and successful logins are not counted.
+        for (var i = 0; i < 15; i++)
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/login", new { email = user.Email, password = "" })).StatusCode);
+        for (var i = 0; i < 10; i++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await LoginAsync(client, user.Email!, "Wrong-password-123")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await LoginAsync(client, user.Email!, Password)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await LoginAsync(client, user.Email!, "Wrong-password-123")).StatusCode);
+        var blocked = await LoginAsync(client, user.Email!, Password);
+        Assert.Equal((HttpStatusCode)429, blocked.StatusCode);
+        Assert.Equal("application/problem+json", blocked.Content.Headers.ContentType?.MediaType);
+    }
 }
