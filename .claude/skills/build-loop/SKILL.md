@@ -21,13 +21,20 @@ Precondition: `.factory/spec-lock/manifest.sha256` exists (spec approved). If no
    Run the task's acceptance tests directly while working:
    `dotnet test tests/App.AcceptanceTests --filter "Req=REQ-001"` · `cd web && npm run e2e:acceptance -- --grep "REQ-001"`.
 4. **Verify:** `./scripts/verify.sh --quick` must end with `VERIFY: PASS`.
-5. **Review:** delegate to `reviewer` ("Review the uncommitted diff for task T0xx, REQs ..."). If the task touches
-   auth, tenant data, input handling, files, payments or external calls, also delegate to `security-reviewer`
-   with the same scope. Fix every HIGH/MEDIUM, re-verify, re-review. Max 3 rounds; leftovers → BLOCKERS.
+5. **Review:**
+   - **Security:** if the task touches auth, user data, input handling, files, payments or external calls
+     (tasks marked 🔒 always do), delegate to `security-reviewer`. Never skipped.
+   - **Code review:** delegate to `reviewer` ("Review the uncommitted diff for task T0xx, REQs ...") when the task
+     changes more than ~150 lines or contains business rules. A small task without business rules may skip it:
+     write `Review: skipped (small)` in its PROGRESS entry. If the two previous PROGRESS entries both say
+     `skipped (small)`, review now the combined diff since the last reviewed commit instead.
+   - Fix every HIGH/MEDIUM, re-verify, re-review. Max 3 rounds; leftovers → BLOCKERS.
 6. **Record:** check the box in `docs/tasks.md`, add the entry at the top of `docs/PROGRESS.md`, ADRs if any,
    then `git add -A && git commit -m "T0xx: <title>"`.
-7. Continue with the next task. Do not stop to report; the `/goal` evaluator reads your progress.
-   After T002 and then every ~5 tasks run the full `./scripts/verify.sh` (needs Docker) to catch drift early.
+7. **Started by `scripts/loop.sh`** (the prompt says so): stop after the commit; the script starts a fresh
+   session for the next task and runs the periodic full `./scripts/verify.sh` itself.
+   **Started by `/goal`:** continue with the next task without stopping to report; after T002 and then every
+   ~5 tasks run the full `./scripts/verify.sh` (needs Docker) to catch drift early.
 
 ## When stuck
 - Same failure after 3 attempts: stop guessing. Re-read the requirement and the design contract, read the
