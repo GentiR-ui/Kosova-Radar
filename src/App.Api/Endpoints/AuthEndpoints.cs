@@ -43,7 +43,7 @@ public static class AuthEndpoints
         UserManager<AppUser> users, SignInManager<AppUser> signIn, ILoggerFactory loggers)
     {
         var logger = loggers.CreateLogger("App.Api.Auth");
-        var clientIp = http.Connection.RemoteIpAddress?.ToString();
+        var clientIp = ClientIp.Key(http);
         if (!throttle.TryBegin(clientIp, req.Email!)) // reserves this attempt; released below on success
         {
             logger.LogWarning("Login throttled");

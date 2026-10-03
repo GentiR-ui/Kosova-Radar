@@ -16,7 +16,8 @@ public static class PublicRateLimiting
             {
                 ctx.HttpContext.Response.Headers.RetryAfter = "60";
                 ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("App.Api.RateLimit")
-                    .LogWarning("Public rate limit hit on {Path}", ctx.HttpContext.Request.Path.Value);
+                    .LogWarning("Public rate limit hit on {Route}", // route pattern, never the raw (decoded) path
+                        (ctx.HttpContext.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "unknown");
                 return ValueTask.CompletedTask;
             };
             o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
@@ -27,7 +28,7 @@ public static class PublicRateLimiting
                 if (perMinute <= 0 || !isPublicApi) return RateLimitPartition.GetNoLimiter("unlimited");
 
                 return RateLimitPartition.GetFixedWindowLimiter(
-                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    ClientIp.Key(context),
                     _ => new FixedWindowRateLimiterOptions { PermitLimit = perMinute, Window = TimeSpan.FromMinutes(1) });
             });
         });
