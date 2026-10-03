@@ -56,12 +56,12 @@
 ## ADR-009 — Albanian-only UI; Europe/Pristina presentation time
 - Date: 2026-10-03 · Status: accepted · Task: spec
 - Context: Audience is Kosovo; roadmap uses Albanian labels ("Sot, Evente, Oferta"). Multi-language is V5.
-- Decision: All UI strings in Albanian, kept in one strings module per feature to ease later i18n. Store UTC, render Europe/Pristina.
+- Decision: All UI strings in Albanian, kept in one strings module per feature to ease later i18n. Store UTC, render Kosovo local time via the IANA zone `Europe/Belgrade` (there is no `Europe/Pristina` id).
 
 ## ADR-010 — Expiry and freshness rules
 - Date: 2026-10-03 · Status: accepted · Task: spec
 - Context: "Expired items must not appear as active" needs an end time, but many sources give only a start time; "never invent facts".
-- Decision: Event effective end = `EndsAt` ?? `StartsAt + 6 h` (internal only, never displayed). Deals expire at `ValidUntil`; deals without it drop out of lists after 7 days without re-verification. Freshness `fresh` ≤ 48 h since last verification, else `stale` with "Kontrolluar së fundi më …". Public queries filter by time so expiry is immediate; a 5-minute job also persists `Expired`.
+- Decision: Event effective end = `EndsAt` when present and ≥ `StartsAt`, else `StartsAt + 6 h` (internal only, never displayed). Deals expire at `ValidUntil`; deals without it drop out of lists after 7 days without re-verification. Freshness `fresh` ≤ 48 h since last verification, else `stale` with "Kontrolluar së fundi më …". Public queries filter by time so expiry is immediate; a 5-minute job also persists `Expired`.
 
 ## ADR-011 — Images are linked, not re-hosted
 - Date: 2026-10-03 · Status: accepted · Task: spec

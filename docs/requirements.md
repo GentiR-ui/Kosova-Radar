@@ -35,7 +35,7 @@
 | Optional | WHERE <feature is enabled> THE SYSTEM SHALL <response> |
 | Ubiquitous | THE SYSTEM SHALL <response> |
 
-**Naming rule:** values in backticks name enum members; on the wire they are camelCase (`Pending` → `pending`, `NeedsReview` → `needsReview`, `JsonFeed` → `jsonFeed`, `Admin` → `admin`). Validation issue codes and run error codes are PascalCase strings exactly as written (`MissingTitle`, `BlockedAddress`). "Now" means the clock defined in design.md §2 (Test hooks).
+**Naming rule:** values in backticks name enum members; on the wire they are camelCase (`Pending` → `pending`, `NeedsReview` → `needsReview`, `JsonFeed` → `jsonFeed`, `Admin` → `admin`). Validation issue codes and run error codes are PascalCase strings exactly as written (`MissingTitle`, `BlockedAddress`). "Now" means the clock defined in design.md §2 (Test hooks). "Europe/Pristina time" means Kosovo local time, implemented with the IANA zone `Europe/Belgrade` (Kosovo has no IANA zone of its own; same rules).
 
 ## 4. Platform requirements
 
@@ -52,7 +52,7 @@
 - **REQ-P08** THE SYSTEM SHALL send the headers `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and the `Content-Security-Policy` given in design.md §3 on every response.
 - **REQ-P09** IF an unhandled error occurs THEN THE SYSTEM SHALL respond 500 with problem details that contain no stack trace or internal exception text.
 - **REQ-P10** WHEN an admin signs in through the web app at `/admin/login` THE SYSTEM SHALL show the admin dashboard with the heading "Paneli", on desktop and on a phone-sized screen.
-- **REQ-P11** WHEN a signed-in user logs out THE SYSTEM SHALL end the session so that subsequent `/api/admin/**` requests respond 401.
+- **REQ-P11** WHEN a signed-in user logs out THE SYSTEM SHALL end the session so that subsequent `/api/me` and `/api/admin/**` requests respond 401.
 
 ## 5. Product requirements
 
@@ -80,6 +80,7 @@
 
 ### Normalization and validation
 
+- **REQ-027** IF a deal candidate has neither a new price nor a price text THEN THE SYSTEM SHALL add issue `MissingPrice` and set validation `NeedsReview`.
 - **REQ-028** WHEN validation of a candidate completes THE SYSTEM SHALL set its status to `Pending` (awaiting a person) unless the validation is `Rejected`, in which case it SHALL set status `Rejected` without a reviewer.
 - **REQ-029** IF an event's `endsAt` is before its `startsAt` or a deal's `validUntil` is before its `validFrom` THEN THE SYSTEM SHALL set validation `NeedsReview` with issue `InvalidDateRange`.
 - **REQ-030** WHEN a fetched item is normalized THE SYSTEM SHALL keep every field the source does not provide as null (no default price, time, city, venue or image is ever invented) and SHALL store the original item text as source evidence.
@@ -87,7 +88,7 @@
 - **REQ-032** IF an event candidate has already ended (its effective end, design.md §4, is in the past) or a deal candidate's `validUntil` is in the past THEN THE SYSTEM SHALL set its validation to `Rejected` with issue `Expired`.
 - **REQ-033** IF an event candidate has no start time THEN THE SYSTEM SHALL set its validation to `NeedsReview` with issue `MissingStartsAt`.
 - **REQ-034** IF an event candidate has no city, or any candidate's stated city does not match a Kosovo municipality or one of its known aliases (design.md §4), THEN THE SYSTEM SHALL set its validation to `NeedsReview` with issue `UnknownCity` and SHALL leave its resolved city (`citySlug`) null.
-- **REQ-035** IF a deal candidate has a negative price or an old price that is not greater than its new price THEN THE SYSTEM SHALL add issue `PriceInconsistent`, and IF it has neither a new price nor a price text THEN THE SYSTEM SHALL add issue `MissingPrice`; either issue sets validation `NeedsReview`.
+- **REQ-035** IF a deal candidate has a negative price or an old price that is not greater than its new price THEN THE SYSTEM SHALL add issue `PriceInconsistent` and set validation `NeedsReview`.
 - **REQ-036** WHEN a deal has both prices and the old price is greater than the new price THE SYSTEM SHALL set `discountPercent` = round((old − new) / old × 100), midpoint away from zero.
 - **REQ-037** WHEN a candidate has no issue of severity `rejected` or `review` THE SYSTEM SHALL set its validation to `Valid`.
 - **REQ-038** WHERE a source is marked unreliable THE SYSTEM SHALL add issue `SourceUnreliable` and set validation `NeedsReview` for every new candidate from it.
@@ -102,7 +103,7 @@
 
 ### Duplicates and changes
 
-- **REQ-050** IF a new candidate matches, under the duplicate rules of design.md §4 (same kind, same city, for events the same Europe/Pristina start date, normalized title similarity ≥ 0.8), a published item or a pending candidate from a different source THEN THE SYSTEM SHALL add issue `PossibleDuplicate`, reference it in `duplicateOf`, and set validation `NeedsReview`.
+- **REQ-050** IF a new candidate matches, under the duplicate rules of design.md §4 (same kind, same city, for events the same Europe/Pristina start date, normalized title similarity ≥ 0.8), a published item (any source) or a pending candidate from a different source THEN THE SYSTEM SHALL add issue `PossibleDuplicate`, reference it in `duplicateOf`, and set validation `NeedsReview`.
 - **REQ-051** WHEN a source item that was already published is fetched again with changed content THE SYSTEM SHALL create a candidate linked to the published item (`matchedItemId`) with issue `ChangedSinceApproval`, and SHALL leave the public item unchanged until that candidate is approved.
 - **REQ-052** WHEN a source item that was already published is fetched again with unchanged content THE SYSTEM SHALL update the published item's `lastVerifiedAt` to the fetch time.
 - **REQ-053** WHEN a still-pending candidate's source item is fetched again with changed content THE SYSTEM SHALL update that candidate in place (no second candidate) and re-run validation.
@@ -172,7 +173,7 @@
 - p95 API latency under 300 ms for public list/detail/search endpoints with 10k published items (load test before release).
 - Public pages: Lighthouse performance, accessibility, best practices and SEO ≥ 95 on the mobile profile.
 - All times stored in UTC; presented in Europe/Pristina.
-- Source fetching identifies itself with a bot User-Agent, honours robots.txt, is limited to one request per host every 10 seconds, and never fetches more often than a source's poll interval.
+- Source fetching identifies itself with a bot User-Agent, honours robots.txt, is limited to one request per host every 10 seconds, and scheduled fetching never runs more often than a source's poll interval.
 - AI usage: daily call limit (default 500 in Production), every call persisted with model, request id, tokens and outcome.
 - Personal data is limited to admin/reviewer accounts; secrets only in environment variables.
 - Observability: structured logs with correlation and run ids; no secrets or passwords in logs.

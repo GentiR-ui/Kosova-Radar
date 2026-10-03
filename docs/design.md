@@ -42,14 +42,14 @@ Scheduler tick ─► due active sources ─► run (JobExecution)          manu
   NormalizeAsync → CandidateFields (null when unknown) + Evidence
   Fingerprint = sha256(sourceId + (externalId ?? url)); item with neither → counted "failed"
   ContentHash = sha256(normalized fields as parsed + evidence)
-  Lookup by fingerprint (first match wins):
-    pending or auto-rejected candidate: same hash → unchanged; other hash → update in place, re-run AI + validation (REQ-053)
-    candidate rejected by a person:     same hash → unchanged; other hash → new candidate
-    published or expired item (incl. items it was merged into via ItemSource):
-                                        same hash → item.lastVerifiedAt = fetchedAt, unchanged (REQ-052)
-                                        other hash → new candidate, issue ChangedSinceApproval, matchedItemId (REQ-051)
-    withdrawn item:                     → unchanged (never resurfaces)
-    none                                → new candidate
+  Lookup by fingerprint, in this order (first match wins):
+    1. pending or auto-rejected candidate: same hash → unchanged; other hash → update in place, re-run AI + validation (REQ-053)
+    2. candidate rejected by a person with the same content hash → unchanged
+    3. withdrawn item → unchanged (never resurfaces)
+    4. published or expired item (incl. items it was merged into via ItemSource):
+         same hash → item.lastVerifiedAt = fetchedAt, unchanged (REQ-052)
+         other hash → new candidate, issue ChangedSinceApproval, matchedItemId (REQ-051)
+    5. none → new candidate
   AI step: whenever `text` is non-empty and a provider is enabled (REQ-040..043)
   Validation → issues → Valid | NeedsReview | Rejected → status Pending | Rejected     (REQ-028..039)
   Duplicate check (§4)                                                                  (REQ-050)
@@ -96,7 +96,7 @@ When disabled, the header is ignored and `/api/_test/**` responds 404. The sched
 ### Testing recipe (contract for acceptance tests)
 
 - Tests share one database and a running scheduler; never assume an empty database. Every title created by a test contains a unique token (e.g. `t` + 8 hex chars), which also keeps title similarity below 0.8 against other tests' data.
-- Tests that assert run counts, health sequences or time-shifted data create sources with `isActive: false` and use `POST /fetch`. Only scheduler tests (REQ-012/017) create active sources: `pollIntervalMinutes: 1440`, then poll `GET /api/admin/sources/{id}` for up to 15 s until `recentRuns[0].trigger == "schedule"`. The REQ-013 test waits 3 ticks (6 s in Testing).
+- Tests that assert run counts or time-shifted data create sources with `isActive: false` and use `POST /fetch`. Health tests (REQ-016/019) create the source with `isActive: false` and `pollIntervalMinutes: 1440`, run the needed `POST /fetch` calls **without** `X-Test-Now`, then `PUT` the source with `isActive: true` and read `health` (the scheduler will not fetch it again for 24 h because `lastFetchedAt` is recent). REQ-010 asserts `health: "never"` on the `POST` response of an active source. Only scheduler tests (REQ-012/017) rely on scheduled runs: `pollIntervalMinutes: 1440`, poll `GET /api/admin/sources/{id}` for up to 15 s until `recentRuns[0].trigger == "schedule"`; the REQ-017 failing source uses a malformed fixture payload. The REQ-013 test waits 3 ticks (6 s in Testing).
 - Failure triggers: `MalformedPayload` = fixture payload `not json`; `Unreachable` = `https://kosovaradar-test.invalid/feed.json`; `BlockedAddress` = `http://127.0.0.1/`, `http://localhost/`, `http://169.254.169.254/`, `http://[::1]/`, `http://10.0.0.1/`. `Timeout`, `HttpStatus`, `RobotsDisallowed` are integration-tested with a stub handler.
 - Time: use `X-Test-Now` (e.g. fetch 3 days in the past for `stale`, fetch before an event's end and query after it for expiry). For "today" in Pristina use start times between 00:01 and 23:58 local.
 - AI: the Fake provider rules in §6.
@@ -112,7 +112,7 @@ When disabled, the header is ignored and `/api/_test/**` responds 404. The sched
 - Login limiter (REQ-P06): counts failed attempts per (client IP, normalized email) in a 1-minute fixed window; at > 10 failures, further attempts for that key → 429 until the window ends. All environments.
 - Public limiter: fixed window per client IP on anonymous `/api/**`, `RateLimit__PublicPerMinute` (0 = off).
 - Behind the production reverse proxy: `UseForwardedHeaders` (X-Forwarded-For/Proto) with `KnownProxies` from `Proxy__KnownProxies`, first in the pipeline.
-- Headers on every response (REQ-P08): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy: default-src 'self'; img-src 'self' https: data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'`; plus HSTS in Production. (JSON-LD data blocks are not affected by `script-src`.)
+- Headers on every response (REQ-P08): `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Content-Security-Policy: default-src 'self'; img-src 'self' https: data:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'`; plus HSTS in Production. (JSON-LD data blocks are not affected by `script-src`.)
 - Concurrency: `Candidate`, `Event`, `Deal` use PostgreSQL `xmin` as concurrency token; a concurrent change → 409.
 
 ## 4. Domain model
@@ -132,11 +132,11 @@ When disabled, the header is ignored and `/api/_test/**` responds 404. The sched
 | JobExecution | Id, JobName (`SourceFetch`/`Expiration`), SourceId?, Trigger (`Schedule`/`Manual`), StartedAt, FinishedAt?, Status (`Running`/`Succeeded`/`Failed`), Received, Created, Updated, Unchanged, Failed, ErrorCode?, Error?, CorrelationId | run history |
 | AiCall | Id, CandidateId, Provider, Model, RequestId?, Success, ErrorCode?, Confidence?, InputTokens?, OutputTokens?, StartedAt, DurationMs | cost/audit |
 
-Money `decimal(18,2)`, currency ISO code (never assumed). Times `DateTimeOffset` UTC.
+Money `decimal(18,2)`, currency ISO code (never assumed). Times `DateTimeOffset` UTC. "Europe/Pristina" in this spec = IANA zone `Europe/Belgrade` (no `Europe/Pristina` id exists) in both .NET `TimeZoneInfo` and browser `Intl`.
 
 **Domain rules**
 
-- **Effective end** of an event = `EndsAt` ?? `StartsAt + 6 h` (internal, never displayed; ADR-010).
+- **Effective end** of an event = `EndsAt` when present and ≥ `StartsAt`, else `StartsAt + 6 h` (internal, never displayed; ADR-010).
 - **Active event**: `Status = Published` and effective end > now. **Active deal**: `Status = Published` and (`ValidUntil` > now, or `ValidUntil` is null and `LastVerifiedAt` > now − 7 days). A published deal that is not active is shown as `expired` on detail.
 - **Freshness**: `fresh` if `LastVerifiedAt` ≥ now − 48 h, else `stale`.
 - **Discount**: `round((old − new) / old × 100)` (midpoint away from zero), only when both prices are present and old > new.
@@ -155,14 +155,14 @@ Money `decimal(18,2)`, currency ISO code (never assumed). Times `DateTimeOffset`
 
 All endpoints are under `/api` unless stated, JSON, camelCase. **Enums are camelCase strings** (`needsReview`, `jsonFeed`, `admin`); **issue codes and run error codes are PascalCase strings** exactly as listed (`MissingTitle`, `BlockedAddress`).
 Errors are RFC 9457 problem details. Validation errors: 400 with `errors: { field: [messages] }` (query parameters use their parameter name).
-All ids are UUIDs; malformed or unknown id → 404. Lists: `?page=1&pageSize=20` (1–100) → `Page<T> = { items: T[], page, pageSize, totalCount }`; a page beyond the last → 200 with empty `items`.
+All ids are UUIDs; a malformed or unknown id in the path → 404; an id in a request body → 400 on that field. Lists: `?page=1&pageSize=20` (1–100) → `Page<T> = { items: T[], page, pageSize, totalCount }`; a page beyond the last → 200 with empty `items`.
 Times are ISO-8601 UTC (`2026-10-03T18:00:00Z`); `from`/`to` are `yyyy-MM-dd` dates interpreted in Europe/Pristina.
 
 ### Platform
 
 | Method | Path | Auth | Request | Responses | Req |
 |---|---|---|---|---|---|
-| POST | /api/auth/login | anonymous; > 10 failed attempts/min per (client IP, email) → 429 | `{ email, password }` | 200 + auth cookie, body `MeDto`; 401 generic (also for inactive users); 429 | P01, P02, P06 |
+| POST | /api/auth/login | anonymous; > 10 failed attempts/min per (client IP, email) → 429 | `{ email, password }` | 200 + auth cookie, body `MeDto`; 400 when `email` or `password` is missing or empty (not counted as a failed attempt); 401 generic (also for inactive users); 429 | P01, P02, P05, P06 |
 | POST | /api/auth/logout | user | — | 204, cookie cleared | P11 |
 | GET | /api/me | user | — | 200 `MeDto`; 401 | P03 |
 | GET | /health | anonymous | — | 200 healthy; 503 unhealthy | P07 |
@@ -208,8 +208,8 @@ Filters: `from` = start on/after 00:00 Pristina of that date; `to` = start befor
 
 | Method | Path | Responses | Req |
 |---|---|---|---|
-| GET | /events/{id}, /deals/{id} | 200 `text/html`: the SPA `index.html` (or a minimal built-in shell when no build is present) with `<title>{title} · Kosova Radar</title>`, `<meta name="description">`, `og:title`, `og:description` (description truncated to 200 chars, else "{dd.MM.yyyy, HH:mm} · {city}" for events / "{merchant} · Vlen deri më {date}" for deals), `og:url` (`Site__BaseUrl` + path), `og:image` only when https; events also `<script type="application/ld+json">` schema.org `Event` (name, startDate, endDate?, location: Place {name: venueName ?? city name, address.addressLocality: city name}, url). Synthetic items add `<meta name="robots" content="noindex">`. Unknown/non-public id → the plain shell with status 404. Encoding: `<title>`/`<meta content>` via `HtmlEncoder.Default`; JSON-LD via System.Text.Json default encoder (escapes `<`, `>`, `&`, `'`, so `</script>` cannot appear). | 090 |
-| GET | /sitemap.xml | 200 `application/xml`, `<urlset>` with `{base}/`, `{base}/events`, `{base}/deals` and one `<url><loc>{base}/events/{id}` or `{base}/deals/{id}` per active, non-synthetic published item | 091 |
+| GET | /events/{id}, /deals/{id} | 200 `text/html`: the SPA `index.html` (or a minimal built-in shell when no build is present) with `<title>{title} · Kosova Radar</title>`, `<meta name="description">`, `og:title`, `og:description` (description truncated to 200 chars, else "{dd.MM.yyyy, HH:mm} · {city}" for events / "{merchant} · Vlen deri më {date}" for deals, omitting a null part and its "·"), `og:url` (`Site__BaseUrl` + path), `og:image` only when https; events also `<script type="application/ld+json">` schema.org `Event` (name, startDate, endDate?, location: Place {name: venueName ?? city name, address.addressLocality: city name}, url). Synthetic items add `<meta name="robots" content="noindex">`. Unknown/non-public id → the plain shell with status 404. Encoding: `<title>`/`<meta content>` via `HtmlEncoder.Default`; JSON-LD via System.Text.Json default encoder (escapes `<`, `>`, `&`, `'`, so `</script>` cannot appear). | 090 |
+| GET | /sitemap.xml | 200 `application/xml`, `<urlset>` with `{base}/`, `{base}/events`, `{base}/deals` and one `<url><loc>{base}/events/{id}` or `{base}/deals/{id}` per active published item (synthetic items cannot exist in Production because fixture sources are disallowed there) | 091 |
 | GET | /robots.txt | 200 `text/plain`: `User-agent: *`, `Disallow: /admin`, `Disallow: /api/admin`, `Sitemap: {Site__BaseUrl}/sitemap.xml` | 092 |
 
 ### Admin — sources (policy `Admin`)
@@ -270,6 +270,7 @@ CandidateFieldsRequest = CandidateFields without discountPercent/cityText/catego
   prices 0–1 000 000, currency ^[A-Z]{3}$, citySlug/categorySlug must exist (else 400 on that field).
 ```
 
+Merge: item `lastVerifiedAt` = max(item.lastVerifiedAt, candidate.fetchedAt).
 Approve: category = `fields.categorySlug ?? suggestedCategory.slug`. Required — 400 keys: `title`, `url` (all kinds); `citySlug`, `startsAt` (events); `newPrice` when a deal has neither `newPrice` nor `priceText`. Validation `Rejected` → 400 on `validation`.
 
 ### Admin — published items (policy `Reviewer`)
@@ -315,7 +316,7 @@ UserDto = { id, email, role: "admin"|"reviewer", isActive, createdAt }
     "url": "source page URL", "imageUrl": "https URL",
     "city": "free text", "venue": "free text", "category": "category slug or free text",
     "startsAt": "ISO-8601 with offset", "endsAt": "ISO-8601 with offset",
-    "priceText": "string", "price": 12.5, "currency": "EUR",
+    "priceText": "string", "price": 12.5, "currency": "EUR",   (price: events only)
     "merchant": "string", "oldPrice": 100, "newPrice": 80, "discountPercent": 20,
     "validFrom": "ISO-8601 with offset", "validUntil": "ISO-8601 with offset"
 } ] }
@@ -359,7 +360,7 @@ IAiProvider.ExtractAsync(AiExtractionRequest { kind, text, knownFields, categori
 **Fake provider (Development/Testing, deterministic — acceptance tests rely on it):**
 - If `text` contains `#ai-fail` → throws (provider failure). If it contains `#ai-invalid` → returns output that violates the schema.
 - `startsAt` = first ISO-8601 date-time with offset in `text` (e.g. `2026-10-20T20:00:00+02:00`), else null.
-- `priceAmount` and `currency: "EUR"` = first match of `(\d+(?:[.,]\d{1,2})?)\s?€` (decimal comma accepted), else null. For deals the same value fills `newPrice`.
+- Price = first match of `(\d+(?:[.,]\d{1,2})?)\s?€` (decimal comma accepted), else null. Events: fills `priceAmount` + `currency: "EUR"`; deals: fills `newPrice` + `currency: "EUR"` (never `priceAmount`).
 - `city` = seeded city name, slug or alias appearing as whole words in the folded `text`; the longest match wins (e.g. "Mitrovicë e Veriut" over "Mitrovicë"), then the earliest position; else null.
 - `categorySlug`: event kind — `muzike` if text contains "koncert" or "muzik", `teater` if "teat" or "film", `sport` if "ndeshje" or "sport"; deal kind — `teknologji` if "laptop" or "telefon"; else null.
 - `model = "fake-1"`, `requestId = "fake-" + guid`, `confidence = 0.9`.
@@ -400,7 +401,7 @@ Images: lazy-loaded, explicit width/height, `referrerpolicy="no-referrer"`; no i
 | /admin/items/:id | candidate review | `h1` candidate title or "(pa titull)"; region "Evidenca nga burimi" (evidence text + link "Hap burimin"); region "Fushat e normalizuara" (side by side ≥ 1024 px, stacked below) with inputs "Titulli", "Përshkrimi", "Lidhja e burimit", "Qyteti", "Vendi", "Kategoria", "Fillon më", "Përfundon më", "Çmimi (tekst)", "Çmimi", "Monedha", and for deals "Tregtari", "Çmimi i vjetër", "Çmimi i ri", "Vlen nga", "Vlen deri"; list "Problemet e validimit"; buttons "Ruaj ndryshimet", "Aprovo", "Refuzo", "Bashko"; reject dialog with textarea "Arsyeja" and button "Konfirmo refuzimin"; merge dialog with the suggested duplicate and button "Bashko me këtë"; after approve status message "U publikua" and link "Shiko faqen publike" | 110–112 |
 | /admin/published | published items | `h1` "Të publikuarat"; filters "Lloji", "Statusi"; rows with buttons "Ndrysho", "Skado", "Tërhiq" | 069–071 |
 | /admin/published/:kind/:id | edit published item | same field labels as candidate review; button "Ruaj ndryshimet" | 069 |
-| /admin/sources | sources | `h1` "Burimet"; button "Shto burim" opens form with "Emri", "Lloji", "URL", "Të dhënat testuese (JSON)", "Lloji i paracaktuar", "Intervali (minuta)", checkboxes "Aktiv", "I pabesueshëm", button "Ruaj burimin"; table rows: name, health badge ("Pa u marrë ende", "Në rregull", "Me probleme", "Dështon", "Joaktiv"), last success, last error, buttons "Merr tani" and "Ndrysho"; after "Merr tani" a status message "Marrja përfundoi: {created} të reja, {updated} të përditësuara, {unchanged} pa ndryshim, {failed} të dështuara", "Marrja dështoi: {errorCode}" or (409) "Një marrje është në vazhdim. Provo pas pak." | 113 |
+| /admin/sources | sources | `h1` "Burimet"; button "Shto burim" opens form with "Emri", "Lloji", "URL", "Të dhënat testuese (JSON)", "Lloji i paracaktuar", "Intervali (minuta)", checkboxes "Aktiv" (default unchecked), "I pabesueshëm"; "Intervali (minuta)" defaults to 60; button "Ruaj burimin"; table rows: name, health badge ("Pa u marrë ende", "Në rregull", "Me probleme", "Dështon", "Joaktiv"), last success, last error, buttons "Merr tani" and "Ndrysho"; after "Merr tani" a status message "Marrja përfundoi: {created} të reja, {updated} të përditësuara, {unchanged} pa ndryshim, {failed} të dështuara", "Marrja dështoi: {errorCode}" or (409) "Një marrje është në vazhdim. Provo pas pak." | 113 |
 | /admin/users | users | `h1` "Përdoruesit"; form inputs "Email", "Fjalëkalimi", select "Roli" ("Administrator", "Shqyrtues"); button "Krijo përdoruesin"; rows with button "Çaktivizo" | 001–004 |
 
 Reviewer role: Admin-only links hidden; direct navigation shows "Nuk keni leje për këtë faqe".
