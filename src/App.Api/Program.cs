@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using App.Api.Endpoints;
 using App.Api.Http;
 using App.Api.Testing;
@@ -20,6 +22,10 @@ var testHooks = TestHooks.IsEnabled(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+// Enums travel as camelCase strings ("needsReview", "jsonFeed"); design.md §5. Issue codes and run error codes are
+// PascalCase strings, so model them as strings (or give those enums their own converter), not as plain enums.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
 builder.Services.AddValidation();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -83,10 +89,14 @@ if (isDevOrTesting)
 }
 
 await using (var scope = app.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<ReferenceDataSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<BootstrapAdmin>().EnsureAsync();
+}
 
 app.MapHealthChecks("/health").AllowAnonymous(); // liveness for the host and the reverse proxy
 app.MapAuthEndpoints();
+app.MapReferenceEndpoints();
 if (testHooks) app.MapTestHookEndpoints();
 
 // Unknown admin routes require a signed-in user first (401), then 404; other unknown API routes are 404.

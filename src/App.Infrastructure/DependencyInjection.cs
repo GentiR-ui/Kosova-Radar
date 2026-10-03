@@ -39,6 +39,8 @@ public static class DependencyInjection
         services.AddOptions<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme)
             .Configure<ITicketStore>((o, store) => o.SessionStore = store);
 
+        services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<ReferenceDataSeeder>();
         services.AddScoped<BootstrapAdmin>();
         return services;
     }

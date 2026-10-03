@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-03 · T010 done
+- Built: TextNormalizer (fold/slug, punctuation = word separator, ADR-020), City/Category/ItemKind, CityMatcher (prebuilt folded lookup), idempotent ReferenceDataSeeder (38 municipalities with aliases, 14 categories) on every start, GET /api/cities and /api/categories?kind= (ordered by slug, 400 on unknown kind), camelCase enum JSON.
+- Tests: unit 43, integration 19; acceptance REQ-088 green.
+- Verify: quick PASS. Reviewer: 1 MEDIUM (category order) fixed + LOWs (kind parsing, file split, PascalCase-code notes in T017/T023, seed race note in T043).
+- Note: a full verify ran during T010; its log is in C:/Users/genti/verify-full.log (not reviewed yet).
+- Next: T011 (not started — stopped on request).
+
 ## 2026-10-03 · T003 done
 - Built: router (public layout + lazy admin bundle), typed api wrapper, /admin/login (401/429), admin layout with role-filtered nav and "Dil", dashboard tiles (data in T031), global 401 → login, safe logout, Albanian strings module, strict TS, design tokens (focus-visible, reduced motion), lang="sq".
 - Tests: vitest 9; Playwright acceptance P10/P02/P11 6/6 (desktop + mobile).

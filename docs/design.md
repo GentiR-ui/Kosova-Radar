@@ -140,7 +140,7 @@ Money `decimal(18,2)`, currency ISO code (never assumed). Times `DateTimeOffset`
 - **Active event**: `Status = Published` and effective end > now. **Active deal**: `Status = Published` and (`ValidUntil` > now, or `ValidUntil` is null and `LastVerifiedAt` > now − 7 days). A published deal that is not active is shown as `expired` on detail.
 - **Freshness**: `fresh` if `LastVerifiedAt` ≥ now − 48 h, else `stale`.
 - **Discount**: `round((old − new) / old × 100)` (midpoint away from zero), only when both prices are present and old > new.
-- **Normalization for matching/search**: lower-case, Albanian/Latin diacritics folded (ë→e, ç→c, č/ć→c, š→s, ž→z, đ→d), punctuation removed, whitespace collapsed. `SearchText` = normalized title + description + venue name.
+- **Normalization for matching/search**: lower-case, Albanian/Latin diacritics folded (ë→e, ç→c, č/ć→c, š→s, ž→z, đ→d), punctuation treated as a word separator ("Fushë-Kosovë" = "Fushë Kosovë"), whitespace collapsed (ADR-020). `SearchText` = normalized title + description + venue name.
 - **Title similarity**: Jaccard similarity of normalized word sets (words ≥ 2 chars); threshold 0.8.
 - **City matching**: normalized city text equals a city's normalized name, slug or alias.
 - **Duplicate rules (REQ-050)**: compared against published items (status Published) of any source except the candidate's own `matchedItemId`, and against `Pending` candidates of other sources; same kind; events need equal non-null `citySlug` and equal Europe/Pristina start date; deals need equal `citySlug` (both null counts as equal); title similarity ≥ 0.8. First match by highest similarity is referenced.

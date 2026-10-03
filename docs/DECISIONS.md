@@ -116,3 +116,9 @@
 - Decision: A third window counts failed logins per client IP across all emails: more than `Login:MaxFailuresPerIpPerMinute` (Production 30, Development/Testing 1000 because all test traffic comes from one IP) → 429 with `Retry-After`. Keys stay unencrypted: cookies carry only a reference to a server-side session (ADR-017), so a leaked key cannot forge a session; revisit (ProtectKeysWithCertificate) when tokens or protected payloads are added.
 - Consequences: Several users behind one NAT share the per-IP budget for failures only (successes never count). Database backups must be treated as sensitive (RUNBOOK, T043).
 
+## ADR-020 — Punctuation separates words in normalized text
+- Date: 2026-10-03 · Status: accepted · Task: T010
+- Context: design.md §4 said "punctuation removed"; removing it would turn "Fushë-Kosovë" into "fushekosove", which no longer matches "Fushë Kosovë", and "Rock-Nata" into one word for title similarity.
+- Decision: Punctuation is a word separator in `TextNormalizer.Fold` (used for city matching, duplicate similarity and search). design.md §4 updated accordingly.
+- Consequences: Hyphenated and spaced spellings match; similarity works on the visible words.
+
