@@ -23,7 +23,9 @@ export function createQueryClient(): QueryClient {
   })
 
   function signedOutOn401(error: unknown) {
-    if (error instanceof ApiError && error.status === 401) client.setQueryData(meKey, null)
+    if (!(error instanceof ApiError && error.status === 401)) return
+    client.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' }) // never show one user's data to the next
+    client.setQueryData(meKey, null)
   }
 
   return client
