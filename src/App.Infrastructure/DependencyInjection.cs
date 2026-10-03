@@ -1,5 +1,6 @@
 using App.Application.Abstractions;
 using App.Application.Audit;
+using App.Application.Sources;
 using App.Infrastructure.Audit;
 using App.Infrastructure.Identity;
 using App.Infrastructure.Persistence;
@@ -48,6 +49,8 @@ public static class DependencyInjection
         services.AddScoped<ReferenceDataSeeder>();
         services.AddScoped<BootstrapAdmin>();
         services.AddScoped<UserAdmin>();
+        services.AddSingleton(config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions());
+        services.AddScoped<SourceAdmin>();
         return services;
     }
 }

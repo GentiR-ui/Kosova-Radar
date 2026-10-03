@@ -101,6 +101,7 @@ app.MapAuthEndpoints();
 app.MapReferenceEndpoints();
 app.MapAuditEndpoints();
 app.MapUserEndpoints();
+app.MapSourceEndpoints();
 if (testHooks) app.MapTestHookEndpoints();
 
 // Unknown admin routes require a signed-in user first (401), then 404; other unknown API routes are 404.

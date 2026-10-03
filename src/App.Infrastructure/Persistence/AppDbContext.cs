@@ -1,6 +1,7 @@
 using App.Application.Abstractions;
 using App.Domain.Audit;
 using App.Domain.Reference;
+using App.Domain.Sources;
 using App.Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +17,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<City> Cities => Set<City>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Source> Sources => Set<Source>();
 
     /// <summary>Data Protection keys, stable across restarts and instances (stored unencrypted; see RUNBOOK, T043).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
