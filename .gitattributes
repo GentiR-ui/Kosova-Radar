@@ -1,2 +1,7 @@
 # Shell scripts must keep LF endings (bash fails on CRLF; core.autocrlf=true on Windows).
 *.sh text eol=lf
+# Locked spec files are checksummed as LF; keep them LF on every checkout.
+docs/requirements.md text eol=lf
+tests/App.AcceptanceTests/** text eol=lf
+web/e2e/acceptance/** text eol=lf
+.factory/spec-lock/** text eol=lf
