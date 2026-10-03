@@ -1,1 +1,45 @@
 @import 'tailwindcss';
+
+/* Kosova Radar design tokens: calm, editorial, high contrast (WCAG AA). */
+@theme {
+  --color-paper: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-ink: #17171a;
+  --color-muted: #5b5b63;
+  --color-line: #e3e1da;
+  --color-accent: #1f3f8f;
+  --color-accent-ink: #ffffff;
+  --color-warn: #8a4b00;
+  --color-danger: #a1261b;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

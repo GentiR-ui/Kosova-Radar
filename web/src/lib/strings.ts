@@ -1,0 +1,40 @@
+/** Albanian UI strings for the app shell (ADR-009). Feature-specific strings live next to their feature. */
+export const t = {
+  brand: 'Kosova Radar',
+  nav: { label: 'Kryesore', events: 'Evente', deals: 'Oferta', search: 'Kërko' },
+  pages: { home: 'Çfarë ka sot në Kosovë', search: 'Kërkim' },
+  error: 'Diçka shkoi keq.',
+  retry: 'Provo sërish',
+  loading: 'Duke u ngarkuar…',
+  forbidden: 'Nuk keni leje për këtë faqe',
+  notFound: 'Faqja nuk u gjet',
+  admin: {
+    nav: {
+      label: 'Administrimi',
+      dashboard: 'Paneli',
+      review: 'Shqyrtimi',
+      published: 'Të publikuarat',
+      sources: 'Burimet',
+      users: 'Përdoruesit',
+    },
+    logout: 'Dil',
+    logoutFailed: 'Dalja dështoi. Provo sërish.',
+    login: {
+      title: 'Hyrje për administratorë',
+      email: 'Email',
+      password: 'Fjalëkalimi',
+      submit: 'Hyr',
+      invalid: 'Email ose fjalëkalim i pasaktë',
+      throttled: 'Shumë përpjekje. Provo pas një minute.',
+      failed: 'Diçka shkoi keq. Provo sërish.',
+    },
+    dashboard: {
+      title: 'Paneli',
+      pending: 'Në pritje për shqyrtim',
+      needsReview: 'Kërkojnë vëmendje',
+      activeEvents: 'Evente aktive',
+      activeDeals: 'Oferta aktive',
+      sourcesWithProblems: 'Burime me probleme',
+    },
+  },
+} as const

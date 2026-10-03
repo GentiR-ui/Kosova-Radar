@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-03 · T003 done
+- Built: router (public layout + lazy admin bundle), typed api wrapper, /admin/login (401/429), admin layout with role-filtered nav and "Dil", dashboard tiles (data in T031), global 401 → login, safe logout, Albanian strings module, strict TS, design tokens (focus-visible, reduced motion), lang="sq".
+- Tests: vitest 9; Playwright acceptance P10/P02/P11 6/6 (desktop + mobile).
+- Also: fix(T002) 6929676 — LoginThrottle consumed a scoped service; service validation now on in Testing.
+- Reviewer: 1 MEDIUM (401 mid-session) fixed + LOWs; re-check of the commit requested.
+- Next: T010.
+
 ## 2026-10-03 · T002 done
 - Built: security headers incl. CSP (first in pipeline), exception handler/problem details, /health, login throttle (atomic reserve/release; per pair 10/min, per email 50/h, per IP across emails, ADR-016/018/019), public per-IP limiter (config, Retry-After, logged), forwarded headers (proxies + CIDR networks), Data Protection keys in PostgreSQL, fail-fast connection string, SPA hosting + anonymous file 404.
 - Tests: unit 14, integration 17; acceptance P03/P07/P08/P09/P11 37/37.
