@@ -18,7 +18,7 @@ Rules
 - API behaviour → xUnit in tests/App.AcceptanceTests (black box over HTTP via `AppFactory.CreateClient()`,
   `[Collection(AcceptanceCollection.Name)]`). UI behaviour → Playwright in web/e2e/acceptance using
   accessible names from design.md §6 (getByRole/getByLabel; no CSS selectors, no test ids).
-- REQ-P04: one cross-tenant test per tenant-scoped endpoint (read, update, delete → 404, data unchanged).
+- REQ-P04: role check, no tenancy (ADR-001). One test per Admin-only endpoint (sources and users, design.md §5): a signed-in Reviewer gets 403, and a follow-up Admin GET shows the data unchanged.
 - Test the happy path, the stated unhappy paths, and boundaries. Assert status codes, response shape and
   persisted effects (via a follow-up GET), not implementation details.
 - Tests share one database: generate unique emails/names per test; never depend on test order.
