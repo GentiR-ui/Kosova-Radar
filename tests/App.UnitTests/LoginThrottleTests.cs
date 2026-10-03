@@ -1,5 +1,4 @@
 using App.Api.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Time.Testing;
@@ -17,7 +16,6 @@ public class LoginThrottleTests
     public LoginThrottleTests() => _throttle = Create(30);
 
     private LoginThrottle Create(int perIp) => new(new MemoryCache(new MemoryCacheOptions()), _time,
-        new UpperInvariantLookupNormalizer(),
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Login:MaxFailuresPerIpPerMinute"] = perIp.ToString(System.Globalization.CultureInfo.InvariantCulture),

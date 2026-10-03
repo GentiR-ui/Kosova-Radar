@@ -13,6 +13,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 TestHooks.GuardEnvironment(builder.Configuration, builder.Environment);
+// Catch lifetime mistakes (e.g. a singleton consuming a scoped service) in tests too, not only in Development.
+var validateServices = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
+builder.Host.UseDefaultServiceProvider(o => { o.ValidateScopes = validateServices; o.ValidateOnBuild = validateServices; });
 var testHooks = TestHooks.IsEnabled(builder.Configuration);
 
 builder.Services.AddOpenApi();

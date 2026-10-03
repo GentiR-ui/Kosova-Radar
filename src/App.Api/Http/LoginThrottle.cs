@@ -19,15 +19,15 @@ public sealed class LoginThrottle
 
     private readonly IMemoryCache _cache;
     private readonly TimeProvider _time;
-    private readonly ILookupNormalizer _normalizer;
+    // Identity's default normalizer (stateless); the registered one is scoped, this class is a singleton.
+    private readonly ILookupNormalizer _normalizer = new UpperInvariantLookupNormalizer();
     private readonly Window _perIp;
     private readonly Lock _gate = new();
 
-    public LoginThrottle(IMemoryCache cache, TimeProvider time, ILookupNormalizer normalizer, IConfiguration config)
+    public LoginThrottle(IMemoryCache cache, TimeProvider time, IConfiguration config)
     {
         _cache = cache;
         _time = time;
-        _normalizer = normalizer;
         _perIp = new Window("login-ip", TimeSpan.FromMinutes(1), config.GetValue("Login:MaxFailuresPerIpPerMinute", 30));
     }
 
