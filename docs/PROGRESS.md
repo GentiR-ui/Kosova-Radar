@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T032 done
+- Built: `SeoEndpoints` + `SeoPages` (Api): `/events/{id}` and `/deals/{id}` return the SPA `index.html` from wwwroot (built-in shell if absent) with title, description, og:title/description/url, https-only og:image, `noindex` for synthetic items, JSON-LD `Event` for events (default JSON encoder, so `</script>` cannot appear); unknown/malformed/withdrawn id → shell + noindex + 404. `/sitemap.xml` (`SitemapQueries`, active published items via `ActiveItems`, capped at 50,000 URLs, `Cache-Control: max-age=300`), `/robots.txt`. The public rate limiter now also covers the item pages and the sitemap.
+- Tests: unit +5 (`SeoPagesTests`: markup injection, head replacement, image/noindex, truncation, sitemap/robots). Acceptance REQ-090..092 green (8).
+- Verify: quick PASS. Review: skipped (small). security-reviewer: 1 MEDIUM (unlimited, uncached DB-backed routes) fixed by rate limit + sitemap cache header. LOWs left: shell without `</head>` prepends head tags, head-tag regex only matches the exact Vite form, `Site__BaseUrl` not validated as absolute https, no log when the sitemap cap is hit, expired items stay indexable, index.html read from disk per request.
+- Next: T033.
+
 ## 2026-10-04 · T031 done
 - Built: `GET /api/admin/dashboard` (Reviewer policy; `DashboardQueries` + `DashboardEndpoints`): pending / needs-review candidates, active events/deals via the shared `ActiveItems` expressions, `expiredLast7Days` (status Expired and `UpdatedAt` within 7 days, since expiry time is not stored), failing/degraded counts of active fetched sources with the `Source.FailingThreshold` rule, AI calls/errors of the real UTC day (same clock as `AiCall.StartedAt`). The `/admin` tiles already existed from T003.
 - Tests: integration +2 (401, delta test over seeded candidates/items/sources/AI calls incl. boundary cases); Playwright flow `web/e2e/flows/dashboard.spec.ts` written but not run here (needs the e2e servers; covered by the full verify). REQ-P03 acceptance already green.

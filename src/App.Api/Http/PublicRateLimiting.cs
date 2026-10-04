@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace App.Api.Http;
 
-/// <summary>Fixed window per client IP on anonymous API endpoints (not /api/auth, which has its own limiter); RateLimit:PublicPerMinute = 0 disables it.</summary>
+/// <summary>Fixed window per client IP on anonymous API endpoints and the SEO item pages/sitemap (not /api/auth, which has its own limiter); RateLimit:PublicPerMinute = 0 disables it.</summary>
 public static class PublicRateLimiting
 {
     public static IServiceCollection AddPublicRateLimiting(this IServiceCollection services, IConfiguration config)
@@ -24,7 +24,8 @@ public static class PublicRateLimiting
             {
                 var path = context.Request.Path;
                 var isAnonymousEndpoint = context.GetEndpoint()?.Metadata.GetMetadata<IAllowAnonymous>() is not null;
-                var isPublicApi = isAnonymousEndpoint && path.StartsWithSegments("/api") && !path.StartsWithSegments("/api/auth");
+                var isPublicApi = isAnonymousEndpoint && !path.StartsWithSegments("/api/auth")
+                    && (path.StartsWithSegments("/api") || IsSeoRoute(context));
                 if (perMinute <= 0 || !isPublicApi) return RateLimitPartition.GetNoLimiter("unlimited");
 
                 return RateLimitPartition.GetFixedWindowLimiter(
@@ -34,4 +35,8 @@ public static class PublicRateLimiting
         });
         return services;
     }
+
+    /// <summary>The database-backed SEO routes (item pages, sitemap) are limited like the public API; static files and robots.txt are not.</summary>
+    private static bool IsSeoRoute(HttpContext context) =>
+        (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText is "/events/{id}" or "/deals/{id}" or "/sitemap.xml";
 }

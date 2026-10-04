@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<PublishedItems>();
         services.AddScoped<DashboardQueries>();
         services.AddScoped<PublicItemQueries>();
+        services.AddScoped<SitemapQueries>();
         services.AddScoped<PublicEventQueries>();
         services.AddScoped<PublicDealQueries>();
         services.AddScoped<PublicSearchQueries>();
