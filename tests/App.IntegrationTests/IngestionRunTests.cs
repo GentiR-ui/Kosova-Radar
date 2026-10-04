@@ -136,6 +136,28 @@ public class IngestionRunTests(AppFactory app)
     }
 
     [Fact]
+    public async Task An_auto_rejected_candidate_is_revalidated_when_the_source_fixes_the_item()
+    {
+        var admin = await LoginAdminAsync();
+        var t = Token();
+        var id = await CreateSourceAsync(admin, Payload(Item("a", $"Pa titull {t}", extra: ",\"url\":\"ftp://example.test/a\"")));
+        await FetchAsync(admin, id);
+        var rejected = (await CandidatesAsync(id)).Single();
+        Assert.Equal(CandidateStatus.Rejected, rejected.Status);
+        Assert.Null(rejected.RejectedByUserId);
+        Assert.Contains(rejected.Issues, i => i.Code == IssueCodes.InvalidUrl);
+
+        await SetPayloadAsync(admin, id, Payload(Item("a", $"Pa titull {t}", extra: ",\"startsAt\":\"2999-01-01T10:00:00Z\",\"city\":\"Prishtina\"")));
+        await FetchAsync(admin, id);
+
+        var fixedUp = (await CandidatesAsync(id)).Single();
+        Assert.Equal(rejected.Id, fixedUp.Id);
+        Assert.Equal(CandidateStatus.Pending, fixedUp.Status);
+        Assert.Equal(ValidationOutcome.Valid, fixedUp.Validation);
+        Assert.Empty(fixedUp.Issues);
+    }
+
+    [Fact]
     public async Task The_same_item_twice_in_one_feed_makes_one_candidate()
     {
         var admin = await LoginAdminAsync();

@@ -18,7 +18,7 @@ public sealed record RunResult(RunStatus Status, RunDto? Run = null);
 /// One ingestion run of one source (design.md §2): fetch, parse, look each item up by fingerprint, store candidates,
 /// record the run and the source's health. Candidates, run and source bookkeeping are saved together at the end, so a
 /// failed run leaves no half-processed feed behind.
-/// Lookup rows 1 (open candidate) and 5 (nothing known) are implemented; rows 2-4 land with T028, AI with T026, validation with T017.
+/// Lookup rows 1 (open candidate) and 5 (nothing known) and validation (T017) are implemented; rows 2-4 land with T028, AI with T026.
 /// </summary>
 public sealed class IngestionService(
     IAppDbContext db,
@@ -156,7 +156,8 @@ public sealed class IngestionService(
 
         foreach (var item in items)
         {
-            var fields = resolver.Resolve(item.Kind, item.Fields);
+            var validation = CandidateValidator.Validate(item.Kind, resolver.Resolve(item.Kind, item.Fields), fetchedAt, source.IsUnreliable);
+            var fields = validation.Fields;
             known.TryGetValue(item.Fingerprint, out var existing);
 
             // Row 1: a pending or auto-rejected candidate is the one to compare with (also for a repeat inside one feed).
@@ -175,6 +176,7 @@ public sealed class IngestionService(
                 open.ExternalId = item.ExternalId;
                 open.ContentHash = item.ContentHash;
                 open.Fields = fields;
+                ApplyValidation(open, validation);
                 open.Evidence = item.Evidence;
                 open.FetchedAt = fetchedAt;
                 open.UpdatedAt = now;
@@ -198,9 +200,9 @@ public sealed class IngestionService(
                     ContentHash = item.ContentHash,
                     Fields = fields,
                     Evidence = item.Evidence,
-                    Status = CandidateStatus.Pending,
-                    // Real validation is T017; until then nothing is ever "Valid" without having been checked.
-                    Validation = ValidationOutcome.NeedsReview,
+                    Status = validation.Status,
+                    Validation = validation.Outcome,
+                    Issues = validation.Issues,
                     IsSynthetic = source.Type == SourceType.Fixture,
                     FetchedAt = fetchedAt,
                     CreatedAt = now,
@@ -211,6 +213,14 @@ public sealed class IngestionService(
                 run.Created++;
             }
         }
+    }
+
+    /// <summary>Re-validation of an open candidate: an auto-rejected one may become pending again and vice versa (no reviewer involved).</summary>
+    private static void ApplyValidation(Candidate c, ValidationResult v)
+    {
+        c.Validation = v.Outcome;
+        c.Issues = v.Issues;
+        c.Status = v.Status;
     }
 
     private void Finish(Source source, JobExecution run, DateTimeOffset fetchedAt, string? errorCode, string? error)

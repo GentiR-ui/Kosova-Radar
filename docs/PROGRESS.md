@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T017 done
+- Built: `CandidateValidator` (Domain/Content, pure; `now` = fetch time) with issue codes and severities per design §4: MissingTitle, InvalidUrl, Expired (exclusive effective end), MissingStartsAt, InvalidDateRange, UnknownCity (event without city, or stated city that did not resolve), MissingPrice, PriceInconsistent, ConflictingData (> 1 point), SourceUnreliable, InvalidImageUrl (info, image dropped). Outcome rejected > review > valid; status Rejected (no reviewer) or Pending. `IngestionService` validates new candidates and re-validates open ones on in-place update (auto-rejected may become pending again). `discountPercent` was already computed in the DTO.
+- Tests: unit +29 (every rule and boundary), integration +1 (auto-rejected candidate becomes pending after the source fixes it). Acceptance: REQ-027..039 and REQ-060 green (63/64); the remaining one (`Discount_is_null_without_both_prices_and_shown_on_the_published_deal`) needs approve + public deal detail (T019).
+- Verify: quick PASS. Reviewer: 0 HIGH/MEDIUM; LOWs: `ApplyValidation` replaces `Issues` wholesale, so T026/T028 must re-add their issues (noted in tasks.md); `CandidateValidator.Outcome` stays public for T018 (edit re-validation). Issue messages are English; the UI (T036) maps by code.
+- Next: T018.
+
 ## 2026-10-04 · T016b done
 - Built: `GET /api/admin/candidates` (filters status/validation/kind/sourceId by camelCase names, all bad parameters reported together, newest `fetchedAt` first then id, evidence left out of the list) and `GET /api/admin/candidates/{id}` (fields incl. computed `discountPercent`, evidence, source name, suggested category, `ai` block, `duplicateOf` with resolved title, malformed id → 404); Reviewer policy. Code in `Application/Candidates` + `CandidateEndpoints`.
 - Tests: integration +5 (detail resolution, nulls and vanished duplicate target, list order/no evidence, multiple 400 fields, anonymous 401). Acceptance: REQ-030 (2), REQ-061 (3) green; REQ-060 6/7 — `Reviewer_lists_candidates_filtered…` needs the `MissingPrice`/`MissingTitle` issues from T017 (noted in tasks.md).
