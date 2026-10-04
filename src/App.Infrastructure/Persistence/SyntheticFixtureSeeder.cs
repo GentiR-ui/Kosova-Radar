@@ -59,14 +59,25 @@ public sealed class SyntheticFixtureSeeder(AppDbContext db, IngestionService ing
 
         object Event(string id, string title, string? city, string? startsAt, object? extra = null) => Merge(new Dictionary<string, object?>
         {
-            ["externalId"] = id, ["kind"] = "event", ["title"] = title, ["url"] = $"https://fixtures.example/events/{id}",
-            ["city"] = city, ["startsAt"] = startsAt, ["priceText"] = "5 €", ["price"] = 5,
+            ["externalId"] = id,
+            ["kind"] = "event",
+            ["title"] = title,
+            ["url"] = $"https://fixtures.example/events/{id}",
+            ["city"] = city,
+            ["startsAt"] = startsAt,
+            ["priceText"] = "5 €",
+            ["price"] = 5,
         }, extra);
 
         object Deal(string id, string title, object? extra = null) => Merge(new Dictionary<string, object?>
         {
-            ["externalId"] = id, ["kind"] = "deal", ["title"] = title, ["url"] = $"https://fixtures.example/deals/{id}",
-            ["city"] = "Prishtinë", ["merchant"] = "Dyqani Shembull", ["validUntil"] = At(20),
+            ["externalId"] = id,
+            ["kind"] = "deal",
+            ["title"] = title,
+            ["url"] = $"https://fixtures.example/deals/{id}",
+            ["city"] = "Prishtinë",
+            ["merchant"] = "Dyqani Shembull",
+            ["validUntil"] = At(20),
         }, extra);
 
         object[] items =

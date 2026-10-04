@@ -35,38 +35,56 @@ public sealed class PerformanceTests(AppFactory app, ITestOutputHelper output)
         var sourceId = Guid.NewGuid();
         try
         {
-        await using (var scope = app.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var source = new Source { Name = "Perf " + Guid.NewGuid().ToString("N"), Type = SourceType.Fixture, PollIntervalMinutes = 60 };
-            source.Id = sourceId;
-            db.Sources.Add(source);
-            var cities = await db.Cities.ToListAsync();
-            var rng = new Random(42);
-            string Title(int i) => $"{Words[rng.Next(Words.Length)]} {Words[rng.Next(Words.Length)]} {i}";
-            db.Events.AddRange(Enumerable.Range(0, PerKind).Select(i =>
+            await using (var scope = app.Services.CreateAsyncScope())
             {
-                var title = Title(i);
-                return new Event
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var source = new Source { Name = "Perf " + Guid.NewGuid().ToString("N"), Type = SourceType.Fixture, PollIntervalMinutes = 60 };
+                source.Id = sourceId;
+                db.Sources.Add(source);
+                var cities = await db.Cities.ToListAsync();
+                var rng = new Random(42);
+                string Title(int i) => $"{Words[rng.Next(Words.Length)]} {Words[rng.Next(Words.Length)]} {i}";
+                db.Events.AddRange(Enumerable.Range(0, PerKind).Select(i =>
                 {
-                    Title = title, CityId = cities[i % cities.Count].Id, StartsAt = now.AddHours(1 + i), Status = ItemStatus.Published,
-                    PrimarySourceId = source.Id, SourceUrl = $"https://perf.test/e/{i}", Fingerprint = $"perf-e-{source.Id:N}-{i}",
-                    SearchText = TextNormalizer.Fold(title), LastVerifiedAt = now, PublishedAt = now, CreatedAt = now, UpdatedAt = now,
-                };
-            }));
-            db.Deals.AddRange(Enumerable.Range(0, PerKind).Select(i =>
-            {
-                var title = Title(i);
-                return new Deal
+                    var title = Title(i);
+                    return new Event
+                    {
+                        Title = title,
+                        CityId = cities[i % cities.Count].Id,
+                        StartsAt = now.AddHours(1 + i),
+                        Status = ItemStatus.Published,
+                        PrimarySourceId = source.Id,
+                        SourceUrl = $"https://perf.test/e/{i}",
+                        Fingerprint = $"perf-e-{source.Id:N}-{i}",
+                        SearchText = TextNormalizer.Fold(title),
+                        LastVerifiedAt = now,
+                        PublishedAt = now,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    };
+                }));
+                db.Deals.AddRange(Enumerable.Range(0, PerKind).Select(i =>
                 {
-                    Title = title, CityId = cities[i % cities.Count].Id, ValidUntil = now.AddHours(1 + i), Status = ItemStatus.Published,
-                    PrimarySourceId = source.Id, SourceUrl = $"https://perf.test/d/{i}", Fingerprint = $"perf-d-{source.Id:N}-{i}",
-                    SearchText = TextNormalizer.Fold(title), LastVerifiedAt = now, PublishedAt = now, CreatedAt = now, UpdatedAt = now,
-                };
-            }));
-            await db.SaveChangesAsync();
-            await db.Database.ExecuteSqlRawAsync("ANALYZE \"Events\"; ANALYZE \"Deals\";");
-        }
+                    var title = Title(i);
+                    return new Deal
+                    {
+                        Title = title,
+                        CityId = cities[i % cities.Count].Id,
+                        ValidUntil = now.AddHours(1 + i),
+                        Status = ItemStatus.Published,
+                        PrimarySourceId = source.Id,
+                        SourceUrl = $"https://perf.test/d/{i}",
+                        Fingerprint = $"perf-d-{source.Id:N}-{i}",
+                        SearchText = TextNormalizer.Fold(title),
+                        LastVerifiedAt = now,
+                        PublishedAt = now,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    };
+                }));
+                await db.SaveChangesAsync();
+                await db.Database.ExecuteSqlRawAsync("ANALYZE \"Events\"; ANALYZE \"Deals\";");
+            }
 
             using var client = app.CreateClient();
             var eventId = (await client.GetFromJsonAsync<JsonElement>("/api/events?pageSize=1")).GetProperty("items")[0].GetProperty("id").GetString();

@@ -10,6 +10,11 @@
 - Next: T011.
 -->
 
+## 2026-10-05 · fix: full verify
+- dotnet-format: 8 `.cs` files had CRLF working-copy endings (`.editorconfig` wants LF); re-formatted with `dotnet format App.slnx --exclude tests/App.AcceptanceTests`, `--verify-no-changes` clean.
+- e2e-flows: `session.spec.ts` clicked `Paneli` right after `Shqyrtimi`, racing the 401 redirect to login (link detached); removed the second click, the redirect is asserted by the heading.
+- Verify: quick PASS.
+
 ## 2026-10-05 · T043 done
 - Built: `docker-compose.prod.yml` (app bound to 127.0.0.1:8080, db, `backup` sidecar: nightly `pg_dump -Fc` at `BACKUP_HOUR_UTC`, 14-day retention; required `POSTGRES_PASSWORD`/`SITE_BASE_URL`; bash `/dev/tcp` healthcheck on `/health`), `docs/RUNBOOK.md`, `ProductionGuards` (Production/Staging refuse the documented dev bootstrap email/password), migrations now run at start-up in every environment (before this, Production never migrated).
 - Rehearsed locally: image built; stack started on a fresh DB, app healthy, `/health` 200; manual dump, `dropdb`/`createdb`/`pg_restore`, admin user present, app healthy again. The nightly timer itself was not waited for (loop logic only reviewed).

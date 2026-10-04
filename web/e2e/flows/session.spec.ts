@@ -20,8 +20,7 @@ test('a session that ends mid-use sends the admin back to the login page', async
   expect((await other.post('/api/auth/logout')).status()).toBe(204)
   await other.dispose()
 
-  await page.getByRole('link', { name: 'Shqyrtimi' }).click()
-  await page.getByRole('link', { name: 'Paneli' }).click() // refetches admin data → 401
+  await page.getByRole('link', { name: 'Shqyrtimi' }).click() // fetches admin data → 401 → back to login
 
   await expect(
     page.getByRole('heading', { level: 1, name: 'Hyrje për administratorë' }),
