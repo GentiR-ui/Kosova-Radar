@@ -107,6 +107,7 @@ app.MapHealthChecks("/health").AllowAnonymous(); // liveness for the host and th
 app.MapAuthEndpoints();
 app.MapReferenceEndpoints();
 app.MapAuditEndpoints();
+app.MapDashboardEndpoints();
 app.MapUserEndpoints();
 app.MapSourceEndpoints();
 app.MapCandidateEndpoints();

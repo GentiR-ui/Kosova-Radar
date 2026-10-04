@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T031 done
+- Built: `GET /api/admin/dashboard` (Reviewer policy; `DashboardQueries` + `DashboardEndpoints`): pending / needs-review candidates, active events/deals via the shared `ActiveItems` expressions, `expiredLast7Days` (status Expired and `UpdatedAt` within 7 days, since expiry time is not stored), failing/degraded counts of active fetched sources with the `Source.FailingThreshold` rule, AI calls/errors of the real UTC day (same clock as `AiCall.StartedAt`). The `/admin` tiles already existed from T003.
+- Tests: integration +2 (401, delta test over seeded candidates/items/sources/AI calls incl. boundary cases); Playwright flow `web/e2e/flows/dashboard.spec.ts` written but not run here (needs the e2e servers; covered by the full verify). REQ-P03 acceptance already green.
+- Verify: quick PASS. Review: skipped (small).
+- Next: T032.
+
 ## 2026-10-04 · T030 done
 - Built: `PublishedItems` (Application/Items) + `PublishedItemEndpoints`: `GET /api/admin/items` (kind/status/search/paging across events and deals; each table ordered and limited, merged in memory), admin event/deal GET (public detail incl. withdrawn + `adminStatus`, omitted on the public API), PUT edit (same required rules as approve, refreshes `SearchText`/discount, venue find-or-create), expire (idempotent, 409 when withdrawn), withdraw (idempotent); audit `item.edit/expire/withdraw` in the same save, none for no-op repeats. `ItemFields` extracted from `CandidateApproval` and shared.
 - Tests: integration +8 (401s, malformed id 404, bad filters 400, list filters/paging, huge page, withdrawn edit 409, reference validation, deal edit with public/search/audit, withdraw idempotency). Acceptance REQ-069..072 green (17), REQ-066/067/075 now fully green.

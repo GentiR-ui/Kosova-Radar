@@ -1,3 +1,4 @@
+using App.Application.Dashboard;
 using App.Application.Items;
 using App.Application.Abstractions;
 using App.Application.Ai;
@@ -71,6 +72,7 @@ public static class DependencyInjection
         services.AddScoped<CandidateDecisions>();
         services.AddScoped<CandidateApproval>();
         services.AddScoped<PublishedItems>();
+        services.AddScoped<DashboardQueries>();
         services.AddScoped<PublicItemQueries>();
         services.AddScoped<PublicEventQueries>();
         services.AddScoped<PublicDealQueries>();
