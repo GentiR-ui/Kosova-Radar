@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Evente Prishtinë</title>
+    <link>https://events.example/</link>
+    <item>
+      <title>Koncert &amp; Xhaz</title>
+      <link>https://events.example/e/1</link>
+      <guid isPermaLink="false">evt-1</guid>
+      <description>&lt;p&gt;Koncert me hyrje &lt;b&gt;5 €&lt;/b&gt; &amp;amp; muzikë live.&lt;/p&gt;&lt;script&gt;alert(1)&lt;/script&gt;</description>
+    </item>
+    <item>
+      <title>Teatër</title>
+      <link>https://events.example/e/2</link>
+      <description><![CDATA[<div>Shfaqje   e re<br/>në 2026-10-20T20:00:00+02:00</div>]]></description>
+      <content:encoded><![CDATA[<p>Teksti i plotë <i>i shfaqjes</i></p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Pa lidhje</title>
+      <description>Asnjë identitet</description>
+    </item>
+    <item>
+      <title>Lidhje e keqe</title>
+      <link>javascript:alert(1)</link>
+    </item>
+  </channel>
+</rss>

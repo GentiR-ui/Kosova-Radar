@@ -260,6 +260,34 @@ public sealed class SourceHttpTests(AppFactory app) : IDisposable
         Assert.Equal("HttpStatus", run.GetProperty("errorCode").GetString());
     }
 
+    [Fact]
+    public async Task An_rss_feed_creates_candidates_and_counts_a_bad_item_as_failed()
+    {
+        var url = $"https://rss-{Token()}.example/rss.xml";
+        _routes[url] = _ => Json("<rss version=\"2.0\"><channel>"
+            + "<item><title>Koncert</title><link>https://example.test/r1</link><description>&lt;p&gt;Live&lt;/p&gt;</description></item>"
+            + "<item><title>Pa lidhje</title></item></channel></rss>");
+        var admin = await LoginAsync(CreateClient());
+
+        var run = await FetchAsync(admin, url, "rss");
+
+        Assert.Equal("succeeded", run.GetProperty("status").GetString());
+        Assert.Equal(1, run.GetProperty("created").GetInt32());
+        Assert.Equal(1, run.GetProperty("failed").GetInt32());
+    }
+
+    [Fact]
+    public async Task An_rss_source_that_serves_something_else_fails_with_MalformedPayload()
+    {
+        var url = $"https://rss-{Token()}.example/rss.xml";
+        _routes[url] = _ => Json("{\"items\":[]}");
+        var admin = await LoginAsync(CreateClient());
+
+        var run = await FetchAsync(admin, url, "rss");
+
+        Assert.Equal("MalformedPayload", run.GetProperty("errorCode").GetString());
+    }
+
     private static string Host() => $"https://polite-{Token()}.example";
 
     private static Task<HttpResponseMessage> Text(string body) =>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Oferta</title>
+  <link rel="self" href="https://deals.example/feed.atom"/>
+  <entry>
+    <title type="html">Laptop &lt;em&gt;-20%&lt;/em&gt;</title>
+    <id>urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a</id>
+    <link rel="self" href="https://deals.example/self/1"/>
+    <link rel="alternate" href="https://deals.example/d/1"/>
+    <summary>Përmbledhje</summary>
+    <content type="html">&lt;p&gt;Laptop me ulje &lt;b&gt;20%&lt;/b&gt;&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <title>Pa id</title>
+    <link href="https://deals.example/d/2"/>
+    <summary>Vetëm lidhje</summary>
+  </entry>
+  <entry>
+    <title>Asgjë</title>
+  </entry>
+</feed>

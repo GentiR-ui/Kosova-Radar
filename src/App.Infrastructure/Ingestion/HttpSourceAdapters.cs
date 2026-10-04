@@ -30,14 +30,11 @@ internal sealed class JsonFeedSourceAdapter(SourceHttpFetcher fetcher, RobotsChe
         Task.FromResult(RadarFeedParser.Parse(source.Id, fetched.Content));
 }
 
-/// <summary>
-/// RSS/Atom sources are fetched (and guarded) like any other; parsing arrives with T025, until then the run fails
-/// as a malformed payload.
-/// </summary>
+/// <summary>RSS 2.0 / Atom feed over HTTP; every item becomes a candidate of the source's default kind (design.md §6).</summary>
 internal sealed class RssSourceAdapter(SourceHttpFetcher fetcher, RobotsChecker robots) : HttpSourceAdapter(fetcher, robots)
 {
     protected override SourceType Type => SourceType.Rss;
 
     public override Task<FeedParseResult> ParseAsync(Source source, FetchResult fetched, CancellationToken ct) =>
-        throw new SourceFetchException(RunErrorCodes.MalformedPayload, "RSS and Atom feeds are not supported yet.");
+        Task.FromResult(RssFeedParser.Parse(source.Id, source.DefaultKind, fetched.Content));
 }
