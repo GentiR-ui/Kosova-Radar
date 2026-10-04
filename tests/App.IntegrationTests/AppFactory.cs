@@ -1,3 +1,4 @@
+using App.Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.PostgreSql;
@@ -34,6 +35,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Default", ConnectionString);
+        // The real-clock expiration job would flip tests that seed fixed dates; tests call ExpirationRunner directly.
+        builder.ConfigureServices(services =>
+            services.Remove(services.Single(d => d.ImplementationType == typeof(ExpirationJob))));
     }
 
     async Task IAsyncLifetime.DisposeAsync()
