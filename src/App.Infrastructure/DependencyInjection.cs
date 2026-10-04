@@ -90,6 +90,7 @@ public static class DependencyInjection
         services.AddScoped<ISourceAdapter, JsonFeedSourceAdapter>();
         services.AddScoped<ISourceAdapter, RssSourceAdapter>();
         services.AddScoped<IngestionService>();
+        services.AddScoped<SyntheticFixtureSeeder>();
         services.AddSingleton<ScheduledRuns>();
         services.AddHostedService<SourceScheduler>();
         return services;

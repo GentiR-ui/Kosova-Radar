@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-05 · T040 done
+- Built: `SyntheticFixtureSeeder` (Infrastructure/Persistence): inactive Fixture source "Fixture — Shembuj sintetikë" with 24 items (6 valid events, 8 deals/cases incl. missing price, conflicting discount, inconsistent prices, expired, non-Kosovo city; events with missing time, expired, invalid URL, non-Kosovo city, invalid date range, invalid image, AI-filled, `#ai-fail`, two same-title items) with dates relative to startup; fetched once when never fetched (source switched on only for that scheduled-trigger run, so no audit user is needed). Runs from `Program.cs` only when `Seed:SyntheticFixtures` is true (set in `appsettings.Development.json`; off in Testing/Production) and fixtures are allowed.
+- Tests: integration test seeds into the DB with the setting on: 24 synthetic candidates, expected issue codes, source stays inactive, a second seed does not fetch again.
+- Note: "duplicate title"/"changed time" cases need published items or a second source (duplicates are detected across sources, change detection needs a published item), so the fixture only has same-title items in two cities.
+- Verify: quick PASS. Review: skipped (small).
+- Next: T041.
+
 ## 2026-10-05 · T039 done
 - Built: `/admin/sources` (`SourcesPage`, `SourceForm` in `web/src/features/admin/sources`): table with health badge, last success/error, buttons "Merr tani" and "Ndrysho"; add/edit form (detail loaded via GET for the fixture payload; fixture vs URL field by type; defaults interval 60, "Aktiv" unchecked; 400 field errors with `aria-invalid`); fetch result message, failed-run error code, 409 message. Router now mounts it (admin-only).
 - Tests: 9 component tests (list, empty, list error, add body, 400, edit PUT, run ok/failed, 409). Acceptance REQ-113 green on desktop + mobile (once a mobile run timed out on a click intercepted by another row's cell; not reproducible in 4 later runs, actions cell now wraps).
