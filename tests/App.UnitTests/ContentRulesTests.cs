@@ -96,4 +96,21 @@ public class ContentRulesTests
     [InlineData("alfa", "beta")]
     public void Similarity_is_zero_when_nothing_comparable(string? a, string? b) =>
         Assert.Equal(0, ContentRules.TitleSimilarity(a, b));
+
+    [Fact]
+    public void Pristina_date_follows_local_midnight_in_winter_and_summer()
+    {
+        // CET (UTC+1): 23:30 UTC on 1 Jan is already 2 Jan locally; CEST (UTC+2): 22:00 UTC on 1 Jul is 2 Jul.
+        Assert.Equal(new DateOnly(2027, 1, 2), ContentRules.PristinaDate(new(2027, 1, 1, 23, 30, 0, TimeSpan.Zero)));
+        Assert.Equal(new DateOnly(2027, 1, 1), ContentRules.PristinaDate(new(2027, 1, 1, 22, 59, 0, TimeSpan.Zero)));
+        Assert.Equal(new DateOnly(2027, 7, 2), ContentRules.PristinaDate(new(2027, 7, 1, 22, 0, 0, TimeSpan.Zero)));
+    }
+
+    [Fact]
+    public void Pristina_day_is_23_hours_long_on_the_spring_DST_change()
+    {
+        var (start, end) = ContentRules.PristinaDay(new DateOnly(2027, 3, 28));
+        Assert.Equal(new DateTimeOffset(2027, 3, 27, 23, 0, 0, TimeSpan.Zero), start);
+        Assert.Equal(TimeSpan.FromHours(23), end - start);
+    }
 }

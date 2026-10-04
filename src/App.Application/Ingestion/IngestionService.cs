@@ -4,6 +4,7 @@ using App.Application.Ai;
 using App.Application.Audit;
 using App.Application.Sources;
 using App.Domain.Content;
+using App.Domain.Reference;
 using App.Domain.Sources;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,7 @@ public sealed record RunResult(RunStatus Status, RunDto? Run = null);
 /// One ingestion run of one source (design.md §2): fetch, parse, look each item up by fingerprint, store candidates,
 /// record the run and the source's health. Candidates, run and source bookkeeping are saved together at the end, so a
 /// failed run leaves no half-processed feed behind.
-/// Lookup rows 1 (open candidate) and 5 (nothing known), validation (T017) and the AI step (T026) are implemented; rows 2-4 land with T028.
+/// All five lookup rows, the AI step (T026), validation (T017) and the duplicate check (T028) are implemented.
 /// </summary>
 public sealed class IngestionService(
     IAppDbContext db,
@@ -28,6 +29,7 @@ public sealed class IngestionService(
     TimeProvider wallClock,
     IAuditWriter audit,
     AiEnricher ai,
+    DuplicateDetector duplicates,
     IEnumerable<ISourceAdapter> adapters,
     SourceRunLock locks,
     ILogger<IngestionService> log)
@@ -156,16 +158,20 @@ public sealed class IngestionService(
         var fingerprints = items.Select(i => i.Fingerprint).Distinct().ToList();
         var known = (await db.Candidates.Where(c => fingerprints.Contains(c.Fingerprint)).ToListAsync(ct))
             .GroupBy(c => c.Fingerprint).ToDictionary(g => g.Key, g => g.ToList());
+        var published = await LoadPublishedAsync(fingerprints, ct);
         var resolver = await ReferenceResolver.LoadAsync(db, ct);
+        var pending = await duplicates.LoadPendingAsync(ct);
+        var verified = new List<PublishedLink>();
         await ai.BeginRunAsync(ct);
         var now = clock.UtcNow;
 
         foreach (var item in items)
         {
             known.TryGetValue(item.Fingerprint, out var existing);
+            existing ??= [];
 
             // Row 1: a pending or auto-rejected candidate is the one to compare with (also for a repeat inside one feed).
-            var open = existing?
+            var open = existing
                 .Where(c => c.Status == CandidateStatus.Pending || (c.Status == CandidateStatus.Rejected && c.RejectedByUserId is null))
                 .OrderByDescending(c => c.CreatedAt).ThenBy(c => c.Id).FirstOrDefault();
             if (open is not null && open.ContentHash == item.ContentHash)
@@ -174,17 +180,42 @@ public sealed class IngestionService(
                 continue;
             }
 
-            if (open is null && existing is { Count: > 0 })
+            Guid? matchedItemId = null;
+            if (open is null)
             {
-                // Rows 2-4 (decided, withdrawn or published items) are T028. Until then such an item is left alone
-                // rather than becoming a new candidate on every run.
-                run.Unchanged++;
-                continue;
+                // Row 2: a person rejected exactly this content.
+                if (existing.Any(c => c.Status == CandidateStatus.Rejected && c.ContentHash == item.ContentHash))
+                {
+                    run.Unchanged++;
+                    continue;
+                }
+
+                // Rows 3-4: a published, expired or withdrawn item (also one this source was merged into).
+                // The fingerprint ignores the kind: a feed that turns an event into a deal is a new item, not a change.
+                if (published.TryGetValue(item.Fingerprint, out var linked) && linked.Kind == item.Kind)
+                {
+                    var last = existing.Where(c => c.Status is CandidateStatus.Published or CandidateStatus.Merged)
+                        .OrderByDescending(c => c.UpdatedAt).FirstOrDefault();
+                    if (linked.Status == ItemStatus.Withdrawn) { run.Unchanged++; continue; }
+                    if (last?.ContentHash == item.ContentHash)
+                    {
+                        verified.Add(linked);
+                        run.Unchanged++;
+                        continue;
+                    }
+                    matchedItemId = linked.Id;
+                }
+            }
+            else
+            {
+                matchedItemId = open.MatchedItemId;
             }
 
             // Only items that are stored or updated reach the AI, so unchanged feeds cost nothing.
             var id = open?.Id ?? Guid.NewGuid();
             var (validation, enrichment) = await EnrichAndValidateAsync(id, item, resolver, fetchedAt, source.IsUnreliable, ct);
+            var match = await duplicates.ApplyAsync(validation, item.Kind, id, source.Id, matchedItemId, pending, ct);
+            validation = match.Validation;
             var fields = validation.Fields;
 
             if (open is not null)
@@ -193,7 +224,7 @@ public sealed class IngestionService(
                 open.ExternalId = item.ExternalId;
                 open.ContentHash = item.ContentHash;
                 open.Fields = fields;
-                ApplyValidation(open, validation, enrichment);
+                ApplyValidation(open, validation, enrichment, match.Duplicate);
                 open.Evidence = item.Evidence;
                 open.FetchedAt = fetchedAt;
                 open.UpdatedAt = now;
@@ -212,17 +243,50 @@ public sealed class IngestionService(
                     ContentHash = item.ContentHash,
                     Fields = fields,
                     Evidence = item.Evidence,
+                    MatchedItemId = matchedItemId,
                     IsSynthetic = source.Type == SourceType.Fixture,
                     FetchedAt = fetchedAt,
                     CreatedAt = now,
                     UpdatedAt = now,
                 };
-                ApplyValidation(candidate, validation, enrichment);
+                ApplyValidation(candidate, validation, enrichment, match.Duplicate);
                 db.Candidates.Add(candidate);
-                known[item.Fingerprint] = [candidate];
+                known[item.Fingerprint] = [.. existing, candidate];
                 run.Created++;
             }
         }
+
+        // A targeted update (not the tracked entity): a reviewer editing the item meanwhile must not fail the whole run.
+        var eventIds = verified.Where(v => v.Kind == ItemKind.Event).Select(v => v.Id).Distinct().ToList();
+        var dealIds = verified.Where(v => v.Kind == ItemKind.Deal).Select(v => v.Id).Distinct().ToList();
+        if (eventIds.Count > 0)
+            await db.Events.Where(e => eventIds.Contains(e.Id) && e.Status != ItemStatus.Withdrawn)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.LastVerifiedAt, fetchedAt), ct);
+        if (dealIds.Count > 0)
+            await db.Deals.Where(d => dealIds.Contains(d.Id) && d.Status != ItemStatus.Withdrawn)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastVerifiedAt, fetchedAt), ct);
+    }
+
+    /// <summary>A published, expired or withdrawn item reachable by fingerprint through its <c>ItemSource</c> rows.</summary>
+    private sealed record PublishedLink(ItemKind Kind, Guid Id, ItemStatus Status);
+
+    private async Task<Dictionary<string, PublishedLink>> LoadPublishedAsync(List<string> fingerprints, CancellationToken ct)
+    {
+        var sources = await db.ItemSources.AsNoTracking().Where(s => fingerprints.Contains(s.Fingerprint)).ToListAsync(ct);
+        var eventIds = sources.Where(s => s.ItemKind == ItemKind.Event).Select(s => s.ItemId).Distinct().ToList();
+        var dealIds = sources.Where(s => s.ItemKind == ItemKind.Deal).Select(s => s.ItemId).Distinct().ToList();
+        var events = await db.Events.AsNoTracking().Where(e => eventIds.Contains(e.Id)).Select(e => new { e.Id, e.Status }).ToDictionaryAsync(e => e.Id, ct);
+        var deals = await db.Deals.AsNoTracking().Where(d => dealIds.Contains(d.Id)).Select(d => new { d.Id, d.Status }).ToDictionaryAsync(d => d.Id, ct);
+
+        var result = new Dictionary<string, PublishedLink>();
+        foreach (var s in sources.OrderBy(s => s.AddedAt))
+        {
+            if (s.ItemKind == ItemKind.Event && events.TryGetValue(s.ItemId, out var e))
+                result[s.Fingerprint] = new(ItemKind.Event, e.Id, e.Status);
+            else if (s.ItemKind == ItemKind.Deal && deals.TryGetValue(s.ItemId, out var d))
+                result[s.Fingerprint] = new(ItemKind.Deal, d.Id, d.Status);
+        }
+        return result;
     }
 
     /// <summary>AI step, then the validation rules, then the issues that come from the AI step (design.md §2 order).</summary>
@@ -240,11 +304,14 @@ public sealed class IngestionService(
     }
 
     /// <summary>Re-validation of an open candidate: an auto-rejected one may become pending again and vice versa (no reviewer involved).</summary>
-    private static void ApplyValidation(Candidate c, ValidationResult v, AiEnrichment ai)
+    private static void ApplyValidation(Candidate c, ValidationResult v, AiEnrichment ai, DuplicateMatch? duplicate)
     {
         c.Validation = v.Outcome;
         c.Issues = v.Issues;
         c.Status = v.Status;
+        c.DuplicateOfKind = duplicate?.Kind;
+        c.DuplicateOfId = duplicate?.Id;
+        c.DuplicateOfIsCandidate = duplicate?.IsCandidate;
 
         // The AI fields belong to the content just processed: a changed item without AI output must not keep the old ones.
         c.SuggestedCategoryId = ai.SuggestedCategoryId;

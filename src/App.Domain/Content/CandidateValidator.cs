@@ -15,6 +15,8 @@ public static class IssueCodes
     public const string PriceInconsistent = "PriceInconsistent";
     public const string ConflictingData = "ConflictingData";
     public const string AiUnavailable = "AiUnavailable";
+    public const string PossibleDuplicate = "PossibleDuplicate";
+    public const string ChangedSinceApproval = "ChangedSinceApproval";
     public const string SourceUnreliable = "SourceUnreliable";
     public const string InvalidImageUrl = "InvalidImageUrl";
 }

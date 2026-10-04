@@ -36,79 +36,85 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
             : await db.Categories.Where(x => x.Slug == f.CategorySlug && x.Kind == c.Kind).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
 
         var now = clock.UtcNow;
+        var matched = c.MatchedItemId is { } matchedId ? await LoadMatchedAsync(c.Kind, matchedId, ct) : null;
+        if (c.MatchedItemId is not null && matched is null)
+            return new(ApprovalStatus.Invalid, Errors: new Dictionary<string, string[]> { ["matchedItemId"] = ["The linked item no longer exists or was withdrawn."] });
+
         Guid itemId;
         if (c.Kind == ItemKind.Event)
         {
             var venueId = await FindOrCreateVenueAsync(f.VenueName, cityId!.Value, ct);
-            var e = new Event
+            var e = matched?.Event ?? new Event { Title = f.Title!, SourceUrl = f.Url!, Fingerprint = c.Fingerprint, PublishedAt = now, CreatedAt = now };
+            e.Title = f.Title!;
+            e.Description = f.Description;
+            e.VenueId = venueId;
+            e.CityId = cityId.Value;
+            e.CategoryId = categoryId;
+            e.StartsAt = f.StartsAt!.Value.ToUniversalTime();
+            e.EndsAt = f.EndsAt?.ToUniversalTime();
+            e.PriceText = f.PriceText;
+            e.PriceAmount = f.PriceAmount;
+            e.Currency = f.Currency;
+            e.ImageUrl = f.ImageUrl;
+            e.SourceUrl = f.Url!;
+            e.SearchText = TextNormalizer.Fold($"{f.Title} {f.Description} {f.VenueName}");
+            e.LastVerifiedAt = c.FetchedAt;
+            e.UpdatedAt = now;
+            if (matched is null)
             {
-                Title = f.Title!,
-                Description = f.Description,
-                VenueId = venueId,
-                CityId = cityId.Value,
-                CategoryId = categoryId,
-                StartsAt = f.StartsAt!.Value.ToUniversalTime(),
-                EndsAt = f.EndsAt?.ToUniversalTime(),
-                PriceText = f.PriceText,
-                PriceAmount = f.PriceAmount,
-                Currency = f.Currency,
-                ImageUrl = f.ImageUrl,
-                Status = ItemStatus.Published,
-                PrimarySourceId = c.SourceId,
-                SourceUrl = f.Url!,
-                Fingerprint = c.Fingerprint,
-                IsSynthetic = c.IsSynthetic,
-                SearchText = TextNormalizer.Fold($"{f.Title} {f.Description} {f.VenueName}"),
-                LastVerifiedAt = c.FetchedAt,
-                PublishedAt = now,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            db.Events.Add(e);
+                e.Status = ItemStatus.Published;
+                e.PrimarySourceId = c.SourceId;
+                e.IsSynthetic = c.IsSynthetic;
+                db.Events.Add(e);
+            }
+            else if (e.Status == ItemStatus.Expired) e.Status = ItemStatus.Published;
             itemId = e.Id;
         }
         else
         {
-            var d = new Deal
+            var d = matched?.Deal ?? new Deal { Title = f.Title!, SourceUrl = f.Url!, Fingerprint = c.Fingerprint, PublishedAt = now, CreatedAt = now };
+            d.Title = f.Title!;
+            d.Description = f.Description;
+            d.MerchantName = f.MerchantName;
+            d.CityId = cityId;
+            d.CategoryId = categoryId;
+            d.OldPrice = f.OldPrice;
+            d.NewPrice = f.NewPrice;
+            d.PriceText = f.PriceText;
+            d.Currency = f.Currency;
+            d.DiscountPercent = ContentRules.DiscountPercent(f.OldPrice, f.NewPrice);
+            d.ValidFrom = f.ValidFrom?.ToUniversalTime();
+            d.ValidUntil = f.ValidUntil?.ToUniversalTime();
+            d.ImageUrl = f.ImageUrl;
+            d.SourceUrl = f.Url!;
+            d.SearchText = TextNormalizer.Fold($"{f.Title} {f.Description} {f.MerchantName}");
+            d.LastVerifiedAt = c.FetchedAt;
+            d.UpdatedAt = now;
+            if (matched is null)
             {
-                Title = f.Title!,
-                Description = f.Description,
-                MerchantName = f.MerchantName,
-                CityId = cityId,
-                CategoryId = categoryId,
-                OldPrice = f.OldPrice,
-                NewPrice = f.NewPrice,
-                PriceText = f.PriceText,
-                Currency = f.Currency,
-                DiscountPercent = ContentRules.DiscountPercent(f.OldPrice, f.NewPrice),
-                ValidFrom = f.ValidFrom?.ToUniversalTime(),
-                ValidUntil = f.ValidUntil?.ToUniversalTime(),
-                ImageUrl = f.ImageUrl,
-                Status = ItemStatus.Published,
-                PrimarySourceId = c.SourceId,
-                SourceUrl = f.Url!,
-                Fingerprint = c.Fingerprint,
-                IsSynthetic = c.IsSynthetic,
-                SearchText = TextNormalizer.Fold($"{f.Title} {f.Description} {f.MerchantName}"),
-                LastVerifiedAt = c.FetchedAt,
-                PublishedAt = now,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            db.Deals.Add(d);
+                d.Status = ItemStatus.Published;
+                d.PrimarySourceId = c.SourceId;
+                d.IsSynthetic = c.IsSynthetic;
+                db.Deals.Add(d);
+            }
+            else if (d.Status == ItemStatus.Expired) d.Status = ItemStatus.Published;
             itemId = d.Id;
         }
 
-        db.ItemSources.Add(new ItemSource
-        {
-            ItemKind = c.Kind,
-            ItemId = itemId,
-            SourceId = c.SourceId,
-            SourceUrl = f.Url!,
-            Fingerprint = c.Fingerprint,
-            CandidateId = c.Id,
-            AddedAt = now,
-        });
+        if (matched is null)
+            db.ItemSources.Add(new ItemSource
+            {
+                ItemKind = c.Kind,
+                ItemId = itemId,
+                SourceId = c.SourceId,
+                SourceUrl = f.Url!,
+                Fingerprint = c.Fingerprint,
+                CandidateId = c.Id,
+                AddedAt = now,
+            });
+        else
+            foreach (var link in await db.ItemSources.Where(x => x.ItemId == itemId && x.Fingerprint == c.Fingerprint).ToListAsync(ct))
+                (link.SourceUrl, link.CandidateId) = (f.Url!, c.Id);
 
         var before = new { status = c.Status, publishedItemId = c.PublishedItemId };
         c.Status = CandidateStatus.Published;
@@ -127,6 +133,20 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
             return new(ApprovalStatus.Conflict);
         }
         return new(ApprovalStatus.Done, c.Kind, itemId);
+    }
+
+    private sealed record MatchedItem(Event? Event, Deal? Deal);
+
+    /// <summary>The published or expired item a <c>ChangedSinceApproval</c> candidate applies to; null when gone or withdrawn.</summary>
+    private async Task<MatchedItem?> LoadMatchedAsync(ItemKind kind, Guid id, CancellationToken ct)
+    {
+        if (kind == ItemKind.Event)
+        {
+            var e = await db.Events.SingleOrDefaultAsync(x => x.Id == id && x.Status != ItemStatus.Withdrawn, ct);
+            return e is null ? null : new(e, null);
+        }
+        var d = await db.Deals.SingleOrDefaultAsync(x => x.Id == id && x.Status != ItemStatus.Withdrawn, ct);
+        return d is null ? null : new(null, d);
     }
 
     private static CandidateFieldsRequest ToRequest(CandidateFields f) =>

@@ -1,5 +1,6 @@
 using App.Application.Abstractions;
 using App.Application.Audit;
+using App.Application.Ingestion;
 using App.Domain.Content;
 using App.Domain.Reference;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ public enum DecisionStatus { Done, Invalid, NotFound, Conflict }
 public sealed record DecisionResult(DecisionStatus Status, CandidateDto? Candidate = null, IReadOnlyDictionary<string, string[]>? Errors = null);
 
 /// <summary>Reviewer decisions on a candidate (REQ-064, 065, 067, 074). Each change and its audit entry commit together.</summary>
-public sealed class CandidateDecisions(IAppDbContext db, IAuditWriter audit, ICurrentUser user, IClock clock)
+public sealed class CandidateDecisions(IAppDbContext db, IAuditWriter audit, ICurrentUser user, IClock clock, DuplicateDetector duplicates)
 {
     public async Task<DecisionResult> EditAsync(Guid id, CandidateFieldsRequest? body, CancellationToken ct)
     {
@@ -27,6 +28,14 @@ public sealed class CandidateDecisions(IAppDbContext db, IAuditWriter audit, ICu
         var unreliable = await db.Sources.Where(s => s.Id == c.SourceId).Select(s => s.IsUnreliable).SingleAsync(ct);
         var before = new { fields = CandidateFieldsDto.From(c.Fields), status = c.Status, validation = c.Validation };
         var validation = CandidateValidator.Validate(c.Kind, CandidateRequestValidator.Apply(c.Kind, c.Fields, req), clock.UtcNow, unreliable);
+
+        // The link to a published item and the duplicate check are part of the issues, so an edit must not drop them.
+        var (linked, duplicate) = await duplicates.ApplyAsync(validation, c.Kind, c.Id, c.SourceId, c.MatchedItemId,
+            await duplicates.LoadPendingAsync(ct), ct);
+        validation = linked;
+        c.DuplicateOfKind = duplicate?.Kind;
+        c.DuplicateOfId = duplicate?.Id;
+        c.DuplicateOfIsCandidate = duplicate?.IsCandidate;
 
         // Only the rules decide the status: an auto-rejected candidate may become pending again.
         c.Fields = validation.Fields;

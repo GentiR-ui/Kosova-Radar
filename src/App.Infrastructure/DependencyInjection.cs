@@ -66,6 +66,7 @@ public static class DependencyInjection
         services.AddSingleton(ingestion);
         services.AddAi(config);
         services.AddScoped<SourceAdmin>();
+        services.AddScoped<DuplicateDetector>();
         services.AddScoped<CandidateDecisions>();
         services.AddScoped<CandidateApproval>();
         services.AddScoped<PublicItemQueries>();

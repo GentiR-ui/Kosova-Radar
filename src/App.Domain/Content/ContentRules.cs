@@ -10,6 +10,20 @@ public static class ContentRules
     public static readonly TimeSpan UndatedDealWindow = TimeSpan.FromDays(7);
     public const double DuplicateSimilarityThreshold = 0.8;
 
+    /// <summary>"Europe/Pristina" = IANA <c>Europe/Belgrade</c> (design.md §4).</summary>
+    private static readonly TimeZoneInfo Pristina = TimeZoneInfo.FindSystemTimeZoneById("Europe/Belgrade");
+
+    /// <summary>The calendar date of an instant in Europe/Pristina.</summary>
+    public static DateOnly PristinaDate(DateTimeOffset instant) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, Pristina).DateTime);
+
+    /// <summary>[midnight, next midnight) of a Europe/Pristina date as UTC instants (DST-safe).</summary>
+    public static (DateTimeOffset Start, DateTimeOffset End) PristinaDay(DateOnly date) =>
+        (Midnight(date), Midnight(date.AddDays(1)));
+
+    private static DateTimeOffset Midnight(DateOnly date) =>
+        new(TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(TimeOnly.MinValue), Pristina), TimeSpan.Zero);
+
     /// <summary><c>EndsAt</c> when present and not before <c>StartsAt</c>, else start + 6 h (ADR-010).</summary>
     public static DateTimeOffset EffectiveEnd(DateTimeOffset startsAt, DateTimeOffset? endsAt) =>
         endsAt is { } end && end >= startsAt ? end : startsAt + DefaultEventDuration;
