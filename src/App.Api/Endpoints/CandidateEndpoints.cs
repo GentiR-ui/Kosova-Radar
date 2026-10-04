@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace App.Api.Endpoints;
 
+public sealed record ApprovedDto(App.Domain.Reference.ItemKind Kind, Guid ItemId);
+
 public static class CandidateEndpoints
 {
     public static IEndpointRouteBuilder MapCandidateEndpoints(this IEndpointRouteBuilder app)
@@ -16,6 +18,7 @@ public static class CandidateEndpoints
         // A malformed id is a 404 (design.md §5), so the id is bound as a string.
         g.MapGet("/{id}", Get);
         g.MapPut("/{id}", Edit).WithMetadata(new RequestSizeLimitAttribute(256 * 1024));
+        g.MapPost("/{id}/approve", Approve);
         g.MapPost("/{id}/reject", Reject);
         return app;
     }
@@ -44,6 +47,19 @@ public static class CandidateEndpoints
     private static async Task<Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem>> Reject(
         string id, RejectRequest? body, CandidateDecisions decisions, CancellationToken ct) =>
         ToResult(Guid.TryParse(id, out var guid) ? await decisions.RejectAsync(guid, body, ct) : new(DecisionStatus.NotFound));
+
+    private static async Task<Results<Ok<ApprovedDto>, NotFound, Conflict, ValidationProblem>> Approve(
+        string id, CandidateApproval approval, CancellationToken ct)
+    {
+        var r = Guid.TryParse(id, out var guid) ? await approval.ApproveAsync(guid, ct) : new(ApprovalStatus.NotFound);
+        return r.Status switch
+        {
+            ApprovalStatus.NotFound => TypedResults.NotFound(),
+            ApprovalStatus.Conflict => TypedResults.Conflict(),
+            ApprovalStatus.Invalid => TypedResults.ValidationProblem(r.Errors!.ToDictionary(e => e.Key, e => e.Value)),
+            _ => TypedResults.Ok(new ApprovedDto(r.Kind!.Value, r.ItemId!.Value)),
+        };
+    }
 
     private static Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem> ToResult(DecisionResult r) => r.Status switch
     {

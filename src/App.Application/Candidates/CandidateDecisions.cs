@@ -59,7 +59,7 @@ public sealed class CandidateDecisions(IAppDbContext db, IAuditWriter audit, ICu
     }
 
     /// <summary>Pending, or auto-rejected (no reviewer yet); published, merged and person-rejected candidates are final (REQ-067).</summary>
-    private static bool IsOpen(Candidate c) =>
+    internal static bool IsOpen(Candidate c) =>
         c.Status == CandidateStatus.Pending || (c.Status == CandidateStatus.Rejected && c.RejectedByUserId is null);
 
     private async Task CheckReferencesAsync(ItemKind kind, CandidateFieldsRequest req, Dictionary<string, string[]> errors, CancellationToken ct)

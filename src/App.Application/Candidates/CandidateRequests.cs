@@ -59,8 +59,16 @@ public static partial class CandidateRequestValidator
 
         return errors.Count > 0 ? (null, errors) : (req with
         {
-            Title = title, Description = description, Url = url, ImageUrl = imageUrl, CitySlug = citySlug,
-            VenueName = venue, CategorySlug = categorySlug, PriceText = priceText, Currency = currency, MerchantName = merchant,
+            Title = title,
+            Description = description,
+            Url = url,
+            ImageUrl = imageUrl,
+            CitySlug = citySlug,
+            VenueName = venue,
+            CategorySlug = categorySlug,
+            PriceText = priceText,
+            Currency = currency,
+            MerchantName = merchant,
         }, errors);
     }
 
@@ -80,8 +88,15 @@ public static partial class CandidateRequestValidator
         var isEvent = kind == ItemKind.Event;
         return current with
         {
-            Title = r.Title, Description = r.Description, Url = r.Url, ImageUrl = r.ImageUrl, CitySlug = r.CitySlug,
-            CategorySlug = r.CategorySlug, PriceText = r.PriceText, PriceAmount = r.PriceAmount, Currency = r.Currency,
+            Title = r.Title,
+            Description = r.Description,
+            Url = r.Url,
+            ImageUrl = r.ImageUrl,
+            CitySlug = r.CitySlug,
+            CategorySlug = r.CategorySlug,
+            PriceText = r.PriceText,
+            PriceAmount = r.PriceAmount,
+            Currency = r.Currency,
             VenueName = isEvent ? r.VenueName : null,
             StartsAt = isEvent ? r.StartsAt : null,
             EndsAt = isEvent ? r.EndsAt : null,

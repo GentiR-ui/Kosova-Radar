@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T019 done
+- Built: `POST /api/admin/candidates/{id}/approve` (`CandidateApproval`): required fields per kind + the edit-path length/currency/price rules on the stored fields (ingested data never went through them), validation `Rejected` reported on `validation` together with missing fields, Event/Deal + found-or-created Venue + ItemSource + candidate `Published` + audit `candidate.approve` in one save; times stored in UTC (a +02:00 offset made Npgsql throw); `lastVerifiedAt` = fetch time; category = own slug, else the suggestion. Public `GET /api/events/{id}` and `/api/deals/{id}` (`PublicItemQueries`: sources primary first, status active/expired, freshness, withdrawn/malformed id → 404).
+- Tests: integration +11 (publish, venue reuse, deal discount/no city, UTC offsets, over-long ingested fields → 400, 409 on repeat, 404/401, deal expiry via X-Test-Now, withdrawn 404). Acceptance: REQ-085 detail, REQ-062/063/067/021 turn green up to the calls into later tasks: the remaining failures hit `/api/events?search`, `/api/deals?search`, `/api/search` (T020/T021), merge (T029) and withdraw (T030).
+- Verify: quick PASS, integration 81/81. Reviewer: 3 MEDIUM (stored-field limits → 500, venue race, thin tests) fixed (limits validated, any `DbUpdateException` → 409 so the reviewer retries; deal/expiry/limit tests added); LOWs left: `ApprovedDto` lives in Api, result types duplicate `DecisionResult`, up to 5 queries per detail. No concurrency test for parallel approvals/venue race (relies on xmin + unique index).
+- Next: T020. T028 must make approve apply to `matchedItemId` (ChangedSinceApproval, REQ-068).
+
 ## 2026-10-04 · T018 done
 - Built: `PUT /api/admin/candidates/{id}` (edit, re-validated with `IClock`, source evidence/URL untouched, kind-foreign fields cleared, citySlug/categorySlug must exist, categories of the candidate's kind only) and `POST .../reject` (reason 1-500 after trim, stores reviewer); `CandidateDecisions` service + `CandidateRequestValidator`; open = Pending or auto-rejected, anything else 409 (also on xmin conflict); audit `candidate.edit`/`candidate.reject` in the same save; 256 KB cap on PUT.
 - Tests: unit +25 (request rules, Apply), integration +9 (audit before/after, no audit on 400, other-kind category, reject of auto-rejected then 409, bad reasons, 404/401, deal clears event fields). Acceptance: REQ-064, 065, 074 green; 3 REQ-067 tests fail only at `approve` (T019).
