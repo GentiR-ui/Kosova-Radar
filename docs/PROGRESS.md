@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-05 · T090 done
+- Hardening pass by `security-reviewer` over the whole app (live Production-mode probe: auth, SSRF guard, headers, cookies, rate limits; `dotnet list --vulnerable` and `npm audit` clean): no HIGH, 2 MEDIUM, 8 LOW.
+- Fixed: MEDIUM-1 Production/Staging now refuse to start without `Proxy__KnownProxies`/`KnownNetworks` (`ProductionGuards.RequireTrustedProxy`, integration test, RUNBOOK); MEDIUM-2 `.env.*` git- and docker-ignored (except `.env.example`) and `.env.example` lists the compose variables; LOW HSTS 365 days + includeSubDomains; dev compose Postgres bound to 127.0.0.1; `EntityFrameworkCore.Design` `PrivateAssets="all"`.
+- Left (LOW, for T091/follow-up): default 30 MB body limit on login/reject/merge/user create; merge of an auto-rejected candidate can publish a non-http(s) source URL (SPA `safeHref` blocks it in the browser); audit state shows source `baseUrl` query strings to Reviewers; `imageUrl` accepts `http://` (CSP blocks it); 403s not logged; `AllowedHosts=*`; floating Docker image tags; no `form-action`/`Permissions-Policy`.
+- Verify: quick PASS. Review: security-reviewer (full app).
+- Next: T091 final QA (T042 stays blocked, B-002).
+
 ## 2026-10-05 · fix: full verify
 - dotnet-format: 8 `.cs` files had CRLF working-copy endings (`.editorconfig` wants LF); re-formatted with `dotnet format App.slnx --exclude tests/App.AcceptanceTests`, `--verify-no-changes` clean.
 - e2e-flows: `session.spec.ts` clicked `Paneli` right after `Shqyrtimi`, racing the 401 redirect to login (link detached); removed the second click, the redirect is asserted by the heading.

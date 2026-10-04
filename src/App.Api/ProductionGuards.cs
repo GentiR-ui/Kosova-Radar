@@ -15,4 +15,14 @@ public static class ProductionGuards
             throw new InvalidOperationException(
                 $"The development bootstrap admin credentials must not be used in {env.EnvironmentName}. Set Bootstrap__AdminEmail and Bootstrap__AdminPassword to your own values.");
     }
+
+    // Without a trusted proxy every visitor shares the proxy's IP: one attacker could lock all admins out
+    // (login throttle), the public rate limit becomes one global bucket and HSTS is never sent.
+    public static void RequireTrustedProxy(IConfiguration config, IHostEnvironment env)
+    {
+        if (env.IsDevelopment() || env.IsEnvironment("Testing")) return;
+        if (string.IsNullOrWhiteSpace(config["Proxy:KnownProxies"]) && string.IsNullOrWhiteSpace(config["Proxy:KnownNetworks"]))
+            throw new InvalidOperationException(
+                $"Proxy__KnownProxies or Proxy__KnownNetworks must be set in {env.EnvironmentName} (the reverse proxy whose X-Forwarded-* headers are trusted).");
+    }
 }

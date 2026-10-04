@@ -53,5 +53,5 @@
 
 ## Release
 
-- [ ] T090 — Full hardening pass over the whole app (harden skill) — DoD: security-reviewer report has no HIGH/MEDIUM
+- [x] T090 — Full hardening pass over the whole app (harden skill) — DoD: security-reviewer report has no HIGH/MEDIUM
 - [ ] T091 — Final QA (release skill): qa subagent explores every flow on desktop + mobile; RELEASE.md written — DoD: `scripts/verify.sh` full PASS; qa confirms REQ-114 (keyboard-only pass, visible focus, AA contrast)

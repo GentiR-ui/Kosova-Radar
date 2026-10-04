@@ -21,7 +21,7 @@ start-up without a lock; never start two app containers against the same databas
 | `POSTGRES_PASSWORD` | yes | database password (compose refuses to start without it) |
 | `SITE_BASE_URL` | yes | public URL, e.g. `https://radar.example.com` (crawler User-Agent, SEO URLs, sitemap) |
 | `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` | first start only | creates the first Admin when no user exists; start-up fails if none is set on an empty DB. The documented development credentials (`admin@kosovaradar.local` / dev password) are refused in Production |
-| `PROXY_KNOWN_PROXIES` / `PROXY_KNOWN_NETWORKS` | yes, in practice | IPs / CIDRs whose `X-Forwarded-For`/`-Proto` are trusted. A host proxy reaches the container from the Docker bridge gateway: find it with `docker network inspect <project>_default` and use e.g. `172.18.0.0/16`. Without it every visitor shares one IP (rate limits, login throttle) and HSTS is not sent; the app logs a warning at start |
+| `PROXY_KNOWN_PROXIES` / `PROXY_KNOWN_NETWORKS` | yes (start-up fails without one) | IPs / CIDRs whose `X-Forwarded-For`/`-Proto` are trusted. A host proxy reaches the container from the Docker bridge gateway: find it with `docker network inspect <project>_default` and use e.g. `172.18.0.0/16`. Without it every visitor shares one IP (rate limits, login throttle) and HSTS is not sent |
 | `AI_PROVIDER`, `AI_API_KEY` | optional | `Anthropic` + key enables AI extraction; empty/None = off. `Fake` is refused in Production |
 | `BACKUP_HOUR_UTC` (02), `BACKUP_KEEP_DAYS` (14) | no | backup schedule and retention |
 

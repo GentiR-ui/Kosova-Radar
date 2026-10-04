@@ -5,3 +5,7 @@ web/dist
 tests
 .git
 .factory/state
+
+.env
+.env.*
+!.env.example

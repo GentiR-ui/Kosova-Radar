@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 TestHooks.GuardEnvironment(builder.Configuration, builder.Environment);
 ProductionGuards.RejectDevBootstrapCredentials(builder.Configuration, builder.Environment);
+ProductionGuards.RequireTrustedProxy(builder.Configuration, builder.Environment);
 // Catch lifetime mistakes (e.g. a singleton consuming a scoped service) in tests too, not only in Development.
 var validateServices = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 builder.Host.UseDefaultServiceProvider(o => { o.ValidateScopes = validateServices; o.ValidateOnBuild = validateServices; });
@@ -73,11 +74,10 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Policies.Admin, p => p.RequireRole(Roles.Admin))
     .AddPolicy(Policies.Reviewer, p => p.RequireRole(Roles.Admin, Roles.Reviewer));
 
+builder.Services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; });
+
 var app = builder.Build();
 var isDevOrTesting = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing");
-if (!isDevOrTesting && string.IsNullOrWhiteSpace(builder.Configuration["Proxy:KnownProxies"])
-    && string.IsNullOrWhiteSpace(builder.Configuration["Proxy:KnownNetworks"]))
-    app.Logger.LogWarning("No Proxy__KnownProxies/KnownNetworks configured: behind a reverse proxy every client shares one IP for rate limits and HSTS is not sent.");
 
 app.UseForwardedHeaders();
 app.UseSecurityHeaders();            // first, so every response (errors, 400s from hooks, 429s) carries them

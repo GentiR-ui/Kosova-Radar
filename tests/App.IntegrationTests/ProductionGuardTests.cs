@@ -17,4 +17,14 @@ public class ProductionGuardTests(AppFactory app)
         var ex = Assert.ThrowsAny<Exception>(() => prod.CreateClient());
         Assert.Contains("development bootstrap admin credentials", ex.ToString());
     }
+
+    [Fact]
+    public void Production_refuses_to_start_without_a_trusted_proxy()
+    {
+        using var prod = app.WithWebHostBuilder(b => b
+            .UseEnvironment("Production")
+            .UseSetting("Site:BaseUrl", "https://example.com"));
+        var ex = Assert.ThrowsAny<Exception>(() => prod.CreateClient());
+        Assert.Contains("Proxy__KnownProxies", ex.ToString());
+    }
 }
