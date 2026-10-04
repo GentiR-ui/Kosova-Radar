@@ -57,7 +57,7 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
           updated = candidates updated in place; unchanged = as above; failed = per-item failures.
 ```
 
-- `ISourceAdapter { string Type; bool CanHandle(Source); Task<FetchResult> FetchAsync(Source, ct); Task<ParseResult> ParseAsync(FetchResult, ct); Task<IReadOnlyList<NormalizedCandidate>> NormalizeAsync(ParseResult, ct); }` — returns normalized candidates, never entities.
+- `ISourceAdapter { bool CanHandle(Source); Task<FetchResult> FetchAsync(Source, ct); Task<FeedParseResult> ParseAsync(Source, FetchResult, ct); }` — returns normalized candidates (plus per-item failures), never entities; a whole-fetch failure is a `SourceFetchException` with a run error code (ADR-023).
 - Runs of the same source never overlap: a per-source `SemaphoreSlim`. Scheduled runs skip a locked source; manual runs wait up to 30 s, then 409.
 - Retry policy: HTTP resilience handler (`Ingestion__HttpRetries` retries with exponential backoff, `Ingestion__HttpTimeoutSeconds` total timeout). A failed run is retried at the next due time; from the 3rd consecutive failure the source is `failing` and shows on the dashboard.
 - On startup, `JobExecution` rows left in `Running` are marked `failed` with error code `Interrupted`.

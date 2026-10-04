@@ -44,6 +44,7 @@ public static class SourceValidator
         {
             if (string.IsNullOrWhiteSpace(req.FixturePayload)) errors["fixturePayload"] = ["Fixture payload is required."];
             else if (req.FixturePayload.Length > MaxFixtureChars) errors["fixturePayload"] = ["Fixture payload must be at most 1 MB."];
+            else if (req.FixturePayload.Contains((char)0)) errors["fixturePayload"] = ["Fixture payload must not contain NUL characters."]; // PostgreSQL text cannot store them
             else payload = req.FixturePayload;
         }
         else if (type is not null)

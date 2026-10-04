@@ -121,6 +121,10 @@ public class SourceValidatorTests
     public void Fixture_needs_a_payload(string? payload) => Assert.Equal(["fixturePayload"], Fields(Fixture(payload: payload)));
 
     [Fact]
+    public void Fixture_payload_with_a_NUL_character_is_refused_instead_of_failing_in_the_database() =>
+        Assert.Equal(["fixturePayload"], Fields(Fixture(payload: "{\"items\":[]}" + (char)0)));
+
+    [Fact]
     public void Fixture_payload_is_not_required_to_be_json_but_is_capped_at_1_MB()
     {
         Assert.Empty(Fields(Fixture(payload: "not json")));

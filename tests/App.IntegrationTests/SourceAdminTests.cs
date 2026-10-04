@@ -145,5 +145,6 @@ public class SourceAdminTests(AppFactory app)
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/admin/sources/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsJsonAsync("/api/admin/sources", Body("X"))).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PutAsJsonAsync($"/api/admin/sources/{id}", Body("X"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsync($"/api/admin/sources/{id}/fetch", null)).StatusCode);
     }
 }

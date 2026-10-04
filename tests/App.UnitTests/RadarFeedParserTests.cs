@@ -47,6 +47,10 @@ public class RadarFeedParserTests
     [InlineData("{\"kind\":\"event\",\"externalId\":\"  \",\"url\":null}", "MissingIdentity")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"title\":12}", "InvalidField:title")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"price\":\"12\"}", "InvalidField:price")]
+    // NUL cannot be stored in PostgreSQL jsonb and a lone surrogate is not valid text: either would abort the whole run.
+    [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"title\":\"x\\u0000y\"}", "InvalidField:title")]
+    [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"city\":\"x\\ud800y\"}", "InvalidField:city")]
+    [InlineData("{\"kind\":\"event\",\"externalId\":\"a\\u0000\"}", "InvalidField:externalId")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"tomorrow\"}", "InvalidField:startsAt")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"2026-10-04T20:00:00\"}", "InvalidField:startsAt")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"10:30Z\"}", "InvalidField:startsAt")]

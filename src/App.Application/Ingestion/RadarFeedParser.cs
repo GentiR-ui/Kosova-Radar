@@ -138,8 +138,33 @@ public static partial class RadarFeedParser
     {
         if (!item.TryGetProperty(name, out var v) || v.ValueKind == JsonValueKind.Null) return null;
         if (v.ValueKind != JsonValueKind.String) throw new FieldException(name);
-        var s = v.GetString()!.Trim();
+        string raw;
+        try
+        {
+            raw = v.GetString()!;
+        }
+        catch (InvalidOperationException)
+        {
+            throw new FieldException(name); // not transcodable text (e.g. a lone surrogate escape)
+        }
+
+        if (!IsStorableText(raw)) throw new FieldException(name);
+        var s = raw.Trim();
         return s.Length == 0 ? null : s;
+    }
+
+    /// <summary>PostgreSQL text/jsonb cannot hold NUL, and a lone surrogate is not valid Unicode; one such item must not abort the whole run.</summary>
+    private static bool IsStorableText(string text)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (c == '\0') return false;
+            if (char.IsHighSurrogate(c) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) i++;
+            else if (char.IsSurrogate(c)) return false;
+        }
+
+        return true;
     }
 
     private static decimal? ReadDecimal(JsonElement item, string name)

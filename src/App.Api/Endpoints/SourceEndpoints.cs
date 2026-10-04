@@ -1,5 +1,7 @@
 using App.Application.Auth;
+using App.Application.Ingestion;
 using App.Application.Sources;
+using App.Domain.Content;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,6 +17,7 @@ public static class SourceEndpoints
         // A fixture payload is capped at 1 M characters; allow for JSON escaping and multi-byte text, but not 30 MB.
         g.MapPost("/", Create).WithMetadata(new RequestSizeLimitAttribute(8 * 1024 * 1024));
         g.MapPut("/{id:guid}", Update).WithMetadata(new RequestSizeLimitAttribute(8 * 1024 * 1024));
+        g.MapPost("/{id:guid}/fetch", Fetch);
         return app;
     }
 
@@ -42,6 +45,20 @@ public static class SourceEndpoints
             SourceSaveStatus.NotFound => TypedResults.NotFound(),
             SourceSaveStatus.Invalid => TypedResults.ValidationProblem(result.Errors!.ToDictionary(e => e.Key, e => e.Value)),
             _ => TypedResults.Ok(result.Source!),
+        };
+    }
+
+    // A failed run is still a 200 with status "failed"; 409 only when another run of the source does not finish in time.
+    private static async Task<Results<Ok<RunDto>, NotFound, ProblemHttpResult>> Fetch(
+        Guid id, IngestionService ingestion, CancellationToken ct)
+    {
+        var result = await ingestion.RunAsync(id, JobTrigger.Manual, IngestionService.ManualLockWait, ct);
+        return result.Status switch
+        {
+            RunStatus.NotFound => TypedResults.NotFound(),
+            RunStatus.Busy => TypedResults.Problem(
+                detail: "A fetch of this source is already running.", statusCode: StatusCodes.Status409Conflict),
+            _ => TypedResults.Ok(result.Run!),
         };
     }
 }

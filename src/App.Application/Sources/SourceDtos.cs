@@ -1,3 +1,4 @@
+using App.Domain.Content;
 using App.Domain.Reference;
 using App.Domain.Sources;
 
@@ -35,10 +36,16 @@ public sealed record SourceDetailDto(
             s.FixturePayload, recentRuns);
 }
 
-/// <summary>One ingestion run (design.md §5); filled from <c>JobExecution</c> once runs exist (T016).</summary>
+/// <summary>One ingestion run (design.md §5).</summary>
 public sealed record RunDto(
     Guid Id, Guid SourceId, string Trigger, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt,
-    int Received, int Created, int Updated, int Unchanged, int Failed, string? ErrorCode, string? Error);
+    int Received, int Created, int Updated, int Unchanged, int Failed, string? ErrorCode, string? Error)
+{
+    // Enum names are single words, so lower-casing them gives the camelCase wire value ("manual", "succeeded").
+    public static RunDto From(JobExecution r) =>
+        new(r.Id, r.SourceId ?? Guid.Empty, r.Trigger.ToString().ToLowerInvariant(), r.Status.ToString().ToLowerInvariant(),
+            r.StartedAt, r.FinishedAt, r.Received, r.Created, r.Updated, r.Unchanged, r.Failed, r.ErrorCode, r.Error);
+}
 
 /// <summary>What the audit log keeps about a source. The fixture payload can be 1 MB, so only its length is kept.</summary>
 public sealed record SourceAuditState(

@@ -6,6 +6,7 @@ using App.Api.Http;
 using App.Api.Testing;
 using App.Application.Abstractions;
 using App.Application.Auth;
+using App.Application.Ingestion;
 using App.Infrastructure;
 using App.Infrastructure.Identity;
 using App.Infrastructure.Persistence;
@@ -94,6 +95,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     await scope.ServiceProvider.GetRequiredService<ReferenceDataSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<BootstrapAdmin>().EnsureAsync();
+    await scope.ServiceProvider.GetRequiredService<IngestionService>().MarkInterruptedAsync(default);
 }
 
 app.MapHealthChecks("/health").AllowAnonymous(); // liveness for the host and the reverse proxy

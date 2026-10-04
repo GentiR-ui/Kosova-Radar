@@ -1,8 +1,10 @@
 using App.Application.Abstractions;
 using App.Application.Audit;
+using App.Application.Ingestion;
 using App.Application.Sources;
 using App.Infrastructure.Audit;
 using App.Infrastructure.Identity;
+using App.Infrastructure.Ingestion;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Time;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -51,6 +53,9 @@ public static class DependencyInjection
         services.AddScoped<UserAdmin>();
         services.AddSingleton(config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions());
         services.AddScoped<SourceAdmin>();
+        services.AddSingleton<SourceRunLock>();
+        services.AddScoped<ISourceAdapter, FixtureSourceAdapter>();
+        services.AddScoped<IngestionService>();
         return services;
     }
 }

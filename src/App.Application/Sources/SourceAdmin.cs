@@ -1,5 +1,6 @@
 using App.Application.Abstractions;
 using App.Application.Audit;
+using App.Domain.Content;
 using App.Domain.Sources;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,8 +28,12 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
     public async Task<SourceDetailDto?> GetAsync(Guid id, CancellationToken ct)
     {
         var source = await db.Sources.AsNoTracking().SingleOrDefaultAsync(s => s.Id == id, ct);
-        // Runs exist from T016 on (JobExecution); until then there is nothing to list.
-        return source is null ? null : SourceDetailDto.From(source, []);
+        if (source is null) return null;
+        var runs = await db.JobExecutions.AsNoTracking()
+            .Where(j => j.SourceId == id && j.JobName == JobName.SourceFetch)
+            .OrderByDescending(j => j.StartedAt).ThenByDescending(j => j.Id)
+            .Take(10).ToListAsync(ct);
+        return SourceDetailDto.From(source, runs.Select(RunDto.From).ToList());
     }
 
     public async Task<SourceSaveResult> CreateAsync(SourceRequest req, CancellationToken ct)
