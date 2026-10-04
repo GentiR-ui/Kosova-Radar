@@ -20,6 +20,7 @@ public static class CandidateEndpoints
         g.MapPut("/{id}", Edit).WithMetadata(new RequestSizeLimitAttribute(256 * 1024));
         g.MapPost("/{id}/approve", Approve);
         g.MapPost("/{id}/reject", Reject);
+        g.MapPost("/{id}/merge", Merge);
         return app;
     }
 
@@ -47,6 +48,10 @@ public static class CandidateEndpoints
     private static async Task<Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem>> Reject(
         string id, RejectRequest? body, CandidateDecisions decisions, CancellationToken ct) =>
         ToResult(Guid.TryParse(id, out var guid) ? await decisions.RejectAsync(guid, body, ct) : new(DecisionStatus.NotFound));
+
+    private static async Task<Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem>> Merge(
+        string id, MergeRequest? body, CandidateDecisions decisions, CancellationToken ct) =>
+        ToResult(Guid.TryParse(id, out var guid) ? await decisions.MergeAsync(guid, body, ct) : new(DecisionStatus.NotFound));
 
     private static async Task<Results<Ok<ApprovedDto>, NotFound, Conflict, ValidationProblem>> Approve(
         string id, CandidateApproval approval, CancellationToken ct)

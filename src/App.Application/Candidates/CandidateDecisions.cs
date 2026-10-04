@@ -11,7 +11,7 @@ public enum DecisionStatus { Done, Invalid, NotFound, Conflict }
 
 public sealed record DecisionResult(DecisionStatus Status, CandidateDto? Candidate = null, IReadOnlyDictionary<string, string[]>? Errors = null);
 
-/// <summary>Reviewer decisions on a candidate (REQ-064, 065, 067, 074). Each change and its audit entry commit together.</summary>
+/// <summary>Reviewer decisions on a candidate (REQ-064, 065, 066, 067, 074, 075). Each change and its audit entry commit together.</summary>
 public sealed class CandidateDecisions(IAppDbContext db, IAuditWriter audit, ICurrentUser user, IClock clock, DuplicateDetector duplicates)
 {
     public async Task<DecisionResult> EditAsync(Guid id, CandidateFieldsRequest? body, CancellationToken ct)
@@ -64,6 +64,61 @@ public sealed class CandidateDecisions(IAppDbContext db, IAuditWriter audit, ICu
         c.UpdatedAt = clock.UtcNow;
         audit.Record(AuditActions.CandidateReject, AuditEntityTypes.Candidate, c.Id, before,
             new { status = c.Status, rejectionReason = c.RejectionReason });
+        return await SaveAsync(c, ct);
+    }
+
+    /// <summary>Merge into a published item of the same kind (REQ-066, 075): adds the source, refreshes <c>lastVerifiedAt</c>, creates no item.</summary>
+    public async Task<DecisionResult> MergeAsync(Guid id, MergeRequest? body, CancellationToken ct)
+    {
+        var c = await db.Candidates.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (c is null) return new(DecisionStatus.NotFound);
+        if (!IsOpen(c)) return new(DecisionStatus.Conflict);
+
+        var invalid = new DecisionResult(DecisionStatus.Invalid,
+            Errors: new Dictionary<string, string[]> { ["targetId"] = ["The target must be a published item of the same kind."] });
+        if (!Guid.TryParse(body?.TargetId, out var targetId)) return invalid;
+        // A changed-since-approval candidate belongs to its matched item: another target would move its fingerprint away from it.
+        if (c.MatchedItemId is { } matched && matched != targetId) return invalid;
+
+        // Event and Deal are separate tables, so a target of the other kind is simply not found.
+        Event? ev = null;
+        Deal? deal = null;
+        DateTimeOffset verified;
+        if (c.Kind == ItemKind.Event)
+        {
+            ev = await db.Events.SingleOrDefaultAsync(x => x.Id == targetId && x.Status == ItemStatus.Published, ct);
+            if (ev is null) return invalid;
+            verified = ev.LastVerifiedAt;
+        }
+        else
+        {
+            deal = await db.Deals.SingleOrDefaultAsync(x => x.Id == targetId && x.Status == ItemStatus.Published, ct);
+            if (deal is null) return invalid;
+            verified = deal.LastVerifiedAt;
+        }
+
+        var now = clock.UtcNow;
+        var newVerified = verified > c.FetchedAt ? verified : c.FetchedAt;
+        if (ev is not null) { ev.LastVerifiedAt = newVerified; ev.UpdatedAt = now; }
+        if (deal is not null) { deal.LastVerifiedAt = newVerified; deal.UpdatedAt = now; }
+
+        if (!await db.ItemSources.AnyAsync(x => x.ItemId == targetId && x.Fingerprint == c.Fingerprint, ct))
+            db.ItemSources.Add(new ItemSource
+            {
+                ItemKind = c.Kind,
+                ItemId = targetId,
+                SourceId = c.SourceId,
+                SourceUrl = c.Fields.Url ?? c.SourceUrl,
+                Fingerprint = c.Fingerprint,
+                CandidateId = c.Id,
+                AddedAt = now,
+            });
+
+        var before = new { status = c.Status };
+        c.Status = CandidateStatus.Merged;
+        c.UpdatedAt = now;
+        audit.Record(AuditActions.CandidateMerge, AuditEntityTypes.Candidate, c.Id, before,
+            new { status = c.Status, targetId, kind = c.Kind });
         return await SaveAsync(c, ct);
     }
 

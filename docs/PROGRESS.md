@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T029 done
+- Built: `POST /api/admin/candidates/{id}/merge` (`CandidateDecisions.MergeAsync`): open candidate → target must be a published item of the same kind (else 400 on `targetId`, also for a non-GUID, an expired/withdrawn item, or a changed-since-approval candidate whose `matchedItemId` differs, which would move its fingerprint away from its item); adds an `ItemSource` (skipped if the fingerprint is already linked), `lastVerifiedAt` = max(item, candidate.fetchedAt), status `Merged`, audit `candidate.merge`; no item created.
+- Tests: integration +7 (source added/audit/no item, 409 twice with nothing changed, older candidate keeps newer `lastVerifiedAt`, deal vs event, expired target, matched-item rule + bad GUID, 404/401). Acceptance REQ-066, 075, 067 green except the `withdrawn` case, which needs the withdraw endpoint (T030).
+- Verify: quick PASS. Reviewer: 0 HIGH, 2 MEDIUM (merge of a matched candidate into another item, thin tests) fixed. LOWs left: auto-rejected candidates can be merged (REQ-067 allows it), audit "after" holds only status/targetId/kind, item `UpdatedAt` touched by merge but not by REFRESH.
+- Next: T030.
+
 ## 2026-10-04 · T028 done
 - Built: lookup rows 2-4 in `IngestionService` (person-rejected same content → unchanged; withdrawn → unchanged; published/expired same hash → `lastVerifiedAt` via targeted update; other hash → new candidate with `matchedItemId` + `ChangedSinceApproval`; kind change = new unlinked item). `DuplicateDetector` (REQ-050: same kind/city/Pristina date/similarity ≥ 0.8 against published items and other sources' pending candidates → `PossibleDuplicate` + `duplicateOf`); re-applied on reviewer edit together with `ChangedSinceApproval`. `CandidateApproval` applies a linked candidate to the same item (REQ-068). `ContentRules.PristinaDate/PristinaDay`. ADR-030.
 - Tests: integration +7 (withdrawn, person-rejected, edit keeps issues, duplicate cleared by rename, withdrawn refusal, kind change, in-place approval/ItemSource), unit +2. Acceptance REQ-050..053, 068 green (19).

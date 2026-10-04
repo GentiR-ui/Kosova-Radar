@@ -13,6 +13,8 @@ public sealed record CandidateFieldsRequest(
 
 public sealed record RejectRequest(string? Reason);
 
+public sealed record MergeRequest(string? TargetId);
+
 /// <summary>Request rules of the candidate edit (REQ-065) and reject (REQ-074) calls.</summary>
 public static partial class CandidateRequestValidator
 {
