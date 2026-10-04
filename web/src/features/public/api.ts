@@ -38,6 +38,18 @@ export interface DealSummaryDto extends ItemBase {
   validFrom: string | null
   validUntil: string | null
 }
+export interface SourceRefDto {
+  name: string
+  url: string
+}
+export interface EventDetailDto extends EventSummaryDto {
+  description: string | null
+  sources: SourceRefDto[]
+}
+export interface DealDetailDto extends DealSummaryDto {
+  description: string | null
+  sources: SourceRefDto[]
+}
 export interface Page<T> {
   items: T[]
   page: number
@@ -73,6 +85,21 @@ export const useEvents = (filters: Filters, enabled = true) =>
   useList<EventSummaryDto>('/api/events', filters, enabled)
 export const useDeals = (filters: Filters, enabled = true) =>
   useList<DealSummaryDto>('/api/deals', filters, enabled)
+
+export const useEvent = (id: string | undefined) =>
+  useQuery({
+    queryKey: ['public', 'event', id],
+    enabled: !!id,
+    retry: false,
+    queryFn: () => api<EventDetailDto>(`/api/events/${encodeURIComponent(id!)}`),
+  })
+export const useDeal = (id: string | undefined) =>
+  useQuery({
+    queryKey: ['public', 'deal', id],
+    enabled: !!id,
+    retry: false,
+    queryFn: () => api<DealDetailDto>(`/api/deals/${encodeURIComponent(id!)}`),
+  })
 
 export function useCities() {
   return useQuery({

@@ -20,5 +20,10 @@ export const p = {
   validityUnknown: 'Afati nuk dihet',
   source: (name: string) => `Burimi: ${name}`,
   fresh: 'Verifikuar së fundmi',
+  eventEnded: 'Ky event ka përfunduar',
+  dealExpired: 'Kjo ofertë ka skaduar',
+  otherSources: 'Burime të tjera',
+  backToEvents: 'Të gjitha eventet',
+  backToDeals: 'Të gjitha ofertat',
   stale: (date: string) => `Kontrolluar së fundi më ${date}`,
 } as const

@@ -6,6 +6,7 @@ import DealsPage from './DealsPage'
 import EventsPage from './EventsPage'
 import { pristinaToday } from './format'
 import HomePage from './HomePage'
+import { DealDetailPage, EventDetailPage } from './ItemDetail'
 import { DealCard, EventCard } from './ItemCards'
 import type { DealSummaryDto, EventSummaryDto } from './api'
 
@@ -194,5 +195,70 @@ describe('filters', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Provo sërish' }))
     expect(await screen.findByRole('heading', { name: 'Zbritje xyz' })).toBeInTheDocument()
     expect(calls).toContain('GET /api/deals?city=prizren&page=1&pageSize=20')
+  })
+})
+
+describe('detail pages', () => {
+  const evRoutes = [{ path: '/events/:id', element: <EventDetailPage /> }]
+  const dlRoutes = [{ path: '/deals/:id', element: <DealDetailPage /> }]
+  const evDetail = {
+    ...event,
+    status: 'expired',
+    description: 'Përshkrim',
+    sources: [
+      { name: 'Burimi A', url: 'https://example.com/e' },
+      { name: 'Burimi C', url: 'https://example.com/c' },
+    ],
+  }
+
+  it('shows an expired event with the ended banner, badge, time and other sources', async () => {
+    stubFetch({ 'GET /api/events/e1': [200, evDetail] })
+    renderRoutes(evRoutes, '/events/e1')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Koncert xyz' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Ky event ka përfunduar')).toBeInTheDocument()
+    expect(screen.getByText('Të dhëna testuese')).toBeInTheDocument()
+    expect(screen.getByText('01.07.2026, 20:00')).toBeInTheDocument()
+    expect(screen.getByText('Përshkrim')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Burimi: Burimi C' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Burimi: Burimi A' })).toHaveLength(1)
+  })
+
+  it('shows an active event without the banner or badge', async () => {
+    stubFetch({
+      'GET /api/events/e1': [200, { ...evDetail, status: 'active', isSynthetic: false }],
+    })
+    renderRoutes(evRoutes, '/events/e1')
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.queryByText('Ky event ka përfunduar')).not.toBeInTheDocument()
+    expect(screen.queryByText('Të dhëna testuese')).not.toBeInTheDocument()
+  })
+
+  it('shows a deal with prices, discount, stale text and the expired banner', async () => {
+    stubFetch({
+      'GET /api/deals/d1': [200, { ...deal, status: 'expired', description: null, sources: [] }],
+    })
+    renderRoutes(dlRoutes, '/deals/d1')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Zbritje xyz' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Kjo ofertë ka skaduar')).toBeInTheDocument()
+    expect(screen.getByText('-35%')).toBeInTheDocument()
+    expect(screen.getByText(/63[.,]05/)).toBeInTheDocument()
+    expect(screen.getByText('Kontrolluar së fundi më 01.06.2026')).toBeInTheDocument()
+  })
+
+  it('shows "not found" on 404', async () => {
+    stubFetch({ 'GET /api/events/e1': [404, { status: 404 }] })
+    renderRoutes(evRoutes, '/events/e1')
+    expect(await screen.findByRole('heading', { name: 'Faqja nuk u gjet' })).toBeInTheDocument()
+  })
+
+  it('shows the error state with retry on a server error', async () => {
+    stubFetch({ 'GET /api/deals/d1': [500, { status: 500 }] })
+    renderRoutes(dlRoutes, '/deals/d1')
+    expect(await screen.findByText('Diçka shkoi keq.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Provo sërish' })).toBeInTheDocument()
   })
 })

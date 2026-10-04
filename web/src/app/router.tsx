@@ -5,6 +5,7 @@ import PublicLayout, { PageTitle } from '../features/public/PublicLayout'
 import HomePage from '../features/public/HomePage'
 import EventsPage from '../features/public/EventsPage'
 import DealsPage from '../features/public/DealsPage'
+import { DealDetailPage, EventDetailPage } from '../features/public/ItemDetail'
 
 // The admin area is a separate bundle: public visitors never download it.
 const LoginPage = lazy(() => import('../features/auth/LoginPage'))
@@ -29,7 +30,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/events', element: <EventsPage /> },
+      { path: '/events/:id', element: <EventDetailPage /> },
       { path: '/deals', element: <DealsPage /> },
+      { path: '/deals/:id', element: <DealDetailPage /> },
       { path: '/search', element: <PageTitle title={t.pages.search} /> },
       { path: '*', element: <PageTitle title={t.notFound} /> },
     ],

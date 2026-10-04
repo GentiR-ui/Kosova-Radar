@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T034 done
+- Built: `ItemDetail.tsx` (`EventDetailPage`, `DealDetailPage`) on `/events/:id` and `/deals/:id`: h1 title, Pristina time / validity, `DealPrice` (old, new, "-n%"), synthetic badge, "Ky event ka përfunduar" / "Kjo ofertë ka skaduar" banner for expired items, primary source link + freshness, other sources, description, http(s)-only image, loading / 404 ("Faqja nuk u gjet") / error+retry states; `useEvent`/`useDeal` hooks and detail DTOs in `api.ts`. Deals list and cards already existed from T033.
+- Tests: component tests (expired event, active event, expired deal, 404, 500+retry). Acceptance REQ-101, 103, 106, 107 green on desktop + mobile (14).
+- Verify: quick PASS. Review: skipped (small).
+- Next: T035.
+
 ## 2026-10-04 · T033 done
 - Built: public UI in `web/src/features/public`: `HomePage` (search "Kërko", tabs Sot/Evente/Oferta with arrow-key support, "Sot" = events with `from=to=` Pristina today + active deals), `EventsPage` (Qyteti, Kategoria, Nga data, Deri më, search; filters in the query string), `DealsPage` (list only; detail pages stay in T034), `EventCard`/`DealCard` (Pristina time, source link, freshness, synthetic badge, old/new price + discount, http(s)-only hrefs), `ListShell` (loading/empty/error+retry/"Shfaq më shumë" via `useInfiniteQuery`), debounced `SearchInput`, `format.ts` (Europe/Belgrade zone).
 - Tests: component tests (cards, states, tabs, filters, retry), `format.test.ts` with literal summer/winter/midnight cases. Acceptance REQ-100, 102, 104, 108 green on desktop + mobile; REQ-107 list part works, the detail part and REQ-103/106 detail need T034.
