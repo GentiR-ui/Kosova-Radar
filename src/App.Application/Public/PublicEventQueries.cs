@@ -84,7 +84,7 @@ public sealed class PublicEventQueries(IAppDbContext db, IClock clock)
         return null;
     }
 
-    private static int? ParseInt(string? value, string name, Dictionary<string, string[]> errors)
+    internal static int? ParseInt(string? value, string name, Dictionary<string, string[]> errors)
     {
         if (string.IsNullOrEmpty(value)) return null;
         if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)) return n;

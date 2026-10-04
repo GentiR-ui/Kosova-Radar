@@ -11,6 +11,8 @@ public static class PublicItemEndpoints
         // Published content is anonymous by design (REQ-085). A malformed id is a 404, so the id is bound as a string.
         app.MapGet("/api/events", ListEvents).AllowAnonymous().WithTags("Public");
         app.MapGet("/api/events/{id}", GetEvent).AllowAnonymous().WithTags("Public");
+        app.MapGet("/api/deals", ListDeals).AllowAnonymous().WithTags("Public");
+        app.MapGet("/api/search", Search).AllowAnonymous().WithTags("Public");
         app.MapGet("/api/deals/{id}", GetDeal).AllowAnonymous().WithTags("Public");
         return app;
     }
@@ -19,6 +21,20 @@ public static class PublicItemEndpoints
         [AsParameters] EventListRequest request, PublicEventQueries queries, CancellationToken ct)
     {
         var (result, errors) = await queries.ListAsync(request, ct);
+        return errors is not null ? TypedResults.ValidationProblem(errors) : TypedResults.Ok(result!);
+    }
+
+    private static async Task<Results<Ok<PagedResult<DealSummaryDto>>, ValidationProblem>> ListDeals(
+        [AsParameters] DealListRequest request, PublicDealQueries queries, CancellationToken ct)
+    {
+        var (result, errors) = await queries.ListAsync(request, ct);
+        return errors is not null ? TypedResults.ValidationProblem(errors) : TypedResults.Ok(result!);
+    }
+
+    private static async Task<Results<Ok<PagedResult<SearchResultDto>>, ValidationProblem>> Search(
+        [AsParameters] SearchRequest request, PublicSearchQueries queries, CancellationToken ct)
+    {
+        var (result, errors) = await queries.SearchAsync(request, ct);
         return errors is not null ? TypedResults.ValidationProblem(errors) : TypedResults.Ok(result!);
     }
 

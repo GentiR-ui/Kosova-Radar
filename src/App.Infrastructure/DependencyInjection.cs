@@ -59,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<CandidateApproval>();
         services.AddScoped<PublicItemQueries>();
         services.AddScoped<PublicEventQueries>();
+        services.AddScoped<PublicDealQueries>();
+        services.AddScoped<PublicSearchQueries>();
         services.AddScoped<ExpirationRunner>();
         services.AddHostedService<ExpirationJob>();
         services.AddSingleton<SourceRunLock>();

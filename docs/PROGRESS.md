@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T021 done
+- Built: `GET /api/deals` (`PublicDealQueries`: city/category(deal kind)/search filters, same paging and error reporting as events, order validUntil asc with undated last then id) and `GET /api/search` (`PublicSearchQueries`: active events by start then active deals, paged across the boundary, `q` ≥ 2 chars after trim, punctuation-only `q` → 400 since it folds to empty). `ActiveItems.Deal` = SQL twin of `IsActiveDeal` (dated: `validUntil > now`; undated: verified within 7 days).
+- Tests: integration +6 (SQL filter == domain rule at boundaries, ordering, search paging across events/deals, search 400s incl. `--`, deal filters/freshness/paging). Acceptance green for REQ-083 (filters), 084, 086, 087 (stale), 089, 079, 082; still red only: `Deals_list_shows_active_deals…` (needs `/api/admin/deals/{id}/expire|withdraw`, T030) and `Refetching_an_open_ended_deal_brings_it_back` (needs re-seen published item → `lastVerifiedAt`, T028).
+- Verify: quick PASS. Reviewer: 2 MEDIUM (punctuation-only search matched everything, thin tests) fixed; LOWs left: paging/slug-resolution preamble duplicated across the three public query classes (`PublicEventQueries.ParseInt` is internal for reuse), deal summary mapping duplicated in detail, `FixedClock` copied in tests, no max length on `q`.
+- Next: T022.
+
 ## 2026-10-04 · T020 done
 - Built: `GET /api/events` (`PublicEventQueries`): published + not ended (`ActiveItems.Event`, SQL twin of `ContentRules.IsActiveEvent`), filters city/category (event kind)/from/to (Pristina midnight via Europe/Belgrade, `to` = midnight of the next date, DST-safe)/search (folded `SearchText` substring), order startsAt then id, paging with long offset (huge page → empty 200), all invalid parameters reported together (`page`/`pageSize` bound as strings so `abc` is named too; dates strict `yyyy-MM-dd`, years 1900-2200). `ExpirationRunner` + `ExpirationJob` (5 min, real clock) set `Expired` on events past effective end and deals past `validUntil`; `JobExecution` row only when something expired (ADR-024).
 - Tests: integration +10 (Pristina boundaries on the 2027-03-28 DST day, SQL filter == domain rule, runner on events/deals/boundaries, extreme and malformed parameters); the integration host drops `ExpirationJob`. Acceptance: REQ-080 (page size), 081 (2), 082 events, P05 green; still red only on calls to `/api/deals`, `/api/search` (T021) and `/api/admin/events/{id}/expire|withdraw` (T030).
