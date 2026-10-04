@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T035 done
+- Built: `SearchPage` on `/search` (`h1` "Kërkim", searchbox + button "Kërko", query in `?q=`, results as list items with kind label "Event"/"Ofertë", link to the detail page, date · city · source; hint when q < 2 chars, no API call), `useSearch` + `SearchResultDto` in `api.ts`, loading/empty/error+retry/"Shfaq më shumë" via `ListShell`.
+- Tests: component tests (labels + links, short-query hint). Acceptance REQ-105 green on desktop + mobile.
+- Verify: quick PASS. Review: skipped (small).
+- Next: T036.
+
 ## 2026-10-04 · T034 done
 - Built: `ItemDetail.tsx` (`EventDetailPage`, `DealDetailPage`) on `/events/:id` and `/deals/:id`: h1 title, Pristina time / validity, `DealPrice` (old, new, "-n%"), synthetic badge, "Ky event ka përfunduar" / "Kjo ofertë ka skaduar" banner for expired items, primary source link + freshness, other sources, description, http(s)-only image, loading / 404 ("Faqja nuk u gjet") / error+retry states; `useEvent`/`useDeal` hooks and detail DTOs in `api.ts`. Deals list and cards already existed from T033.
 - Tests: component tests (expired event, active event, expired deal, 404, 500+retry). Acceptance REQ-101, 103, 106, 107 green on desktop + mobile (14).

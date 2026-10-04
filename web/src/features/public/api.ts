@@ -86,6 +86,18 @@ export const useEvents = (filters: Filters, enabled = true) =>
 export const useDeals = (filters: Filters, enabled = true) =>
   useList<DealSummaryDto>('/api/deals', filters, enabled)
 
+export interface SearchResultDto {
+  kind: 'event' | 'deal'
+  id: string
+  title: string
+  date: string | null
+  cityName: string | null
+  sourceName: string
+}
+
+export const useSearch = (q: string) =>
+  useList<SearchResultDto>('/api/search', { q }, q.length >= 2)
+
 export const useEvent = (id: string | undefined) =>
   useQuery({
     queryKey: ['public', 'event', id],

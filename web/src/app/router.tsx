@@ -5,6 +5,7 @@ import PublicLayout, { PageTitle } from '../features/public/PublicLayout'
 import HomePage from '../features/public/HomePage'
 import EventsPage from '../features/public/EventsPage'
 import DealsPage from '../features/public/DealsPage'
+import SearchPage from '../features/public/SearchPage'
 import { DealDetailPage, EventDetailPage } from '../features/public/ItemDetail'
 
 // The admin area is a separate bundle: public visitors never download it.
@@ -33,7 +34,7 @@ export const router = createBrowserRouter([
       { path: '/events/:id', element: <EventDetailPage /> },
       { path: '/deals', element: <DealsPage /> },
       { path: '/deals/:id', element: <DealDetailPage /> },
-      { path: '/search', element: <PageTitle title={t.pages.search} /> },
+      { path: '/search', element: <SearchPage /> },
       { path: '*', element: <PageTitle title={t.notFound} /> },
     ],
   },

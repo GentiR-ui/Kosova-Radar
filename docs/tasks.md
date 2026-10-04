@@ -41,7 +41,7 @@
 - [x] T032 — SEO: `/events/{id}` and `/deals/{id}` HTML with injected title/description/OG/JSON-LD, noindex for synthetic, fallback and 404 shells, `/sitemap.xml`, `/robots.txt` — owns REQ-090, 091, 092 — DoD: acceptance tests green; unit test with a title `</script><script>alert(1)</script>`
 - [x] T033 — Public UI: home (tabs, search), events list with filters in the query string and "Shfaq më shumë", event and deal cards, loading/empty/error+retry states — owns REQ-100, 102, 104, 108 — DoD: Playwright acceptance green on desktop + mobile; component tests for card and states
 - [x] T034 — Public UI: event and deal detail pages, deals list and deal cards with prices/discount, expired banners — owns REQ-101, 103, 106, 107 — DoD: Playwright acceptance green on desktop + mobile
-- [ ] T035 — Public UI: `/search` page with kind labels — owns REQ-105 — DoD: Playwright acceptance green on desktop + mobile
+- [x] T035 — Public UI: `/search` page with kind labels — owns REQ-105 — DoD: Playwright acceptance green on desktop + mobile
 - [ ] T036 — Admin UI review (read + decide): review queue with filters/badges/column headers; candidate page with "Evidenca nga burimi" and "Fushat e normalizuara" (editable inputs; saving comes in T037), issue list, approve ("U publikua" + public link), reject dialog — owns REQ-110, 111, 112 — DoD: Playwright acceptance green on desktop + mobile
 - [ ] T037 — Admin UI review (save + merge): "Ruaj ndryshimet", field errors from problem details, merge dialog — UI for REQ-065, 066 — DoD: Playwright flow in `web/e2e/flows`; keyboard-only walk-through
 - [ ] T038 — Admin UI published items: `/admin/published` list with "Ndrysho"/"Skado"/"Tërhiq"; edit page — UI for REQ-069..071 — DoD: Playwright flow in `web/e2e/flows`

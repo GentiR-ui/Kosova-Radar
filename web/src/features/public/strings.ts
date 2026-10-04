@@ -2,6 +2,10 @@
 export const p = {
   tabs: { label: 'Seksionet', today: 'Sot', events: 'Evente', deals: 'Oferta' },
   search: 'Kërko',
+  searchHeading: 'Kërkim',
+  searchHint: 'Shkruani të paktën 2 shkronja.',
+  kindEvent: 'Event',
+  kindDeal: 'Ofertë',
   searchEvents: 'Kërko në evente',
   searchDeals: 'Kërko në oferta',
   city: 'Qyteti',

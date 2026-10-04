@@ -6,6 +6,7 @@ import DealsPage from './DealsPage'
 import EventsPage from './EventsPage'
 import { pristinaToday } from './format'
 import HomePage from './HomePage'
+import SearchPage from './SearchPage'
 import { DealDetailPage, EventDetailPage } from './ItemDetail'
 import { DealCard, EventCard } from './ItemCards'
 import type { DealSummaryDto, EventSummaryDto } from './api'
@@ -260,5 +261,35 @@ describe('detail pages', () => {
     renderRoutes(dlRoutes, '/deals/d1')
     expect(await screen.findByText('Diçka shkoi keq.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Provo sërish' })).toBeInTheDocument()
+  })
+})
+
+describe('search page', () => {
+  const routes = [{ path: '/search', element: <SearchPage /> }]
+
+  it('labels events and deals and links to their pages', async () => {
+    stubFetch({
+      'GET /api/search?q=abc&page=1&pageSize=20': [
+        200,
+        page([
+          { kind: 'event', id: 'e1', title: 'Koncert abc', date: null, cityName: 'Prishtinë', sourceName: 'S' },
+          { kind: 'deal', id: 'd1', title: 'Zbritje abc', date: null, cityName: null, sourceName: 'S' },
+        ]),
+      ],
+    })
+    renderRoutes(routes, '/search')
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Kërko' }), 'abc')
+    await userEvent.click(screen.getByRole('button', { name: 'Kërko' }))
+    const rows = await screen.findAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('Event')
+    expect(rows[1]).toHaveTextContent('Ofertë')
+    expect(screen.getByRole('link', { name: 'Koncert abc' })).toHaveAttribute('href', '/events/e1')
+    expect(screen.getByRole('link', { name: 'Zbritje abc' })).toHaveAttribute('href', '/deals/d1')
+  })
+
+  it('asks for at least 2 characters without calling the API', () => {
+    stubFetch({})
+    renderRoutes(routes, '/search?q=a')
+    expect(screen.getByText('Shkruani të paktën 2 shkronja.')).toBeInTheDocument()
   })
 })
