@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using App.Api;
 using App.Api.Endpoints;
 using App.Api.Http;
 using App.Api.Testing;
@@ -17,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 TestHooks.GuardEnvironment(builder.Configuration, builder.Environment);
+ProductionGuards.RejectDevBootstrapCredentials(builder.Configuration, builder.Environment);
 // Catch lifetime mistakes (e.g. a singleton consuming a scoped service) in tests too, not only in Development.
 var validateServices = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 builder.Host.UseDefaultServiceProvider(o => { o.ValidateScopes = validateServices; o.ValidateOnBuild = validateServices; });
@@ -92,12 +94,12 @@ app.UseAuthorization();
 if (isDevOrTesting)
 {
     app.MapOpenApi().AllowAnonymous(); // API description, Development/Testing only
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
+    // Every environment migrates at start-up (single instance, see docs/RUNBOOK.md); a failure stops the host.
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<ReferenceDataSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<BootstrapAdmin>().EnsureAsync();
     await scope.ServiceProvider.GetRequiredService<IngestionService>().MarkInterruptedAsync(default);

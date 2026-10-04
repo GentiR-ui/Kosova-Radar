@@ -1,0 +1,78 @@
+# Single-VPS production stack: app + PostgreSQL + nightly pg_dump backups. No TLS here: put a reverse proxy
+# (Caddy/nginx on the host) in front of 127.0.0.1:8080. See docs/RUNBOOK.md.
+# Usage: cp .env.example .env.prod (fill in), then
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --wait
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      retries: 30
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=${POSTGRES_PASSWORD}
+      Site__BaseUrl: ${SITE_BASE_URL:?Set SITE_BASE_URL}
+      Bootstrap__AdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      Proxy__KnownProxies: ${PROXY_KNOWN_PROXIES:-}
+      Proxy__KnownNetworks: ${PROXY_KNOWN_NETWORKS:-}
+      Ai__Provider: ${AI_PROVIDER:-}
+      Ai__ApiKey: ${AI_API_KEY:-}
+      Ingestion__AllowFixtureSources: "false"
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      # the aspnet image has no curl/wget and CMD-SHELL is dash: probe with bash's /dev/tcp
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\r\nHost: x\r\n\r\n' >&3 && head -n1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: app
+      PGDATABASE: app
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-02}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - backups:/backups
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          now=$$(date -u +%s)
+          next=$$(date -u -d "$$(date -u +%Y-%m-%d) $$BACKUP_HOUR_UTC:00:00" +%s)
+          [ "$$next" -le "$$now" ] && next=$$((next + 86400))
+          sleep $$((next - now))
+          f=/backups/app-$$(date -u +%Y%m%dT%H%M%SZ).dump
+          if pg_dump -Fc -f "$$f.tmp"; then mv "$$f.tmp" "$$f"; echo "backup ok: $$f"; else rm -f "$$f.tmp"; echo "backup FAILED" >&2; fi
+          find /backups -name 'app-*.dump' -mtime +$$BACKUP_KEEP_DAYS -delete
+        done
+
+volumes:
+  db-data:
+  backups:

@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-05 · T043 done
+- Built: `docker-compose.prod.yml` (app bound to 127.0.0.1:8080, db, `backup` sidecar: nightly `pg_dump -Fc` at `BACKUP_HOUR_UTC`, 14-day retention; required `POSTGRES_PASSWORD`/`SITE_BASE_URL`; bash `/dev/tcp` healthcheck on `/health`), `docs/RUNBOOK.md`, `ProductionGuards` (Production/Staging refuse the documented dev bootstrap email/password), migrations now run at start-up in every environment (before this, Production never migrated).
+- Rehearsed locally: image built; stack started on a fresh DB, app healthy, `/health` 200; manual dump, `dropdb`/`createdb`/`pg_restore`, admin user present, app healthy again. The nightly timer itself was not waited for (loop logic only reviewed).
+- Tests: integration `ProductionGuardTests` (2) + existing bootstrap tests green.
+- Verify: quick PASS. Review: skipped (small).
+- Next: T042 stays blocked (B-002); T090 hardening.
+
 ## 2026-10-05 · T041 done
 - Built: `tests/App.IntegrationTests/PerformanceTests.cs` (opt-in: `PERF_TESTS=1 dotnet test tests/App.IntegrationTests --filter PerformanceTests`): seeds 5k published events + 5k deals, 60 sequential requests per endpoint after a warm-up, asserts p95 < 300 ms, removes its rows afterwards. No production code or index change: search is a sequential `strpos` over 10k rows and stays fast, so `pg_trgm` is not needed at this size (revisit well above ~100k items).
 - Result (local, Windows, Postgres 17 in Docker, API in-process): p95 17–35 ms for `/api/events` (also page 50 and `search=`), `/api/deals` (+`search=`), event and deal detail, `/api/search` (two queries); `/events/{id}` SEO HTML 42 ms.
