@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-05 · T039 done
+- Built: `/admin/sources` (`SourcesPage`, `SourceForm` in `web/src/features/admin/sources`): table with health badge, last success/error, buttons "Merr tani" and "Ndrysho"; add/edit form (detail loaded via GET for the fixture payload; fixture vs URL field by type; defaults interval 60, "Aktiv" unchecked; 400 field errors with `aria-invalid`); fetch result message, failed-run error code, 409 message. Router now mounts it (admin-only).
+- Tests: 9 component tests (list, empty, list error, add body, 400, edit PUT, run ok/failed, 409). Acceptance REQ-113 green on desktop + mobile (once a mobile run timed out on a click intercepted by another row's cell; not reproducible in 4 later runs, actions cell now wraps).
+- Verify: quick PASS. Review: skipped (small; UI only, no business rules).
+- Next: T040.
+
 ## 2026-10-04 · T038 done
 - Built: `/admin/published` (`PublishedPage`: filters Lloji/Statusi in the query string, rows with link "Ndrysho" and buttons "Skado"/"Tërhiq", `ListShell` states, action errors) and `/admin/published/:kind/:id` (`PublishedEditPage`: shared `FieldsForm` extracted from `CandidatePage`, PUT save, field/409/generic errors, 404). ADR-032 ("Ndrysho" is a link; design.md §7 updated).
 - Tests: component tests (list, filters, expire, withdraw, edit event/deal, 409, generic 400); Playwright flow `web/e2e/flows/published-items.spec.ts` written but not run here (needs the e2e servers; covered by the full verify).
