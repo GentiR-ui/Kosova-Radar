@@ -196,3 +196,9 @@
 - Context: design.md §7 listed "Ndrysho" among the row buttons, but it only navigates to the edit page.
 - Decision: "Ndrysho" is a link (role `link`); "Skado" and "Tërhiq" stay buttons. design.md §7 updated. "Tërhiq" acts on one click like the API (idempotent, no confirmation step); revisit if mis-taps are reported.
 - Consequences: tests address "Ndrysho" as a link.
+
+## ADR-033 — Synthetic fixtures: no duplicate-of-published / changed-time cases
+- Date: 2026-10-05 · Status: accepted · Task: T041 (review of T040)
+- Context: design.md §9 listed "duplicate title" and "changed time" among the 24 fixture items, but duplicates are detected against published items or other sources, and change detection needs a published item; a single inactive fixture source seeded into an empty DB cannot produce either.
+- Decision: the fixture keeps two same-title items in different cities instead; design.md §9 updated. Both cases remain covered by DuplicateAndChangeTests.
+- Consequences: dev data does not demo `PossibleDuplicate`/`ChangedSinceApproval`; approve some fixtures and re-fetch to see them.

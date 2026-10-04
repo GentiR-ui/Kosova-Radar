@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-05 · T041 done
+- Built: `tests/App.IntegrationTests/PerformanceTests.cs` (opt-in: `PERF_TESTS=1 dotnet test tests/App.IntegrationTests --filter PerformanceTests`): seeds 5k published events + 5k deals, 60 sequential requests per endpoint after a warm-up, asserts p95 < 300 ms, removes its rows afterwards. No production code or index change: search is a sequential `strpos` over 10k rows and stays fast, so `pg_trgm` is not needed at this size (revisit well above ~100k items).
+- Result (local, Windows, Postgres 17 in Docker, API in-process): p95 17–35 ms for `/api/events` (also page 50 and `search=`), `/api/deals` (+`search=`), event and deal detail, `/api/search` (two queries); `/events/{id}` SEO HTML 42 ms.
+- Lighthouse (v from `npx lighthouse`, headless Chrome, default mobile profile, performance/accessibility/best-practices/seo), against `vite preview` of the production build proxied to the API (Development, 143 events; the .NET static host was not used, so no compression and a proxy hop): `/` 98/100/100/100, `/events` 99/100/100/100, `/events/{id}` 99/100/100/100. Re-run on the real Docker image in T043/T091.
+- Verify: quick PASS. Review: combined T039–T041 by `reviewer`, 3 MEDIUM: fixed (cleanup moved into `try`; design.md §9 + ADR-033 for the fixture cases; numbers recorded). LOWs left: `SourceForm` interval `min` is 1 for all types (server enforces 15–1440 and the form shows a generic message), row buttons carry `aria-label` "Merr tani: {name}", seeder start-up failure is not caught.
+- Next: T042 is blocked on the client (sources/permission); T043 is next.
+
 ## 2026-10-05 · T040 done
 - Built: `SyntheticFixtureSeeder` (Infrastructure/Persistence): inactive Fixture source "Fixture — Shembuj sintetikë" with 24 items (6 valid events, 8 deals/cases incl. missing price, conflicting discount, inconsistent prices, expired, non-Kosovo city; events with missing time, expired, invalid URL, non-Kosovo city, invalid date range, invalid image, AI-filled, `#ai-fail`, two same-title items) with dates relative to startup; fetched once when never fetched (source switched on only for that scheduled-trigger run, so no audit user is needed). Runs from `Program.cs` only when `Seed:SyntheticFixtures` is true (set in `appsettings.Development.json`; off in Testing/Production) and fixtures are allowed.
 - Tests: integration test seeds into the DB with the setting on: 24 synthetic candidates, expected issue codes, source stays inactive, a second seed does not fetch again.
