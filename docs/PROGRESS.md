@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T014 done
+- Built: `Candidate`, `Event`, `Deal`, `Venue`, `ItemSource`, `JobExecution` entities + `CandidateFields`/`Issue`, `ContentRules` (effective end, active, freshness, discount, title similarity), EF configurations (jsonb via System.Text.Json value conversion for `Fields`/`Issues` because EF complex-JSON mapping failed at runtime; `xmin` concurrency tokens; indexes; FKs with Restrict to City/Category/Venue/Source/Candidate), migration `ContentModel`. Polymorphic ids (`ItemSource.ItemId`, `MatchedItemId`, `DuplicateOfId`, `PublishedItemId`) have no FK by design.
+- Tests: unit +18 (boundaries: exactly 48 h, 6 h default end, discount half-up, similarity 0.8), integration +4 (jsonb round trip, xmin conflict on Candidate/Event/Deal, unique venue per city, FK rejects orphans). Migration applies on an empty DB (AppFactory).
+- Verify: quick PASS. Reviewer: 2 MEDIUM (missing FKs, thin tests) fixed; LOW notes: `Evidence` max length is characters not bytes (T015 must enforce 64 KB by bytes), entity `IsActive`/`EffectiveEnd` wrappers unused until T019/T020, jsonb comparer serializes per tracked candidate on save.
+- Next: T015.
+
 ## 2026-10-03 · T013 done
 - Built: `Source` entity + `Sources` migration (health derived on read, never stored), `GET/POST/PUT /api/admin/sources[/{id}]` (Admin policy), `SourceValidator` (per-type poll range, absolute http(s) URL without credentials, 1 MB payload, names-only enums, fixture refused when `Ingestion__AllowFixtureSources=false`), `SourceAdmin` (create/update + audit `source.create`/`source.update` in one save; audit keeps the payload length, never the payload), `IngestionOptions` (true in Development/Testing, false by default), 8 MB request cap on POST/PUT, list does not load payloads. `recentRuns` is `[]` until T016.
 - Tests: unit 94 (+43: validator boundaries per type, health thresholds), integration +6 (audit content, failed validation writes no audit, type change replaces location, fixtures refused, list/404, anonymous 401). Acceptance: REQ-010, 011, 073 and P04 green except `Reviewer_cannot_fetch_a_source_and_no_run_happens` (needs `POST /fetch`, T016); REQ-013/072 tests that fetch or read candidates stay red until T016/T016b/T030.

@@ -1,5 +1,6 @@
 using App.Application.Abstractions;
 using App.Domain.Audit;
+using App.Domain.Content;
 using App.Domain.Reference;
 using App.Domain.Sources;
 using App.Infrastructure.Identity;
@@ -18,6 +19,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<Source> Sources => Set<Source>();
+    public DbSet<Candidate> Candidates => Set<Candidate>();
+    public DbSet<Event> Events => Set<Event>();
+    public DbSet<Deal> Deals => Set<Deal>();
+    public DbSet<Venue> Venues => Set<Venue>();
+    public DbSet<ItemSource> ItemSources => Set<ItemSource>();
+    public DbSet<JobExecution> JobExecutions => Set<JobExecution>();
 
     /// <summary>Data Protection keys, stable across restarts and instances (stored unencrypted; see RUNBOOK, T043).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
