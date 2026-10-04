@@ -9,12 +9,16 @@ using App.Infrastructure.Identity;
 using App.Infrastructure.Ingestion;
 using App.Infrastructure.Persistence;
 using App.Infrastructure.Time;
+using System.Net;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
+using Polly.Retry;
 
 namespace App.Infrastructure;
 
@@ -53,7 +57,10 @@ public static class DependencyInjection
         services.AddScoped<ReferenceDataSeeder>();
         services.AddScoped<BootstrapAdmin>();
         services.AddScoped<UserAdmin>();
-        services.AddSingleton(config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions());
+        var ingestion = config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions();
+        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0)
+            throw new InvalidOperationException("Ingestion__HttpTimeoutSeconds must be at least 1 and Ingestion__HttpRetries at least 0.");
+        services.AddSingleton(ingestion);
         services.AddScoped<SourceAdmin>();
         services.AddScoped<CandidateDecisions>();
         services.AddScoped<CandidateApproval>();
@@ -65,9 +72,43 @@ public static class DependencyInjection
         services.AddHostedService<ExpirationJob>();
         services.AddSingleton<SourceRunLock>();
         services.AddScoped<ISourceAdapter, FixtureSourceAdapter>();
+        services.AddSourceHttpClient(config);
+        services.AddScoped<ISourceAdapter, JsonFeedSourceAdapter>();
+        services.AddScoped<ISourceAdapter, RssSourceAdapter>();
         services.AddScoped<IngestionService>();
         services.AddSingleton<ScheduledRuns>();
         services.AddHostedService<SourceScheduler>();
         return services;
     }
+
+    /// <summary>Named client <c>sources</c> (design.md §6): SSRF guard, no proxy, 5 redirects, retries.</summary>
+    private static void AddSourceHttpClient(this IServiceCollection services, IConfiguration config)
+    {
+        var siteUrl = config["Site:BaseUrl"]?.TrimEnd('/');
+        services.AddHttpClient<SourceHttpFetcher>(SourceHttpFetcher.ClientName, client =>
+            {
+                client.Timeout = Timeout.InfiniteTimeSpan; // SourceHttpFetcher enforces one deadline for the whole fetch
+                client.DefaultRequestHeaders.UserAgent.TryParseAdd($"KosovaRadarBot/1.0 (+{siteUrl ?? "http://localhost"}/bot)");
+            })
+            .ConfigurePrimaryHttpMessageHandler(SourceHttpFetcher.CreateHandler)
+            .AddResilienceHandler("sources-retry", (pipeline, context) =>
+            {
+                var options = context.ServiceProvider.GetRequiredService<IngestionOptions>();
+                if (options.HttpRetries < 1) return; // Polly rejects 0 attempts; no strategy means no retries
+                pipeline.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = options.HttpRetries,
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    Delay = TimeSpan.FromSeconds(1),
+                    ShouldHandle = args => ValueTask.FromResult(IsTransient(args.Outcome)),
+                });
+            });
+    }
+
+    private static bool IsTransient(Outcome<HttpResponseMessage> outcome) =>
+        outcome.Exception is { } e
+            ? e is HttpRequestException { HttpRequestError: not (HttpRequestError.NameResolutionError or HttpRequestError.SecureConnectionError) }
+              && !SourceHttpFetcher.IsBlocked(e) // a blocked address, an unknown name or a bad certificate never gets better
+            : outcome.Result is { StatusCode: >= HttpStatusCode.InternalServerError or HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests };
 }

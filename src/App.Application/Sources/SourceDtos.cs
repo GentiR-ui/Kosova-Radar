@@ -67,4 +67,10 @@ public sealed class IngestionOptions
 
     /// <summary>Seconds between scheduler ticks (design.md §2: 60, Development 10, Testing 2).</summary>
     public int SchedulerTickSeconds { get; set; } = 60;
+
+    /// <summary>Retries of a failed source request (5xx, 408, 429, network errors) with exponential backoff.</summary>
+    public int HttpRetries { get; set; } = 2;
+
+    /// <summary>Total time for one source fetch including retries and reading the body.</summary>
+    public int HttpTimeoutSeconds { get; set; } = 20;
 }

@@ -133,8 +133,8 @@ public sealed class IngestionService(
 
     private async Task ProcessAsync(Source source, JobExecution run, DateTimeOffset fetchedAt, CancellationToken ct)
     {
-        // Unreachable is the closest contract code for "nothing can fetch this source": JsonFeed/Rss adapters come
-        // with T023/T025, and a fixture source is refused when fixtures are disallowed (T013 note).
+        // Unreachable is the closest contract code for "nothing can fetch this source": a fixture source is
+        // refused when fixtures are disallowed (T013 note).
         var adapter = adapters.FirstOrDefault(a => a.CanHandle(source))
             ?? throw new SourceFetchException(RunErrorCodes.Unreachable, "No adapter can fetch this source.");
 

@@ -71,7 +71,6 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 | `Bootstrap__AdminEmail` / `Bootstrap__AdminPassword` | required when no user exists | `admin@kosovaradar.local` / `Radar-admin-dev-2026` | same as Development |
 | `Ingestion__SchedulerTickSeconds` | 60 | 10 | 2 |
 | `Ingestion__AllowFixtureSources` | false | true | true |
-| `Ingestion__BlockPrivateNetworks` | true | true | true |
 | `Ingestion__PerHostDelaySeconds` | 10 | 10 | 0 |
 | `Ingestion__HttpRetries` / `Ingestion__HttpTimeoutSeconds` | 2 / 20 | 2 / 20 | 0 / 5 |
 | `Ai__Provider` | `None` (`Anthropic` when `Ai__ApiKey` set) | `Fake` | `Fake` |
