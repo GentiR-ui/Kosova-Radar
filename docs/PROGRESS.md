@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T016b done
+- Built: `GET /api/admin/candidates` (filters status/validation/kind/sourceId by camelCase names, all bad parameters reported together, newest `fetchedAt` first then id, evidence left out of the list) and `GET /api/admin/candidates/{id}` (fields incl. computed `discountPercent`, evidence, source name, suggested category, `ai` block, `duplicateOf` with resolved title, malformed id → 404); Reviewer policy. Code in `Application/Candidates` + `CandidateEndpoints`.
+- Tests: integration +5 (detail resolution, nulls and vanished duplicate target, list order/no evidence, multiple 400 fields, anonymous 401). Acceptance: REQ-030 (2), REQ-061 (3) green; REQ-060 6/7 — `Reviewer_lists_candidates_filtered…` needs the `MissingPrice`/`MissingTitle` issues from T017 (noted in tasks.md).
+- Verify: quick PASS. Review: skipped (small, read-only, no business rules).
+- Next: T017.
+
 ## 2026-10-04 · T016 done
 - Built: `ISourceAdapter` (CanHandle/Fetch/Parse, ADR-023; design.md §2 updated), `FixtureSourceAdapter` (refused when fixtures are disallowed), `IngestionService` (lock → `Running` run saved → fetch/parse → lookup rows 1 and 5 → candidates + run + source bookkeeping in one save; per-source `SourceRunLock`, manual wait 30 s then 409; `source.fetch` audit for manual runs only, counts never payload; crash → run `Failed`/`Interrupted` and the source's failure count rises; `MarkInterruptedAsync` at startup), `ReferenceResolver` (city/category slugs, per kind, unresolved stay text), `POST /api/admin/sources/{id}/fetch`, `recentRuns` (last 10) on the source detail.
 - Choices: until T017 every new candidate is `Pending`/`NeedsReview` without issues; until T028 an item whose fingerprint belongs to a non-open candidate counts `unchanged`; a source no adapter handles (JsonFeed/Rss until T023/T025) fails with `Unreachable`; run timestamps use the wall clock, `fetchedAt`/`lastFetchedAt`/`lastSuccessAt` use `IClock`. Parser now fails an item containing NUL or a lone surrogate (`InvalidField:*`), and a fixture payload with NUL is a 400 (it was a 500 on save).
