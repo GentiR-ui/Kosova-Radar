@@ -26,6 +26,8 @@ public sealed record CandidateSummaryDto(
     Guid Id, ItemKind Kind, string? Title, CandidateStatus Status, ValidationOutcome Validation,
     IReadOnlyList<IssueDto> Issues, Guid SourceId, string SourceName, DateTimeOffset FetchedAt, bool IsSynthetic);
 
+public sealed record SourceOptionDto(Guid Id, string Name);
+
 public sealed record CandidateAiDto(
     string Model, string? RequestId, double? Confidence, DateTimeOffset? ProcessedAt, IReadOnlyList<string> SuggestedFields);
 

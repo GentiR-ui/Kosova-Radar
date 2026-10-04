@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T036 done
+- Built: `/admin/review` (`ReviewQueuePage`: filters Statusi/Validimi/Lloji/Burimi in the query string, default "Në pritje", table with headers, validation badge + status cells, `ListShell` states) and `/admin/items/:id` (`CandidatePage`: evidence region with "Hap burimin" (http(s) only), fields region side by side ≥ 1024 px, issue list, "Aprovo" → "U publikua" + public link, `RejectDialog` with "Arsyeja"/"Konfirmo refuzimin"). New `GET /api/admin/candidates/sources` (Reviewer) for the source filter. ADR-031.
+- Tests: component tests (queue default/all, candidate page, approve, 400 labels, reject, 404); integration +1 (source options as reviewer, 401). Acceptance REQ-110..112 green on desktop + mobile.
+- Verify: quick PASS. Reviewer: 4 MEDIUM (design/ADR, reviewer-role test, editable-but-unsaved fields, deal price field) fixed or documented. LOWs left: no focus trap/focus return in the reject dialog, `<pre>` not keyboard-scrollable, issue codes shown in English, queue filter/409/empty tests thin.
+- Next: T037 (enable the fields fieldset, "Ruaj ndryshimet" and "Bashko").
+
 ## 2026-10-04 · T035 done
 - Built: `SearchPage` on `/search` (`h1` "Kërkim", searchbox + button "Kërko", query in `?q=`, results as list items with kind label "Event"/"Ofertë", link to the detail page, date · city · source; hint when q < 2 chars, no API call), `useSearch` + `SearchResultDto` in `api.ts`, loading/empty/error+retry/"Shfaq më shumë" via `ListShell`.
 - Tests: component tests (labels + links, short-query hint). Acceptance REQ-105 green on desktop + mobile.

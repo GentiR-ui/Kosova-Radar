@@ -147,4 +147,24 @@ public class CandidateReadTests(AppFactory app)
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync("/api/admin/candidates")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.GetAsync($"/api/admin/candidates/{Guid.NewGuid()}")).StatusCode);
     }
+
+    [Fact]
+    public async Task Source_options_list_names_for_reviewers_and_need_a_login()
+    {
+        var (sourceId, _) = await SeedAsync(_ => { });
+        Assert.Equal(HttpStatusCode.Unauthorized, (await app.CreateClient().GetAsync("/api/admin/candidates/sources")).StatusCode);
+
+        var email = $"r{Guid.NewGuid():N}@test.local";
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<App.Infrastructure.Identity.AppUser>>();
+            var user = new App.Infrastructure.Identity.AppUser { UserName = email, Email = email, CreatedAt = DateTimeOffset.UtcNow };
+            Assert.True((await users.CreateAsync(user, "Integration-pass-1")).Succeeded);
+            Assert.True((await users.AddToRoleAsync(user, "Reviewer")).Succeeded);
+        }
+        var reviewer = await LoginAsync(email, "Integration-pass-1");
+        var options = await reviewer.GetFromJsonAsync<JsonElement>("/api/admin/candidates/sources");
+
+        Assert.Contains(options.EnumerateArray(), o => o.GetProperty("id").GetGuid() == sourceId && o.GetProperty("name").GetString()!.StartsWith("Burim"));
+    }
 }

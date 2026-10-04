@@ -37,6 +37,10 @@ public static class CandidateQueries
         return null;
     }
 
+    public static async Task<IReadOnlyList<SourceOptionDto>> SourceOptionsAsync(IAppDbContext db, CancellationToken ct) =>
+        await db.Sources.AsNoTracking().OrderBy(s => s.Name).ThenBy(s => s.Id)
+            .Select(s => new SourceOptionDto(s.Id, s.Name)).ToListAsync(ct);
+
     public static async Task<PagedResult<CandidateSummaryDto>> ListAsync(
         IAppDbContext db, CandidateFilter f, int page, int pageSize, CancellationToken ct)
     {

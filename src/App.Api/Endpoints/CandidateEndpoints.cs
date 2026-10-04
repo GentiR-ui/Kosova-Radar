@@ -15,6 +15,7 @@ public static class CandidateEndpoints
     {
         var g = app.MapGroup("/api/admin/candidates").RequireAuthorization(Policies.Reviewer).WithTags("Candidates");
         g.MapGet("/", List);
+        g.MapGet("/sources", Sources);
         // A malformed id is a 404 (design.md §5), so the id is bound as a string.
         g.MapGet("/{id}", Get);
         g.MapPut("/{id}", Edit).WithMetadata(new RequestSizeLimitAttribute(256 * 1024));
@@ -35,6 +36,10 @@ public static class CandidateEndpoints
                 (filterErrors ?? []).Concat(pageErrors ?? []).ToDictionary(e => e.Key, e => e.Value));
         return TypedResults.Ok(await CandidateQueries.ListAsync(db, filter, p, size, ct));
     }
+
+    /// <summary>Source names for the queue's "Burimi" filter; the sources API itself is Admin-only.</summary>
+    private static async Task<Ok<IReadOnlyList<SourceOptionDto>>> Sources(IAppDbContext db, CancellationToken ct) =>
+        TypedResults.Ok(await CandidateQueries.SourceOptionsAsync(db, ct));
 
     private static async Task<Results<Ok<CandidateDto>, NotFound>> Get(string id, IAppDbContext db, CancellationToken ct) =>
         Guid.TryParse(id, out var guid) && await CandidateQueries.GetAsync(db, guid, ct) is { } c

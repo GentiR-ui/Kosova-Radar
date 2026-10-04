@@ -45,3 +45,10 @@ export function formatMoney(amount: number, currency: string | null): string {
 export function safeHref(url: string): string | undefined {
   return /^https?:\/\//i.test(url) ? url : undefined
 }
+
+/** An ISO instant as the "yyyy-MM-ddTHH:mm" value of a datetime-local input, in Pristina time. */
+export function toPristinaInput(iso: string | null): string {
+  if (!iso) return ''
+  const p = parts(new Date(iso))
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`
+}

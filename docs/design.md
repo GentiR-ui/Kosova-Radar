@@ -245,6 +245,7 @@ Run error codes: `Unreachable`, `Timeout`, `HttpStatus` (non-2xx), `MalformedPay
 | Method | Path | Request | Responses | Req |
 |---|---|---|---|---|
 | GET | /api/admin/candidates | `?status=pending\|rejected\|published\|merged&validation=valid\|needsReview\|rejected&kind=event\|deal&sourceId=&page=&pageSize=` | 200 `Page<CandidateSummaryDto>` (newest `fetchedAt` first, then id); 400 | 060 |
+| GET | /api/admin/candidates/sources | — | 200 `{ id, name }[]` (by name; feeds the queue's "Burimi" filter, because `/api/admin/sources` is Admin-only) | 060, 112 |
 | GET | /api/admin/candidates/{id} | — | 200 `CandidateDto`; 404 | 061 |
 | PUT | /api/admin/candidates/{id} | `CandidateFieldsRequest` | 200 `CandidateDto` (re-validated); 400; 404; 409 | 065, 067 |
 | POST | /api/admin/candidates/{id}/approve | — | 200 `{ kind, itemId }`; 400 (missing fields named, or `validation` when rejected); 404; 409 | 062, 063, 067, 068 |
