@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using App.Application.Abstractions;
+using App.Application.Ai;
 using App.Application.Audit;
 using App.Application.Sources;
 using App.Domain.Content;
@@ -19,13 +20,14 @@ public sealed record RunResult(RunStatus Status, RunDto? Run = null);
 /// One ingestion run of one source (design.md §2): fetch, parse, look each item up by fingerprint, store candidates,
 /// record the run and the source's health. Candidates, run and source bookkeeping are saved together at the end, so a
 /// failed run leaves no half-processed feed behind.
-/// Lookup rows 1 (open candidate) and 5 (nothing known) and validation (T017) are implemented; rows 2-4 land with T028, AI with T026.
+/// Lookup rows 1 (open candidate) and 5 (nothing known), validation (T017) and the AI step (T026) are implemented; rows 2-4 land with T028.
 /// </summary>
 public sealed class IngestionService(
     IAppDbContext db,
     IClock clock,
     TimeProvider wallClock,
     IAuditWriter audit,
+    AiEnricher ai,
     IEnumerable<ISourceAdapter> adapters,
     SourceRunLock locks,
     ILogger<IngestionService> log)
@@ -155,46 +157,53 @@ public sealed class IngestionService(
         var known = (await db.Candidates.Where(c => fingerprints.Contains(c.Fingerprint)).ToListAsync(ct))
             .GroupBy(c => c.Fingerprint).ToDictionary(g => g.Key, g => g.ToList());
         var resolver = await ReferenceResolver.LoadAsync(db, ct);
+        await ai.BeginRunAsync(ct);
         var now = clock.UtcNow;
 
         foreach (var item in items)
         {
-            var validation = CandidateValidator.Validate(item.Kind, resolver.Resolve(item.Kind, item.Fields), fetchedAt, source.IsUnreliable);
-            var fields = validation.Fields;
             known.TryGetValue(item.Fingerprint, out var existing);
 
             // Row 1: a pending or auto-rejected candidate is the one to compare with (also for a repeat inside one feed).
             var open = existing?
                 .Where(c => c.Status == CandidateStatus.Pending || (c.Status == CandidateStatus.Rejected && c.RejectedByUserId is null))
                 .OrderByDescending(c => c.CreatedAt).ThenBy(c => c.Id).FirstOrDefault();
+            if (open is not null && open.ContentHash == item.ContentHash)
+            {
+                run.Unchanged++;
+                continue;
+            }
+
+            if (open is null && existing is { Count: > 0 })
+            {
+                // Rows 2-4 (decided, withdrawn or published items) are T028. Until then such an item is left alone
+                // rather than becoming a new candidate on every run.
+                run.Unchanged++;
+                continue;
+            }
+
+            // Only items that are stored or updated reach the AI, so unchanged feeds cost nothing.
+            var id = open?.Id ?? Guid.NewGuid();
+            var (validation, enrichment) = await EnrichAndValidateAsync(id, item, resolver, fetchedAt, source.IsUnreliable, ct);
+            var fields = validation.Fields;
+
             if (open is not null)
             {
-                if (open.ContentHash == item.ContentHash)
-                {
-                    run.Unchanged++;
-                    continue;
-                }
-
                 open.Kind = item.Kind;
                 open.ExternalId = item.ExternalId;
                 open.ContentHash = item.ContentHash;
                 open.Fields = fields;
-                ApplyValidation(open, validation);
+                ApplyValidation(open, validation, enrichment);
                 open.Evidence = item.Evidence;
                 open.FetchedAt = fetchedAt;
                 open.UpdatedAt = now;
                 run.Updated++;
             }
-            else if (existing is { Count: > 0 })
-            {
-                // Rows 2-4 (decided, withdrawn or published items) are T028. Until then such an item is left alone
-                // rather than becoming a new candidate on every run.
-                run.Unchanged++;
-            }
             else
             {
                 var candidate = new Candidate
                 {
+                    Id = id,
                     Kind = item.Kind,
                     SourceId = source.Id,
                     ExternalId = item.ExternalId,
@@ -203,14 +212,12 @@ public sealed class IngestionService(
                     ContentHash = item.ContentHash,
                     Fields = fields,
                     Evidence = item.Evidence,
-                    Status = validation.Status,
-                    Validation = validation.Outcome,
-                    Issues = validation.Issues,
                     IsSynthetic = source.Type == SourceType.Fixture,
                     FetchedAt = fetchedAt,
                     CreatedAt = now,
                     UpdatedAt = now,
                 };
+                ApplyValidation(candidate, validation, enrichment);
                 db.Candidates.Add(candidate);
                 known[item.Fingerprint] = [candidate];
                 run.Created++;
@@ -218,12 +225,34 @@ public sealed class IngestionService(
         }
     }
 
+    /// <summary>AI step, then the validation rules, then the issues that come from the AI step (design.md §2 order).</summary>
+    private async Task<(ValidationResult Validation, AiEnrichment Enrichment)> EnrichAndValidateAsync(
+        Guid candidateId, NormalizedCandidate item, ReferenceResolver resolver, DateTimeOffset fetchedAt, bool unreliable, CancellationToken ct)
+    {
+        var enrichment = await ai.EnrichAsync(candidateId, item.Kind, item.Text, resolver.Resolve(item.Kind, item.Fields), resolver, ct);
+        var validation = CandidateValidator.Validate(item.Kind, enrichment.Fields, fetchedAt, unreliable).WithIssues(enrichment.Issues);
+
+        // Without a provider nothing could have filled a gap: say so next to the gap (design.md §6, RSS items).
+        if (enrichment.Skipped && validation.Issues.Any(i => i.Code is IssueCodes.MissingStartsAt or IssueCodes.MissingPrice
+                || (i.Code == IssueCodes.UnknownCity && enrichment.Fields.CityText is null)))
+            validation = validation.WithIssues([new(IssueCodes.AiUnavailable, IssueSeverity.Review, null, "No AI provider is enabled to fill the missing fields from the text.")]);
+        return (validation, enrichment);
+    }
+
     /// <summary>Re-validation of an open candidate: an auto-rejected one may become pending again and vice versa (no reviewer involved).</summary>
-    private static void ApplyValidation(Candidate c, ValidationResult v)
+    private static void ApplyValidation(Candidate c, ValidationResult v, AiEnrichment ai)
     {
         c.Validation = v.Outcome;
         c.Issues = v.Issues;
         c.Status = v.Status;
+
+        // The AI fields belong to the content just processed: a changed item without AI output must not keep the old ones.
+        c.SuggestedCategoryId = ai.SuggestedCategoryId;
+        c.AiModel = ai.Metadata?.Model;
+        c.AiRequestId = ai.Metadata?.RequestId;
+        c.AiConfidence = ai.Metadata?.Confidence;
+        c.AiProcessedAt = ai.Metadata?.ProcessedAt;
+        c.AiSuggestedFields = ai.Metadata?.SuggestedFields.ToList() ?? [];
     }
 
     private void Finish(Source source, JobExecution run, DateTimeOffset fetchedAt, string? errorCode, string? error)

@@ -76,6 +76,7 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 | `Ai__Provider` | `None` (`Anthropic` when `Ai__ApiKey` set) | `Fake` | `Fake` |
 | `Ai__Model` | `claude-haiku-4-5-20251001` | — | — |
 | `Ai__DailyCallLimit` | 500 | 100000 | 100000 |
+| `Ai__ApiKey` / `Ai__TimeoutSeconds` | — / 15 | — / 15 | — / 15 |
 | `RateLimit__PublicPerMinute` | 300 | 0 (disabled) | 0 (disabled) |
 | `Site__BaseUrl` | required (e.g. `https://kosovaradar.com`) | `http://localhost:5173` | `https://localhost` |
 | `Seed__SyntheticFixtures` | false | true | false |

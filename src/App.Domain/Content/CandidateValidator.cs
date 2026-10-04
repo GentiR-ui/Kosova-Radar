@@ -14,6 +14,7 @@ public static class IssueCodes
     public const string MissingPrice = "MissingPrice";
     public const string PriceInconsistent = "PriceInconsistent";
     public const string ConflictingData = "ConflictingData";
+    public const string AiUnavailable = "AiUnavailable";
     public const string SourceUnreliable = "SourceUnreliable";
     public const string InvalidImageUrl = "InvalidImageUrl";
 }
@@ -23,6 +24,13 @@ public sealed record ValidationResult(CandidateFields Fields, List<Issue> Issues
 {
     /// <summary>A rejected outcome makes the candidate <c>Rejected</c> (without a reviewer); anything else waits for a person.</summary>
     public CandidateStatus Status => Outcome == ValidationOutcome.Rejected ? CandidateStatus.Rejected : CandidateStatus.Pending;
+
+    /// <summary>The same result with issues from outside the rules (AI step, duplicates) added; the outcome follows.</summary>
+    public ValidationResult WithIssues(IEnumerable<Issue> extra)
+    {
+        var issues = Issues.Concat(extra).ToList();
+        return this with { Issues = issues, Outcome = CandidateValidator.Outcome(issues) };
+    }
 }
 
 /// <summary>Validation rules REQ-027..039. Pure: <c>now</c> is the fetch (or edit) time, never the wall clock.</summary>

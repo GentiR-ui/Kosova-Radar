@@ -18,6 +18,7 @@ public interface IAppDbContext
     DbSet<Venue> Venues { get; }
     DbSet<ItemSource> ItemSources { get; }
     DbSet<JobExecution> JobExecutions { get; }
+    DbSet<AiCall> AiCalls { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

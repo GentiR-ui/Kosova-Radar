@@ -23,6 +23,8 @@ builder.Host.UseDefaultServiceProvider(o => { o.ValidateScopes = validateService
 // The crawler User-Agent and the SEO URLs need the public address (design.md §2).
 if (!validateServices && string.IsNullOrWhiteSpace(builder.Configuration["Site:BaseUrl"]))
     throw new InvalidOperationException("Site__BaseUrl is not set.");
+if (!validateServices && string.Equals(builder.Configuration["Ai:Provider"]?.Trim(), "Fake", StringComparison.OrdinalIgnoreCase))
+    throw new InvalidOperationException("Ai__Provider=Fake is for Development and Testing only.");
 var testHooks = TestHooks.IsEnabled(builder.Configuration);
 
 builder.Services.AddOpenApi();

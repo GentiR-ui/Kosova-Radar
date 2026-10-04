@@ -25,6 +25,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Venue> Venues => Set<Venue>();
     public DbSet<ItemSource> ItemSources => Set<ItemSource>();
     public DbSet<JobExecution> JobExecutions => Set<JobExecution>();
+    public DbSet<AiCall> AiCalls => Set<AiCall>();
 
     /// <summary>Data Protection keys, stable across restarts and instances (stored unencrypted; see RUNBOOK, T043).</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();

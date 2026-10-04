@@ -1,9 +1,11 @@
 using App.Application.Abstractions;
+using App.Application.Ai;
 using App.Application.Audit;
 using App.Application.Candidates;
 using App.Application.Ingestion;
 using App.Application.Public;
 using App.Application.Sources;
+using App.Infrastructure.Ai;
 using App.Infrastructure.Audit;
 using App.Infrastructure.Identity;
 using App.Infrastructure.Ingestion;
@@ -62,6 +64,7 @@ public static class DependencyInjection
             throw new InvalidOperationException(
                 "Ingestion__HttpTimeoutSeconds must be at least 1, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
         services.AddSingleton(ingestion);
+        services.AddAi(config);
         services.AddScoped<SourceAdmin>();
         services.AddScoped<CandidateDecisions>();
         services.AddScoped<CandidateApproval>();
@@ -84,6 +87,25 @@ public static class DependencyInjection
         services.AddSingleton<ScheduledRuns>();
         services.AddHostedService<SourceScheduler>();
         return services;
+    }
+
+    /// <summary>The AI provider chosen by <c>Ai__Provider</c> (ADR-007); a missing key never stops the application, it just means no AI.</summary>
+    private static void AddAi(this IServiceCollection services, IConfiguration config)
+    {
+        var ai = config.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions();
+        if (ai.DailyCallLimit < 0 || ai.TimeoutSeconds < 1)
+            throw new InvalidOperationException("Ai__DailyCallLimit must be at least 0 and Ai__TimeoutSeconds at least 1.");
+        IAiProvider provider = ai.EffectiveProvider.ToLowerInvariant() switch
+        {
+            "none" => new NoAiProvider(),
+            "fake" => new FakeAiProvider(),
+            "anthropic" => throw new InvalidOperationException("Ai__Provider=Anthropic is not available yet (T027)."),
+            _ => throw new InvalidOperationException("Ai__Provider must be None, Fake or Anthropic."),
+        };
+        services.AddSingleton(ai);
+        services.AddSingleton(provider);
+        services.AddSingleton<IAiLedger, AiLedger>();
+        services.AddScoped<AiEnricher>();
     }
 
     /// <summary>Named client <c>sources</c> (design.md §6): SSRF guard, no proxy, 5 redirects, retries.</summary>

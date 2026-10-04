@@ -64,6 +64,19 @@ internal sealed class CandidateConfiguration : IEntityTypeConfiguration<Candidat
     }
 }
 
+internal sealed class AiCallConfiguration : IEntityTypeConfiguration<AiCall>
+{
+    public void Configure(EntityTypeBuilder<AiCall> b)
+    {
+        b.Property(a => a.Provider).HasMaxLength(32);
+        b.Property(a => a.Model).HasMaxLength(120);
+        b.Property(a => a.RequestId).HasMaxLength(200);
+        b.Property(a => a.ErrorCode).HasMaxLength(32);
+        b.HasIndex(a => a.StartedAt); // the daily limit counts today's rows
+        b.HasIndex(a => a.CandidateId);
+    }
+}
+
 internal sealed class VenueConfiguration : IEntityTypeConfiguration<Venue>
 {
     public void Configure(EntityTypeBuilder<Venue> b)

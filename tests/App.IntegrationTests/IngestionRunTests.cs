@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using App.Application.Abstractions;
+using App.Application.Ai;
 using App.Application.Audit;
 using App.Application.Ingestion;
 using App.Domain.Content;
@@ -308,7 +309,7 @@ public class IngestionRunTests(AppFactory app)
         var sp = scope.ServiceProvider;
         var locks = sp.GetRequiredService<SourceRunLock>();
         var service = new IngestionService(sp.GetRequiredService<IAppDbContext>(), sp.GetRequiredService<IClock>(), TimeProvider.System,
-            sp.GetRequiredService<IAuditWriter>(), [new ThrowingAdapter()], locks, NullLogger<IngestionService>.Instance);
+            sp.GetRequiredService<IAuditWriter>(), sp.GetRequiredService<AiEnricher>(), [new ThrowingAdapter()], locks, NullLogger<IngestionService>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunAsync(id, JobTrigger.Schedule, TimeSpan.Zero, CancellationToken.None));
 

@@ -1,4 +1,5 @@
 using App.Application.Abstractions;
+using App.Application.Ai;
 using App.Application.Audit;
 using App.Application.Ingestion;
 using App.Domain.Content;
@@ -134,7 +135,7 @@ public class SchedulerTests(AppFactory app)
                 if (type != typeof(IngestionService)) return real.ServiceProvider.GetService(type);
                 var sp = real.ServiceProvider;
                 return new IngestionService(sp.GetRequiredService<IAppDbContext>(), sp.GetRequiredService<IClock>(), TimeProvider.System,
-                    sp.GetRequiredService<IAuditWriter>(), [new SelectiveAdapter()], sp.GetRequiredService<SourceRunLock>(),
+                    sp.GetRequiredService<IAuditWriter>(), sp.GetRequiredService<AiEnricher>(), [new SelectiveAdapter()], sp.GetRequiredService<SourceRunLock>(),
                     NullLogger<IngestionService>.Instance);
             }
 

@@ -16,6 +16,7 @@ public sealed class ReferenceResolver
 
     // Per kind: folded slug and folded name -> slug.
     private readonly Dictionary<(ItemKind, string), string> _categories = [];
+    private readonly Dictionary<(ItemKind, string), Guid> _categoryIds = [];
 
     public ReferenceResolver(CityMatcher cities, IEnumerable<Category> categories)
     {
@@ -24,6 +25,7 @@ public sealed class ReferenceResolver
         {
             _categories.TryAdd((c.Kind, TextNormalizer.Fold(c.Slug)), c.Slug);
             _categories.TryAdd((c.Kind, TextNormalizer.Fold(c.Name)), c.Slug);
+            _categoryIds.TryAdd((c.Kind, c.Slug), c.Id);
         }
     }
 
@@ -31,10 +33,18 @@ public sealed class ReferenceResolver
         new(new CityMatcher(await db.Cities.AsNoTracking().ToListAsync(ct)),
             await db.Categories.AsNoTracking().ToListAsync(ct));
 
+    public string? CitySlug(string? text) => _cities.Find(text)?.Slug;
+
+    public IReadOnlyList<string> CategorySlugs(ItemKind kind) =>
+        _categoryIds.Keys.Where(k => k.Item1 == kind).Select(k => k.Item2).Order().ToList();
+
+    public Guid? CategoryId(ItemKind kind, string slug) =>
+        _categoryIds.TryGetValue((kind, slug), out var id) ? id : null;
+
     public CandidateFields Resolve(ItemKind kind, CandidateFields fields) =>
         fields with
         {
-            CitySlug = _cities.Find(fields.CityText)?.Slug,
+            CitySlug = CitySlug(fields.CityText),
             CategorySlug = FindCategory(kind, fields.CategoryText),
         };
 
