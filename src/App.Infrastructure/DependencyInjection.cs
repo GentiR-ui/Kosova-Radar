@@ -89,21 +89,32 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>The AI provider chosen by <c>Ai__Provider</c> (ADR-007); a missing key never stops the application, it just means no AI.</summary>
+    /// <summary>The AI provider chosen by <c>Ai__Provider</c> (ADR-007); no provider and no key just means no AI; an explicit <c>Anthropic</c> without a key stops startup.</summary>
     private static void AddAi(this IServiceCollection services, IConfiguration config)
     {
         var ai = config.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions();
         if (ai.DailyCallLimit < 0 || ai.TimeoutSeconds < 1)
             throw new InvalidOperationException("Ai__DailyCallLimit must be at least 0 and Ai__TimeoutSeconds at least 1.");
-        IAiProvider provider = ai.EffectiveProvider.ToLowerInvariant() switch
-        {
-            "none" => new NoAiProvider(),
-            "fake" => new FakeAiProvider(),
-            "anthropic" => throw new InvalidOperationException("Ai__Provider=Anthropic is not available yet (T027)."),
-            _ => throw new InvalidOperationException("Ai__Provider must be None, Fake or Anthropic."),
-        };
+        ai.ApiKey = ai.ApiKey?.Trim(); // a pasted secret often ends in a newline, which is not a valid header value
+        var name = ai.EffectiveProvider.ToLowerInvariant();
+        if (name is not ("none" or "fake" or "anthropic"))
+            throw new InvalidOperationException("Ai__Provider must be None, Fake or Anthropic.");
+        if (name == "anthropic" && string.IsNullOrWhiteSpace(ai.ApiKey))
+            throw new InvalidOperationException("Ai__Provider=Anthropic needs Ai__ApiKey.");
+        if (name == "anthropic" && ai.ApiKey!.Any(char.IsControl))
+            throw new InvalidOperationException("Ai__ApiKey contains control characters.");
+        if (name == "anthropic" && string.IsNullOrWhiteSpace(ai.Model))
+            throw new InvalidOperationException("Ai__Model must not be empty.");
         services.AddSingleton(ai);
-        services.AddSingleton(provider);
+        services.AddSingleton<IAiProvider>(sp => name switch
+        {
+            "fake" => new FakeAiProvider(),
+            "anthropic" => new AnthropicAiProvider(sp.GetRequiredService<IHttpClientFactory>(), ai),
+            _ => new NoAiProvider(),
+        });
+        // Fixed host, no redirects (the key header must not follow one), no proxy; one attempt only: a retry is a second paid call.
+        services.AddHttpClient(AnthropicAiProvider.ClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false, UseProxy = false, UseCookies = false });
         services.AddSingleton<IAiLedger, AiLedger>();
         services.AddScoped<AiEnricher>();
     }

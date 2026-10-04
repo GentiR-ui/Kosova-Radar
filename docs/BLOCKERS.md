@@ -12,3 +12,9 @@
 - Evidence: test expects badge "Late"; REQ-004 says "Overdue". test-author confirmed the test is wrong.
 - Human: fix the test and run scripts/approve-spec.sh --amend "REQ-004 badge text".
 -->
+
+## B-001 — Live Anthropic smoke test not run (T027)
+- Needed: `Ai__ApiKey` (Anthropic API key) in the environment where tests run, and the production setting `Ai__Provider=Anthropic` (or just the key).
+- Done meanwhile: `AnthropicAiProvider` is complete and covered by stubbed-HTTP unit tests (success, 429, 5xx, invalid JSON, refusal, schema violations). `AnthropicAiProviderTests.Live_smoke_test_against_the_real_API` is skipped without the key.
+- Human: run `Ai__ApiKey=... dotnet test tests/App.UnitTests --filter Live_smoke` once; confirm it passes (the request shape, i.e. `output_config.format` on the configured model, is only verified against the real API there). Then remove this entry.
+- Also check on the first live run: the request shape (`output_config.format` json_schema with `anyOf` nullables, the category `anyOf` with an enum) is accepted by the configured model, and the first call per schema (one per item kind, categories included) pays a grammar-compile latency that may exceed `Ai__TimeoutSeconds` (15) once; a timeout there only costs one `AiUnavailable`.

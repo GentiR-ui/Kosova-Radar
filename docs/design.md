@@ -73,7 +73,7 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 | `Ingestion__AllowFixtureSources` | false | true | true |
 | `Ingestion__PerHostDelaySeconds` | 10 | 10 | 0 |
 | `Ingestion__HttpRetries` / `Ingestion__HttpTimeoutSeconds` | 2 / 20 | 2 / 20 | 0 / 5 |
-| `Ai__Provider` | `None` (`Anthropic` when `Ai__ApiKey` set) | `Fake` | `Fake` |
+| `Ai__Provider` | `None` (`Anthropic` when `Ai__ApiKey` set; explicit `Anthropic` without a key stops startup) | `Fake` | `Fake` |
 | `Ai__Model` | `claude-haiku-4-5-20251001` | — | — |
 | `Ai__DailyCallLimit` | 500 | 100000 | 100000 |
 | `Ai__ApiKey` / `Ai__TimeoutSeconds` | — / 15 | — / 15 | — / 15 |
