@@ -48,7 +48,11 @@ public class DashboardTests(AppFactory app)
             var city = db.Cities.First();
             Source NewSource(int failures, bool active) => new()
             {
-                Name = $"Burim {Guid.NewGuid():N}"[..14], CreatedAt = now, IsActive = active, LastFetchedAt = now, ConsecutiveFailures = failures,
+                Name = $"Burim {Guid.NewGuid():N}"[..14],
+                CreatedAt = now,
+                IsActive = active,
+                LastFetchedAt = now,
+                ConsecutiveFailures = failures,
             };
             var healthy = NewSource(0, true);
             var degraded = NewSource(1, true);
@@ -58,8 +62,15 @@ public class DashboardTests(AppFactory app)
 
             Candidate NewCandidate(CandidateStatus status, ValidationOutcome outcome) => new()
             {
-                SourceId = healthy.Id, Kind = ItemKind.Event, SourceUrl = "https://example.test/x", Evidence = "{}",
-                Fingerprint = Guid.NewGuid().ToString("N"), ContentHash = "h", FetchedAt = now, Status = status, Validation = outcome,
+                SourceId = healthy.Id,
+                Kind = ItemKind.Event,
+                SourceUrl = "https://example.test/x",
+                Evidence = "{}",
+                Fingerprint = Guid.NewGuid().ToString("N"),
+                ContentHash = "h",
+                FetchedAt = now,
+                Status = status,
+                Validation = outcome,
                 Fields = new CandidateFields { Title = "T" },
             };
             db.Candidates.AddRange(
@@ -69,8 +80,18 @@ public class DashboardTests(AppFactory app)
 
             Event NewEvent(ItemStatus status, DateTimeOffset startsAt, DateTimeOffset updatedAt) => new()
             {
-                Title = "E", CityId = city.Id, StartsAt = startsAt, Status = status, PrimarySourceId = healthy.Id, SourceUrl = "https://example.test/x",
-                Fingerprint = Guid.NewGuid().ToString("N"), SearchText = "e", LastVerifiedAt = now, PublishedAt = now, CreatedAt = now, UpdatedAt = updatedAt,
+                Title = "E",
+                CityId = city.Id,
+                StartsAt = startsAt,
+                Status = status,
+                PrimarySourceId = healthy.Id,
+                SourceUrl = "https://example.test/x",
+                Fingerprint = Guid.NewGuid().ToString("N"),
+                SearchText = "e",
+                LastVerifiedAt = now,
+                PublishedAt = now,
+                CreatedAt = now,
+                UpdatedAt = updatedAt,
             };
             db.Events.AddRange(
                 NewEvent(ItemStatus.Published, now.AddDays(3), now),
@@ -82,13 +103,31 @@ public class DashboardTests(AppFactory app)
             db.Deals.AddRange(
                 new Deal
                 {
-                    Title = "D", Status = ItemStatus.Published, ValidUntil = now.AddDays(2), PrimarySourceId = healthy.Id, SourceUrl = "https://example.test/x",
-                    Fingerprint = Guid.NewGuid().ToString("N"), SearchText = "d", LastVerifiedAt = now, PublishedAt = now, CreatedAt = now, UpdatedAt = now,
+                    Title = "D",
+                    Status = ItemStatus.Published,
+                    ValidUntil = now.AddDays(2),
+                    PrimarySourceId = healthy.Id,
+                    SourceUrl = "https://example.test/x",
+                    Fingerprint = Guid.NewGuid().ToString("N"),
+                    SearchText = "d",
+                    LastVerifiedAt = now,
+                    PublishedAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now,
                 },
                 new Deal
                 {
-                    Title = "D2", Status = ItemStatus.Expired, ValidUntil = now.AddDays(-2), PrimarySourceId = healthy.Id, SourceUrl = "https://example.test/x",
-                    Fingerprint = Guid.NewGuid().ToString("N"), SearchText = "d", LastVerifiedAt = now, PublishedAt = now, CreatedAt = now, UpdatedAt = now.AddHours(-2),
+                    Title = "D2",
+                    Status = ItemStatus.Expired,
+                    ValidUntil = now.AddDays(-2),
+                    PrimarySourceId = healthy.Id,
+                    SourceUrl = "https://example.test/x",
+                    Fingerprint = Guid.NewGuid().ToString("N"),
+                    SearchText = "d",
+                    LastVerifiedAt = now,
+                    PublishedAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now.AddHours(-2),
                 });
 
             AiCall Call(bool ok, DateTimeOffset at) => new() { CandidateId = Guid.NewGuid(), Provider = "Fake", Model = "m", Success = ok, StartedAt = at };
