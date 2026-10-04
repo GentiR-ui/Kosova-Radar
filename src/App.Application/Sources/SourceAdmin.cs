@@ -16,12 +16,21 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
     public async Task<List<SourceDto>> ListAsync(CancellationToken ct) =>
         // The list never shows the payload (up to 1 MB per source), so it is not loaded.
         (await db.Sources.AsNoTracking().Select(s => new Source
-            {
-                Id = s.Id, Name = s.Name, Type = s.Type, BaseUrl = s.BaseUrl, DefaultKind = s.DefaultKind, IsActive = s.IsActive,
-                IsUnreliable = s.IsUnreliable, PollIntervalMinutes = s.PollIntervalMinutes, LastFetchedAt = s.LastFetchedAt,
-                LastSuccessAt = s.LastSuccessAt, LastErrorAt = s.LastErrorAt, LastError = s.LastError,
-                ConsecutiveFailures = s.ConsecutiveFailures,
-            }).ToListAsync(ct))
+        {
+            Id = s.Id,
+            Name = s.Name,
+            Type = s.Type,
+            BaseUrl = s.BaseUrl,
+            DefaultKind = s.DefaultKind,
+            IsActive = s.IsActive,
+            IsUnreliable = s.IsUnreliable,
+            PollIntervalMinutes = s.PollIntervalMinutes,
+            LastFetchedAt = s.LastFetchedAt,
+            LastSuccessAt = s.LastSuccessAt,
+            LastErrorAt = s.LastErrorAt,
+            LastError = s.LastError,
+            ConsecutiveFailures = s.ConsecutiveFailures,
+        }).ToListAsync(ct))
         .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.Id)
         .Select(SourceDto.From).ToList();
 

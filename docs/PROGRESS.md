@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · fix: full verify
+- Failed in the full run: `dotnet-format` (CRLF working copies from `core.autocrlf=true`, plus migration charset/namespace style), `acceptance-api` (146) and `e2e-acceptance` (36 on public/admin UI). Fixed format with `dotnet format App.slnx --exclude tests/App.AcceptanceTests` and `.gitattributes` (`*.cs`, `*.csproj`, `*.props`, `*.slnx` eol=lf) so it does not come back on Windows.
+- The acceptance failures are for features not built yet (AI enrichment, approve/publish, public API, web UI: later tasks), not regressions; left untouched.
+- Verify: quick PASS. Review: skipped (formatting only).
+- Next: T018.
+
 ## 2026-10-04 · T017 done
 - Built: `CandidateValidator` (Domain/Content, pure; `now` = fetch time) with issue codes and severities per design §4: MissingTitle, InvalidUrl, Expired (exclusive effective end), MissingStartsAt, InvalidDateRange, UnknownCity (event without city, or stated city that did not resolve), MissingPrice, PriceInconsistent, ConflictingData (> 1 point), SourceUnreliable, InvalidImageUrl (info, image dropped). Outcome rejected > review > valid; status Rejected (no reviewer) or Pending. `IngestionService` validates new candidates and re-validates open ones on in-place update (auto-rejected may become pending again). `discountPercent` was already computed in the DTO.
 - Tests: unit +29 (every rule and boundary), integration +1 (auto-rejected candidate becomes pending after the source fixes it). Acceptance: REQ-027..039 and REQ-060 green (63/64); the remaining one (`Discount_is_null_without_both_prices_and_shown_on_the_published_deal`) needs approve + public deal detail (T019).

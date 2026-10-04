@@ -5,3 +5,8 @@ docs/requirements.md text eol=lf
 tests/App.AcceptanceTests/** text eol=lf
 web/e2e/acceptance/** text eol=lf
 .factory/spec-lock/** text eol=lf
+# dotnet format enforces LF (.editorconfig); autocrlf would reintroduce CRLF in the working copy.
+*.cs text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.slnx text eol=lf

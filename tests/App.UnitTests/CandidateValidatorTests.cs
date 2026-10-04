@@ -9,12 +9,19 @@ public class CandidateValidatorTests
 
     private static CandidateFields GoodEvent() => new()
     {
-        Title = "Koncert", Url = "https://example.com/e", CitySlug = "prishtine", CityText = "Prishtinë", StartsAt = Now.AddDays(1),
+        Title = "Koncert",
+        Url = "https://example.com/e",
+        CitySlug = "prishtine",
+        CityText = "Prishtinë",
+        StartsAt = Now.AddDays(1),
     };
 
     private static CandidateFields GoodDeal() => new()
     {
-        Title = "Ofertë", Url = "https://example.com/d", OldPrice = 100, NewPrice = 80,
+        Title = "Ofertë",
+        Url = "https://example.com/d",
+        OldPrice = 100,
+        NewPrice = 80,
     };
 
     private static string[] Codes(ValidationResult r) => r.Issues.Select(i => i.Code).ToArray();

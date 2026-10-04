@@ -29,8 +29,13 @@ public class CandidateReadTests(AppFactory app)
         db.Sources.Add(source);
         var candidate = new Candidate
         {
-            SourceId = source.Id, Kind = ItemKind.Event, SourceUrl = "https://example.test/x", Evidence = "{\"raw\":true}",
-            Fingerprint = Guid.NewGuid().ToString("N"), ContentHash = "h", FetchedAt = DateTimeOffset.UtcNow,
+            SourceId = source.Id,
+            Kind = ItemKind.Event,
+            SourceUrl = "https://example.test/x",
+            Evidence = "{\"raw\":true}",
+            Fingerprint = Guid.NewGuid().ToString("N"),
+            ContentHash = "h",
+            FetchedAt = DateTimeOffset.UtcNow,
         };
         configure(candidate);
         db.Candidates.Add(candidate);
@@ -102,8 +107,13 @@ public class CandidateReadTests(AppFactory app)
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Candidates.Add(new Candidate
             {
-                SourceId = source, Kind = ItemKind.Deal, SourceUrl = "https://example.test/y", Evidence = "e",
-                Fingerprint = Guid.NewGuid().ToString("N"), ContentHash = "h", FetchedAt = DateTimeOffset.UtcNow,
+                SourceId = source,
+                Kind = ItemKind.Deal,
+                SourceUrl = "https://example.test/y",
+                Evidence = "e",
+                Fingerprint = Guid.NewGuid().ToString("N"),
+                ContentHash = "h",
+                FetchedAt = DateTimeOffset.UtcNow,
             });
             await db.SaveChangesAsync();
         }

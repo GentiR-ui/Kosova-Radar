@@ -51,8 +51,10 @@ public class BootstrapAdminTests(AppFactory app)
             var user = Assert.Single(await db.Users.ToListAsync());
             Assert.Equal("first@test.local", user.Email);
             Assert.True(user.IsActive);
-            var role = await (from ur in db.UserRoles join r in db.Roles on ur.RoleId equals r.Id
-                              where ur.UserId == user.Id select r.Name).SingleAsync();
+            var role = await (from ur in db.UserRoles
+                              join r in db.Roles on ur.RoleId equals r.Id
+                              where ur.UserId == user.Id
+                              select r.Name).SingleAsync();
             Assert.Equal("Admin", role);
             await db.Database.EnsureDeletedAsync();
         }

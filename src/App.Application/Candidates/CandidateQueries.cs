@@ -52,7 +52,15 @@ public static class CandidateQueries
             // Evidence (up to 64 KB) is not needed in the list.
             .Select(c => new
             {
-                c.Id, c.Kind, c.Fields, c.Status, c.Validation, c.Issues, c.SourceId, c.FetchedAt, c.IsSynthetic,
+                c.Id,
+                c.Kind,
+                c.Fields,
+                c.Status,
+                c.Validation,
+                c.Issues,
+                c.SourceId,
+                c.FetchedAt,
+                c.IsSynthetic,
                 SourceName = db.Sources.Where(s => s.Id == c.SourceId).Select(s => s.Name).Single(),
             })
             .ToListAsync(ct);
