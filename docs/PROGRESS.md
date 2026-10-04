@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T018 done
+- Built: `PUT /api/admin/candidates/{id}` (edit, re-validated with `IClock`, source evidence/URL untouched, kind-foreign fields cleared, citySlug/categorySlug must exist, categories of the candidate's kind only) and `POST .../reject` (reason 1-500 after trim, stores reviewer); `CandidateDecisions` service + `CandidateRequestValidator`; open = Pending or auto-rejected, anything else 409 (also on xmin conflict); audit `candidate.edit`/`candidate.reject` in the same save; 256 KB cap on PUT.
+- Tests: unit +25 (request rules, Apply), integration +9 (audit before/after, no audit on 400, other-kind category, reject of auto-rejected then 409, bad reasons, 404/401, deal clears event fields). Acceptance: REQ-064, 065, 074 green; 3 REQ-067 tests fail only at `approve` (T019).
+- Verify: quick PASS. Reviewer: 0 HIGH/MEDIUM; LOWs applied (409 comment, size limit). Left: edit recomputes only validator-owned issues, so T026/T028 must re-add AiUnavailable/PossibleDuplicate/ChangedSinceApproval on edit too (also in `CandidateDecisions.EditAsync`); the "open candidate" rule exists in IngestionService and CandidateDecisions (extract if a third use appears).
+- Next: T019.
+
 ## 2026-10-04 · fix: full verify
 - Failed in the full run: `dotnet-format` (CRLF working copies from `core.autocrlf=true`, plus migration charset/namespace style), `acceptance-api` (146) and `e2e-acceptance` (36 on public/admin UI). Fixed format with `dotnet format App.slnx --exclude tests/App.AcceptanceTests` and `.gitattributes` (`*.cs`, `*.csproj`, `*.props`, `*.slnx` eol=lf) so it does not come back on Windows.
 - The acceptance failures are for features not built yet (AI enrichment, approve/publish, public API, web UI: later tasks), not regressions; left untouched.

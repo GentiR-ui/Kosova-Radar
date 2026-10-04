@@ -1,5 +1,6 @@
 using App.Application.Abstractions;
 using App.Application.Audit;
+using App.Application.Candidates;
 using App.Application.Ingestion;
 using App.Application.Sources;
 using App.Infrastructure.Audit;
@@ -53,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<UserAdmin>();
         services.AddSingleton(config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions());
         services.AddScoped<SourceAdmin>();
+        services.AddScoped<CandidateDecisions>();
         services.AddSingleton<SourceRunLock>();
         services.AddScoped<ISourceAdapter, FixtureSourceAdapter>();
         services.AddScoped<IngestionService>();

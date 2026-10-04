@@ -3,6 +3,7 @@ using App.Application.Auth;
 using App.Application.Candidates;
 using App.Application.Common;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace App.Api.Endpoints;
 
@@ -14,6 +15,8 @@ public static class CandidateEndpoints
         g.MapGet("/", List);
         // A malformed id is a 404 (design.md §5), so the id is bound as a string.
         g.MapGet("/{id}", Get);
+        g.MapPut("/{id}", Edit).WithMetadata(new RequestSizeLimitAttribute(256 * 1024));
+        g.MapPost("/{id}/reject", Reject);
         return app;
     }
 
@@ -33,4 +36,20 @@ public static class CandidateEndpoints
         Guid.TryParse(id, out var guid) && await CandidateQueries.GetAsync(db, guid, ct) is { } c
             ? TypedResults.Ok(c)
             : TypedResults.NotFound();
+
+    private static async Task<Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem>> Edit(
+        string id, CandidateFieldsRequest? body, CandidateDecisions decisions, CancellationToken ct) =>
+        ToResult(Guid.TryParse(id, out var guid) ? await decisions.EditAsync(guid, body, ct) : new(DecisionStatus.NotFound));
+
+    private static async Task<Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem>> Reject(
+        string id, RejectRequest? body, CandidateDecisions decisions, CancellationToken ct) =>
+        ToResult(Guid.TryParse(id, out var guid) ? await decisions.RejectAsync(guid, body, ct) : new(DecisionStatus.NotFound));
+
+    private static Results<Ok<CandidateDto>, NotFound, Conflict, ValidationProblem> ToResult(DecisionResult r) => r.Status switch
+    {
+        DecisionStatus.NotFound => TypedResults.NotFound(),
+        DecisionStatus.Conflict => TypedResults.Conflict(),
+        DecisionStatus.Invalid => TypedResults.ValidationProblem(r.Errors!.ToDictionary(e => e.Key, e => e.Value)),
+        _ => TypedResults.Ok(r.Candidate!),
+    };
 }
