@@ -37,8 +37,14 @@ public class DuplicateAndChangeTests(AppFactory app)
 
     private static object SourceBody(string payload) => new
     {
-        name = $"Burim {Token()}", type = "fixture", baseUrl = (string?)null, fixturePayload = payload,
-        defaultKind = "event", pollIntervalMinutes = 1440, isActive = false, isUnreliable = false,
+        name = $"Burim {Token()}",
+        type = "fixture",
+        baseUrl = (string?)null,
+        fixturePayload = payload,
+        defaultKind = "event",
+        pollIntervalMinutes = 1440,
+        isActive = false,
+        isUnreliable = false,
     };
 
     private async Task<Guid> CreateSourceAsync(HttpClient admin, string payload) =>
@@ -67,7 +73,11 @@ public class DuplicateAndChangeTests(AppFactory app)
 
     private static object EditBody(string title, string description, DateTimeOffset start) => new
     {
-        title, description, url = "https://example.test/edited", citySlug = "prizren", startsAt = start,
+        title,
+        description,
+        url = "https://example.test/edited",
+        citySlug = "prizren",
+        startsAt = start,
     };
 
     private static bool IsLinked(JsonElement c) => c.GetProperty("matchedItemId").ValueKind == JsonValueKind.String;
@@ -190,7 +200,7 @@ public class DuplicateAndChangeTests(AppFactory app)
         var run = await RefetchAsync(admin, p.SourceId, Payload(deal));
 
         Assert.Equal(1, run.GetProperty("created").GetInt32());
-        Assert.Empty((await CandidatesAsync(admin, p.SourceId)).Where(c => c.GetProperty("kind").GetString() == "deal").Where(IsLinked));
+        Assert.DoesNotContain((await CandidatesAsync(admin, p.SourceId)).Where(c => c.GetProperty("kind").GetString() == "deal"), IsLinked);
     }
 
     [Fact]

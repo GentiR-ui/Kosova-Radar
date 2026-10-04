@@ -139,7 +139,11 @@ public class PublishedItemTests(AppFactory app)
 
         var ok = await admin.PutAsJsonAsync($"/api/admin/events/{id}", new
         {
-            title = "Koncert i ri", url = "https://example.test/y", citySlug = "peje", venueName = "Salla e Re", startsAt = DateTimeOffset.UtcNow.AddDays(3),
+            title = "Koncert i ri",
+            url = "https://example.test/y",
+            citySlug = "peje",
+            venueName = "Salla e Re",
+            startsAt = DateTimeOffset.UtcNow.AddDays(3),
         });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
         var body = await JsonAsync(ok);

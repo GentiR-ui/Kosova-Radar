@@ -190,14 +190,37 @@ public sealed class PublishedItems(IAppDbContext db, IAuditWriter audit, IClock 
 
     private static object Snapshot(Event e) => new
     {
-        status = AdminStatus(e.Status), e.Title, e.Description, e.StartsAt, e.EndsAt, e.CityId, e.VenueId, e.CategoryId,
-        e.PriceText, e.PriceAmount, e.Currency, e.ImageUrl, url = e.SourceUrl,
+        status = AdminStatus(e.Status),
+        e.Title,
+        e.Description,
+        e.StartsAt,
+        e.EndsAt,
+        e.CityId,
+        e.VenueId,
+        e.CategoryId,
+        e.PriceText,
+        e.PriceAmount,
+        e.Currency,
+        e.ImageUrl,
+        url = e.SourceUrl,
     };
 
     private static object Snapshot(Deal d) => new
     {
-        status = AdminStatus(d.Status), d.Title, d.Description, d.MerchantName, d.CityId, d.CategoryId, d.OldPrice, d.NewPrice,
-        d.PriceText, d.Currency, d.ValidFrom, d.ValidUntil, d.ImageUrl, url = d.SourceUrl,
+        status = AdminStatus(d.Status),
+        d.Title,
+        d.Description,
+        d.MerchantName,
+        d.CityId,
+        d.CategoryId,
+        d.OldPrice,
+        d.NewPrice,
+        d.PriceText,
+        d.Currency,
+        d.ValidFrom,
+        d.ValidUntil,
+        d.ImageUrl,
+        url = d.SourceUrl,
     };
 
     private sealed record Row(
