@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { renderRoutes, stubFetch } from '../../../test/render'
 import CandidatePage from './CandidatePage'
 import ReviewQueuePage from './ReviewQueuePage'
@@ -147,6 +147,86 @@ describe('CandidatePage', () => {
     await screen.findByRole('heading', { level: 1, name: 'Koncert' })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(calls).toContain('POST /api/admin/candidates/c1/reject')
+  })
+
+  it('saves edited fields (Pristina time sent as an instant) and then allows approving', async () => {
+    const bodies: unknown[] = []
+    stubFetch({
+      ...reference,
+      'GET /api/admin/candidates/c1': [200, candidate],
+      'PUT /api/admin/candidates/c1': [200, { ...candidate, fields: { ...fields, title: 'Koncert i ri' } }],
+    })
+    const real = globalThis.fetch
+    vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') bodies.push(JSON.parse(String(init.body)))
+      return real(input, init)
+    })
+    renderRoutes(routes, '/admin/items/c1')
+    const title = await screen.findByLabelText('Titulli')
+    const saveBtn = screen.getByRole('button', { name: 'Ruaj ndryshimet' })
+    expect(saveBtn).toBeDisabled()
+    await userEvent.clear(title)
+    await userEvent.type(title, 'Koncert i ri')
+    expect(screen.getByRole('button', { name: 'Aprovo' })).toBeDisabled()
+    await userEvent.click(saveBtn)
+    expect(await screen.findByText('Ndryshimet u ruajtën.')).toBeInTheDocument()
+    expect(bodies[0]).toMatchObject({ title: 'Koncert i ri', startsAt: fields.startsAt, endsAt: null, imageUrl: null })
+    expect(bodies[0]).not.toHaveProperty('cityText')
+    expect(screen.getByRole('button', { name: 'Aprovo' })).toBeEnabled()
+  })
+
+  it('shows a server field error next to the field', async () => {
+    stubFetch({
+      ...reference,
+      'GET /api/admin/candidates/c1': [200, candidate],
+      'PUT /api/admin/candidates/c1': [400, { status: 400, errors: { citySlug: ['Unknown city.'] } }],
+    })
+    renderRoutes(routes, '/admin/items/c1')
+    const title = await screen.findByLabelText('Titulli')
+    await userEvent.type(title, '!')
+    await userEvent.click(screen.getByRole('button', { name: 'Ruaj ndryshimet' }))
+    expect(await screen.findByText('Unknown city.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Qyteti')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('merges into a found item', async () => {
+    const calls = stubFetch({
+      ...reference,
+      'GET /api/admin/candidates/c1': [200, candidate],
+      'GET /api/admin/items?kind=event&status=published&pageSize=10': [
+        200,
+        page([{ kind: 'event', id: 'e9', title: 'Koncert ekzistues', cityName: 'Prishtinë', date: null, sourceName: 'B' }]),
+      ],
+      'POST /api/admin/candidates/c1/merge': [200, { ...candidate, status: 'merged' }],
+    })
+    renderRoutes(routes, '/admin/items/c1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Bashko' }))
+    const dialog = screen.getByRole('dialog')
+    await userEvent.click(await within(dialog).findByRole('button', { name: /Bashko me këtë/ }))
+    await screen.findByText('Kandidati u bashkua.')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(calls).toContain('POST /api/admin/candidates/c1/merge')
+  })
+
+  it('keeps a human-rejected candidate read-only', async () => {
+    stubFetch({
+      ...reference,
+      'GET /api/admin/candidates/c1': [200, { ...candidate, status: 'rejected', rejectionReason: 'Jo publike' }],
+    })
+    renderRoutes(routes, '/admin/items/c1')
+    expect(await screen.findByLabelText('Titulli')).toBeDisabled()
+  })
+
+  it('shows a message when a 400 names no visible field', async () => {
+    stubFetch({
+      ...reference,
+      'GET /api/admin/candidates/c1': [200, candidate],
+      'PUT /api/admin/candidates/c1': [400, { status: 400, errors: { imageUrl: ['bad'] } }],
+    })
+    renderRoutes(routes, '/admin/items/c1')
+    await userEvent.type(await screen.findByLabelText('Titulli'), '!')
+    await userEvent.click(screen.getByRole('button', { name: 'Ruaj ndryshimet' }))
+    expect(await screen.findByText('Ruajtja dështoi. Provo sërish.')).toBeInTheDocument()
   })
 
   it('shows not-found for an unknown candidate', async () => {

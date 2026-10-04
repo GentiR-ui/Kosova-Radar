@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T037 done
+- Built: "Ruaj ndryshimet" on the candidate page (PUT, only auto-rejected/pending editable; untouched fields keep their saved value, edited datetimes converted Pristina -> instant via `fromPristinaInput`; imageUrl/stated discount pass through; field errors from problem details next to the inputs with `aria-invalid`, generic message for errors without a visible field; "Aprovo" disabled while the form is unsaved) and `MergeDialog` ("Bashko": suggested duplicate + search of published items of the same kind, loading/error/empty states, 400/409 messages).
+- Tests: component tests (save body, field error, hidden-field error, human-rejected read-only, merge), `fromPristinaInput` unit test; Playwright flow `web/e2e/flows/review-save-merge.spec.ts` (keyboard-only) written but not run here (needs the e2e servers; covered by the full verify).
+- Verify: quick PASS. Reviewer: 7 MEDIUM fixed. LOWs left: no focus trap/focus return in the merge and reject dialogs, Escape/close while a merge is pending, 409 on save does not refetch, no unsaved-changes guard, `CandidatePage.tsx` is large (extract the form), DST overlap/gap hour tests for `fromPristinaInput`.
+- Next: T038.
+
 ## 2026-10-04 · T036 done
 - Built: `/admin/review` (`ReviewQueuePage`: filters Statusi/Validimi/Lloji/Burimi in the query string, default "Në pritje", table with headers, validation badge + status cells, `ListShell` states) and `/admin/items/:id` (`CandidatePage`: evidence region with "Hap burimin" (http(s) only), fields region side by side ≥ 1024 px, issue list, "Aprovo" → "U publikua" + public link, `RejectDialog` with "Arsyeja"/"Konfirmo refuzimin"). New `GET /api/admin/candidates/sources` (Reviewer) for the source filter. ADR-031.
 - Tests: component tests (queue default/all, candidate page, approve, 400 labels, reject, 404); integration +1 (source options as reviewer, 401). Acceptance REQ-110..112 green on desktop + mobile.

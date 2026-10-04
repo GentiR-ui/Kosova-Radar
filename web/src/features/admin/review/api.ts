@@ -104,7 +104,7 @@ export function useCandidate(id: string | undefined) {
   })
 }
 
-function useDecision<TBody, TResult>(id: string, action: 'approve' | 'reject') {
+function useDecision<TBody, TResult>(id: string, action: 'approve' | 'reject' | 'merge') {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (body: TBody) =>
@@ -123,3 +123,39 @@ function useDecision<TBody, TResult>(id: string, action: 'approve' | 'reject') {
 export const useApprove = (id: string) =>
   useDecision<undefined, { kind: Kind; itemId: string }>(id, 'approve')
 export const useReject = (id: string) => useDecision<{ reason: string }, CandidateDto>(id, 'reject')
+
+export type FieldsRequest = Omit<CandidateFields, 'cityText' | 'categoryText' | 'discountPercent'>
+
+export function useSaveFields(id: string) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: FieldsRequest) =>
+      api<CandidateDto>(`/api/admin/candidates/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+    onSuccess: (saved) => {
+      client.setQueryData(['admin', 'candidate', id], saved)
+      void client.invalidateQueries({ queryKey: ['admin', 'candidates'] })
+    },
+  })
+}
+
+export const useMerge = (id: string) => useDecision<{ targetId: string }, CandidateDto>(id, 'merge')
+
+export interface AdminItemDto {
+  kind: Kind
+  id: string
+  title: string
+  cityName: string | null
+  date: string | null
+  sourceName: string
+}
+
+export function useMergeTargets(kind: Kind, search: string) {
+  return useQuery({
+    queryKey: ['admin', 'items', 'merge', kind, search],
+    queryFn: () => {
+      const q = new URLSearchParams({ kind, status: 'published', pageSize: '10' })
+      if (search) q.set('search', search)
+      return api<Page<AdminItemDto>>(`/api/admin/items?${q}`)
+    },
+  })
+}

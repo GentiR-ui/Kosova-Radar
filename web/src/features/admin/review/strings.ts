@@ -34,6 +34,10 @@ export const r = {
     decided: (status: string) => `Statusi: ${status}`,
     rejectionReason: 'Arsyeja e refuzimit',
     notFound: 'Kandidati nuk u gjet',
+    saved: 'Ndryshimet u ruajtën.',
+    saveFailed: 'Ruajtja dështoi. Provo sërish.',
+    unsaved: 'Ruani ndryshimet para aprovimit.',
+    merged: 'Kandidati u bashkua.',
   },
   fields: {
     title: 'Titulli',
@@ -61,6 +65,17 @@ export const r = {
     citySlug: 'Qyteti',
     startsAt: 'Fillon më',
     newPrice: 'Çmimi i ri',
+  },
+  mergeDialog: {
+    title: 'Bashko me artikull ekzistues',
+    suggested: 'Dublikati i sugjeruar',
+    search: 'Kërko artikullin',
+    results: 'Rezultatet',
+    confirm: 'Bashko me këtë',
+    cancel: 'Anulo',
+    none: 'Nuk u gjet asnjë rezultat',
+    invalid: 'Ky artikull nuk pranohet për bashkim.',
+    failed: 'Bashkimi dështoi. Provo sërish.',
   },
   rejectDialog: {
     reason: 'Arsyeja',

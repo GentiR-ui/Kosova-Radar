@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDateTime, pristinaToday } from './format'
+import { formatDate, formatDateTime, fromPristinaInput, pristinaToday } from './format'
 
 describe('Pristina time', () => {
   it('formats summer (UTC+2) and winter (UTC+1) times', () => {
@@ -12,5 +12,14 @@ describe('Pristina time', () => {
     expect(pristinaToday(new Date('2026-01-10T23:30:00Z'))).toBe('2026-01-11')
     expect(pristinaToday(new Date('2026-01-10T22:30:00Z'))).toBe('2026-01-10')
     expect(pristinaToday(new Date('2026-07-10T22:30:00Z'))).toBe('2026-07-11')
+  })
+})
+
+describe('fromPristinaInput', () => {
+  it('converts summer, winter and DST-day wall times to instants', () => {
+    expect(fromPristinaInput('2026-07-01T20:00')).toBe('2026-07-01T18:00:00.000Z')
+    expect(fromPristinaInput('2026-01-15T20:00')).toBe('2026-01-15T19:00:00.000Z')
+    expect(fromPristinaInput('2026-03-29T12:00')).toBe('2026-03-29T10:00:00.000Z')
+    expect(fromPristinaInput('')).toBeNull()
   })
 })

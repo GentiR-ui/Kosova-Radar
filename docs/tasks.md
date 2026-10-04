@@ -43,7 +43,7 @@
 - [x] T034 — Public UI: event and deal detail pages, deals list and deal cards with prices/discount, expired banners — owns REQ-101, 103, 106, 107 — DoD: Playwright acceptance green on desktop + mobile
 - [x] T035 — Public UI: `/search` page with kind labels — owns REQ-105 — DoD: Playwright acceptance green on desktop + mobile
 - [x] T036 — Admin UI review (read + decide): review queue with filters/badges/column headers; candidate page with "Evidenca nga burimi" and "Fushat e normalizuara" (editable inputs; saving comes in T037), issue list, approve ("U publikua" + public link), reject dialog — owns REQ-110, 111, 112 — DoD: Playwright acceptance green on desktop + mobile
-- [ ] T037 — Admin UI review (save + merge): "Ruaj ndryshimet", field errors from problem details, merge dialog — UI for REQ-065, 066 — DoD: Playwright flow in `web/e2e/flows`; keyboard-only walk-through
+- [x] T037 — Admin UI review (save + merge): "Ruaj ndryshimet", field errors from problem details, merge dialog — UI for REQ-065, 066 — DoD: Playwright flow in `web/e2e/flows`; keyboard-only walk-through
 - [ ] T038 — Admin UI published items: `/admin/published` list with "Ndrysho"/"Skado"/"Tërhiq"; edit page — UI for REQ-069..071 — DoD: Playwright flow in `web/e2e/flows`
 - [ ] T039 — Admin UI sources: list with health badges, add/edit form per type, "Merr tani" with result/409 messages — owns REQ-113 — DoD: Playwright acceptance green on desktop + mobile
 - [ ] T040 — Synthetic fixtures seed: Development-only inactive fixture source with 24 items (cases in design.md §9) fetched once at startup — dev data for REQ-021 — DoD: integration test seeds into an empty DB and the expected issue codes appear; never runs when `Seed__SyntheticFixtures=false`
