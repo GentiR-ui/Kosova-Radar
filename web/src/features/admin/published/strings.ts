@@ -1,0 +1,27 @@
+/** Albanian strings of the published-items screens (ADR-009). */
+export const p = {
+  title: 'Të publikuarat',
+  kind: 'Lloji',
+  status: 'Statusi',
+  all: 'Të gjitha',
+  list: 'Artikujt e publikuar',
+  columns: {
+    title: 'Titulli',
+    kind: 'Lloji',
+    status: 'Statusi',
+    source: 'Burimi',
+    actions: 'Veprimet',
+  },
+  adminStatus: { published: 'Publikuar', expired: 'Skaduar', withdrawn: 'Tërhequr' },
+  edit: 'Ndrysho',
+  expire: 'Skado',
+  withdraw: 'Tërhiq',
+  actionFailed: 'Veprimi dështoi. Provo sërish.',
+  actionConflict: 'Artikulli u ndryshua nga dikush tjetër. Rifreskoni faqen.',
+  back: 'Kthehu te të publikuarat',
+  notFound: 'Artikulli nuk u gjet',
+  saved: 'Ndryshimet u ruajtën.',
+  saveFailed: 'Ruajtja dështoi. Provo sërish.',
+  conflict: 'Artikulli u ndryshua nga dikush tjetër. Rifreskoni faqen.',
+  withdrawnReadOnly: 'Ky artikull është tërhequr dhe nuk mund të ndryshohet.',
+} as const

@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T038 done
+- Built: `/admin/published` (`PublishedPage`: filters Lloji/Statusi in the query string, rows with link "Ndrysho" and buttons "Skado"/"Tërhiq", `ListShell` states, action errors) and `/admin/published/:kind/:id` (`PublishedEditPage`: shared `FieldsForm` extracted from `CandidatePage`, PUT save, field/409/generic errors, 404). ADR-032 ("Ndrysho" is a link; design.md §7 updated).
+- Tests: component tests (list, filters, expire, withdraw, edit event/deal, 409, generic 400); Playwright flow `web/e2e/flows/published-items.spec.ts` written but not run here (needs the e2e servers; covered by the full verify).
+- Verify: quick PASS. Reviewer: 2 MEDIUM (generic-400 test added; one-click "Tërhiq" kept per ADR-032, mention in release notes). LOWs left: 409 does not refetch, no back link on the 404, `PublishedItemDto` duplicates `AdminItemDto`, tests monkeypatch fetch for PUT bodies.
+- Next: T039.
+
 ## 2026-10-04 · T037 done
 - Built: "Ruaj ndryshimet" on the candidate page (PUT, only auto-rejected/pending editable; untouched fields keep their saved value, edited datetimes converted Pristina -> instant via `fromPristinaInput`; imageUrl/stated discount pass through; field errors from problem details next to the inputs with `aria-invalid`, generic message for errors without a visible field; "Aprovo" disabled while the form is unsaved) and `MergeDialog` ("Bashko": suggested duplicate + search of published items of the same kind, loading/error/empty states, 400/409 messages).
 - Tests: component tests (save body, field error, hidden-field error, human-rejected read-only, merge), `fromPristinaInput` unit test; Playwright flow `web/e2e/flows/review-save-merge.spec.ts` (keyboard-only) written but not run here (needs the e2e servers; covered by the full verify).

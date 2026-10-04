@@ -15,6 +15,8 @@ const DashboardPage = lazy(() => import('../features/admin/DashboardPage'))
 const ReviewQueuePage = lazy(() => import('../features/admin/review/ReviewQueuePage'))
 const CandidatePage = lazy(() => import('../features/admin/review/CandidatePage'))
 const UsersPage = lazy(() => import('../features/admin/users/UsersPage'))
+const PublishedPage = lazy(() => import('../features/admin/published/PublishedPage'))
+const PublishedEditPage = lazy(() => import('../features/admin/published/PublishedEditPage'))
 const RequireAdmin = lazy(() =>
   import('../features/admin/AdminLayout').then((m) => ({ default: m.RequireAdmin })),
 )
@@ -48,7 +50,8 @@ export const router = createBrowserRouter([
       { index: true, element: lazyPage(<DashboardPage />) },
       { path: 'review', element: lazyPage(<ReviewQueuePage />) },
       { path: 'items/:id', element: lazyPage(<CandidatePage />) },
-      { path: 'published', element: <PageTitle title={t.admin.nav.published} /> },
+      { path: 'published', element: lazyPage(<PublishedPage />) },
+      { path: 'published/:kind/:id', element: lazyPage(<PublishedEditPage />) },
       { path: 'sources', element: adminOnly(<PageTitle title={t.admin.nav.sources} />) },
       { path: 'users', element: adminOnly(<UsersPage />) },
     ],

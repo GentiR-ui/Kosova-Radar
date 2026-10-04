@@ -190,3 +190,9 @@
 - Context: the queue's "Burimi" filter needs source names, but `/api/admin/sources` is Admin-only and reviewers use the queue (REQ-112 runs as a reviewer).
 - Decision: new `GET /api/admin/candidates/sources` (Reviewer policy) returns `{ id, name }[]`. The candidate page renders the normalized fields inside a disabled `fieldset` until T037 adds saving (otherwise "Aprovo" could publish values different from what the form shows); "Ruaj ndryshimet" and "Bashko" are disabled for the same reason. The "Çmimi" input (`priceAmount`) is shown for events only: deals carry `oldPrice`/`newPrice`, and `priceText` is shown for both.
 - Consequences: T037 must enable the fieldset and the two buttons.
+
+## ADR-032 — Published items UI: "Ndrysho" is a link
+- Date: 2026-10-04 · Status: accepted · Task: T038
+- Context: design.md §7 listed "Ndrysho" among the row buttons, but it only navigates to the edit page.
+- Decision: "Ndrysho" is a link (role `link`); "Skado" and "Tërhiq" stay buttons. design.md §7 updated. "Tërhiq" acts on one click like the API (idempotent, no confirmation step); revisit if mis-taps are reported.
+- Consequences: tests address "Ndrysho" as a link.
