@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T015 done
+- Built: `RadarFeedParser` (Application/Ingestion): MalformedPayload rules, per-item failures (`NotAnObject`, `InvalidKind`, `MissingIdentity`, `InvalidField:<name>`, `TooLarge` by UTF-8 bytes) with index/reason, kind-specific mapping (event vs deal fields, other kind's fields null), nulls kept, blank = unknown, strict ISO-8601 dates with offset, raw evidence via `GetRawText`; `ItemIdentity` (fingerprint = sha256(sourceId|externalId ?? url), content hash over kind + fields + text + evidence); `NormalizedCandidate`/`FeedParseResult`. City/category slugs are NOT resolved here (T016/T017 do it with reference data).
+- Choices (beyond design §6 list): `externalId` > 200 and `url` > 2000 chars fail the item (`InvalidField:*`, DB column limit); wrong-typed field fails the item even if unused for its kind; null/blank payload = MalformedPayload; JSON depth limit 256.
+- Tests: unit +119 (all failure rules, mapping tables, hashes, boundaries). Verify: quick PASS. Reviewer: 2 MEDIUM (lenient date parsing, url length) fixed + LOWs (null payload, depth, UTF-8 test); duplicate fingerprints inside one feed are for T016 to handle.
+- Next: T016.
+
 ## 2026-10-04 · T014 done
 - Built: `Candidate`, `Event`, `Deal`, `Venue`, `ItemSource`, `JobExecution` entities + `CandidateFields`/`Issue`, `ContentRules` (effective end, active, freshness, discount, title similarity), EF configurations (jsonb via System.Text.Json value conversion for `Fields`/`Issues` because EF complex-JSON mapping failed at runtime; `xmin` concurrency tokens; indexes; FKs with Restrict to City/Category/Venue/Source/Candidate), migration `ContentModel`. Polymorphic ids (`ItemSource.ItemId`, `MatchedItemId`, `DuplicateOfId`, `PublishedItemId`) have no FK by design.
 - Tests: unit +18 (boundaries: exactly 48 h, 6 h default end, discount half-up, similarity 0.8), integration +4 (jsonb round trip, xmin conflict on Candidate/Event/Deal, unique venue per city, FK rejects orphans). Migration applies on an empty DB (AppFactory).
