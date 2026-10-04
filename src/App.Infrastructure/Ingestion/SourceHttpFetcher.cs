@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using App.Application.Ingestion;
@@ -17,6 +18,12 @@ public sealed class SourceHttpFetcher(HttpClient http, IngestionOptions options)
     /// <summary>Response limit (design.md §6); applies to the decoded body.</summary>
     public const int MaxBytes = 5 * 1024 * 1024;
 
+    /// <summary>
+    /// Request option set by the fetcher: <see cref="HostThrottleHandler"/> reports how long it is going to wait, so the
+    /// politeness delay is not counted against the deadline.
+    /// </summary>
+    internal static readonly HttpRequestOptionsKey<Action<TimeSpan>> ThrottleWaitKey = new("KosovaRadar.ThrottleWait");
+
     /// <summary>The primary handler of the named client: SSRF guard, no proxy, 5 redirects (design.md §6).</summary>
     public static SocketsHttpHandler CreateHandler() => new()
     {
@@ -34,12 +41,21 @@ public sealed class SourceHttpFetcher(HttpClient http, IngestionOptions options)
     {
         // One deadline for the whole fetch including retries and reading the body (a slow body must not hang a run).
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        deadline.CancelAfter(TimeSpan.FromSeconds(options.HttpTimeoutSeconds));
+        var budget = TimeSpan.FromSeconds(options.HttpTimeoutSeconds);
+        var started = Stopwatch.GetTimestamp();
+        deadline.CancelAfter(budget);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Options.Set(ThrottleWaitKey, wait =>
+        {
+            budget += wait;
+            var remaining = budget - Stopwatch.GetElapsedTime(started);
+            deadline.CancelAfter(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero);
+        });
         try
         {
-            using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
             if (!response.IsSuccessStatusCode)
-                throw new SourceFetchException(RunErrorCodes.HttpStatus, $"The source answered with HTTP status {(int)response.StatusCode}.");
+                throw new SourceFetchException(RunErrorCodes.HttpStatus, $"The source answered with HTTP status {(int)response.StatusCode}.", (int)response.StatusCode);
             return await ReadLimitedAsync(response, deadline.Token);
         }
         catch (Exception e) when (e is OperationCanceledException && !ct.IsCancellationRequested)

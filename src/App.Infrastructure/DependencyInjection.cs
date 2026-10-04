@@ -58,8 +58,9 @@ public static class DependencyInjection
         services.AddScoped<BootstrapAdmin>();
         services.AddScoped<UserAdmin>();
         var ingestion = config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions();
-        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0)
-            throw new InvalidOperationException("Ingestion__HttpTimeoutSeconds must be at least 1 and Ingestion__HttpRetries at least 0.");
+        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0)
+            throw new InvalidOperationException(
+                "Ingestion__HttpTimeoutSeconds must be at least 1, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
         services.AddSingleton(ingestion);
         services.AddScoped<SourceAdmin>();
         services.AddScoped<CandidateDecisions>();
@@ -71,6 +72,10 @@ public static class DependencyInjection
         services.AddScoped<ExpirationRunner>();
         services.AddHostedService<ExpirationJob>();
         services.AddSingleton<SourceRunLock>();
+        services.AddSingleton(sp => new HostThrottle(TimeSpan.FromSeconds(sp.GetRequiredService<IngestionOptions>().PerHostDelaySeconds), TimeProvider.System));
+        services.AddSingleton<RobotsCache>();
+        services.AddTransient<HostThrottleHandler>();
+        services.AddTransient<RobotsChecker>();
         services.AddScoped<ISourceAdapter, FixtureSourceAdapter>();
         services.AddSourceHttpClient(config);
         services.AddScoped<ISourceAdapter, JsonFeedSourceAdapter>();
@@ -85,12 +90,13 @@ public static class DependencyInjection
     private static void AddSourceHttpClient(this IServiceCollection services, IConfiguration config)
     {
         var siteUrl = config["Site:BaseUrl"]?.TrimEnd('/');
-        services.AddHttpClient<SourceHttpFetcher>(SourceHttpFetcher.ClientName, client =>
+        var client = services.AddHttpClient<SourceHttpFetcher>(SourceHttpFetcher.ClientName, http =>
             {
-                client.Timeout = Timeout.InfiniteTimeSpan; // SourceHttpFetcher enforces one deadline for the whole fetch
-                client.DefaultRequestHeaders.UserAgent.TryParseAdd($"KosovaRadarBot/1.0 (+{siteUrl ?? "http://localhost"}/bot)");
+                http.Timeout = Timeout.InfiniteTimeSpan; // SourceHttpFetcher enforces one deadline for the whole fetch
+                http.DefaultRequestHeaders.UserAgent.TryParseAdd($"KosovaRadarBot/1.0 (+{siteUrl ?? "http://localhost"}/bot)");
             })
-            .ConfigurePrimaryHttpMessageHandler(SourceHttpFetcher.CreateHandler)
+            .ConfigurePrimaryHttpMessageHandler(SourceHttpFetcher.CreateHandler);
+        client
             .AddResilienceHandler("sources-retry", (pipeline, context) =>
             {
                 var options = context.ServiceProvider.GetRequiredService<IngestionOptions>();
@@ -104,6 +110,7 @@ public static class DependencyInjection
                     ShouldHandle = args => ValueTask.FromResult(IsTransient(args.Outcome)),
                 });
             });
+        client.AddHttpMessageHandler<HostThrottleHandler>(); // added last = innermost: every attempt, retries included, is spaced
     }
 
     private static bool IsTransient(Outcome<HttpResponseMessage> outcome) =>

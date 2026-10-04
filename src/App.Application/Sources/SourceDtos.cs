@@ -73,4 +73,7 @@ public sealed class IngestionOptions
 
     /// <summary>Total time for one source fetch including retries and reading the body.</summary>
     public int HttpTimeoutSeconds { get; set; } = 20;
+
+    /// <summary>Minimum seconds between two requests to the same host (design.md §6: 10, Testing 0).</summary>
+    public int PerHostDelaySeconds { get; set; } = 10;
 }

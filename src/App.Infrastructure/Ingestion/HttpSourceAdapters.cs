@@ -3,8 +3,8 @@ using App.Domain.Sources;
 
 namespace App.Infrastructure.Ingestion;
 
-/// <summary>Fetches <see cref="Source.BaseUrl"/> over the guarded client; subclasses parse the payload.</summary>
-internal abstract class HttpSourceAdapter(SourceHttpFetcher fetcher) : ISourceAdapter
+/// <summary>Fetches <see cref="Source.BaseUrl"/> over the guarded client after the robots.txt check; subclasses parse the payload.</summary>
+internal abstract class HttpSourceAdapter(SourceHttpFetcher fetcher, RobotsChecker robots) : ISourceAdapter
 {
     protected abstract SourceType Type { get; }
 
@@ -14,6 +14,7 @@ internal abstract class HttpSourceAdapter(SourceHttpFetcher fetcher) : ISourceAd
     {
         if (!Uri.TryCreate(source.BaseUrl, UriKind.Absolute, out var url) || url.Scheme is not ("http" or "https"))
             throw new SourceFetchException(RunErrorCodes.Unreachable, "The source URL is not a valid http(s) address.");
+        await robots.EnsureAllowedAsync(url, ct);
         return new FetchResult(await fetcher.GetStringAsync(url, ct));
     }
 
@@ -21,7 +22,7 @@ internal abstract class HttpSourceAdapter(SourceHttpFetcher fetcher) : ISourceAd
 }
 
 /// <summary>Radar JSON feed over HTTP (design.md §6).</summary>
-internal sealed class JsonFeedSourceAdapter(SourceHttpFetcher fetcher) : HttpSourceAdapter(fetcher)
+internal sealed class JsonFeedSourceAdapter(SourceHttpFetcher fetcher, RobotsChecker robots) : HttpSourceAdapter(fetcher, robots)
 {
     protected override SourceType Type => SourceType.JsonFeed;
 
@@ -33,7 +34,7 @@ internal sealed class JsonFeedSourceAdapter(SourceHttpFetcher fetcher) : HttpSou
 /// RSS/Atom sources are fetched (and guarded) like any other; parsing arrives with T025, until then the run fails
 /// as a malformed payload.
 /// </summary>
-internal sealed class RssSourceAdapter(SourceHttpFetcher fetcher) : HttpSourceAdapter(fetcher)
+internal sealed class RssSourceAdapter(SourceHttpFetcher fetcher, RobotsChecker robots) : HttpSourceAdapter(fetcher, robots)
 {
     protected override SourceType Type => SourceType.Rss;
 

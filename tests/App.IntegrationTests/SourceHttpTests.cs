@@ -25,12 +25,12 @@ public sealed class SourceHttpTests(AppFactory app) : IDisposable
             respond(request).WaitAsync(ct);
     }
 
-    private HttpClient CreateClient(int retries = 0, int timeoutSeconds = 2)
+    private HttpClient CreateClient(int retries = 0, int timeoutSeconds = 2, int perHostDelaySeconds = 0)
     {
         var factory = app.WithWebHostBuilder(b => b.ConfigureServices(services =>
         {
             services.RemoveAll<IngestionOptions>();
-            services.AddSingleton(new IngestionOptions { AllowFixtureSources = true, HttpRetries = retries, HttpTimeoutSeconds = timeoutSeconds });
+            services.AddSingleton(new IngestionOptions { AllowFixtureSources = true, HttpRetries = retries, HttpTimeoutSeconds = timeoutSeconds, PerHostDelaySeconds = perHostDelaySeconds });
             services.AddHttpClient<SourceHttpFetcher>(SourceHttpFetcher.ClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
                 {
@@ -38,7 +38,10 @@ public sealed class SourceHttpTests(AppFactory app) : IDisposable
                     lock (_requests) _requests.Add(path);
                     int attempt;
                     lock (_requests) attempt = _requests.Count(r => r == path);
-                    return _routes[path](attempt);
+                    // Sites without a stated robots.txt answer 404 (allow everything).
+                    return _routes.TryGetValue(path, out var route) ? route(attempt)
+                        : path.EndsWith("/robots.txt") ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound))
+                        : throw new InvalidOperationException($"No route for {path}");
                 }));
         }));
         _factories.Add(factory);
@@ -255,6 +258,111 @@ public sealed class SourceHttpTests(AppFactory app) : IDisposable
         var run = await FetchAsync(admin, url, "rss");
 
         Assert.Equal("HttpStatus", run.GetProperty("errorCode").GetString());
+    }
+
+    private static string Host() => $"https://polite-{Token()}.example";
+
+    private static Task<HttpResponseMessage> Text(string body) =>
+        Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) });
+
+    [Fact]
+    public async Task A_robots_txt_that_disallows_the_feed_fails_the_run_with_RobotsDisallowed_and_the_feed_is_not_requested()
+    {
+        var host = Host();
+        var url = $"{host}/feed.json";
+        _routes[$"{host}/robots.txt"] = _ => Text("User-agent: *\nDisallow: /feed");
+        _routes[url] = _ => Json("{\"items\":[]}");
+        var admin = await LoginAsync(CreateClient());
+
+        var run = await FetchAsync(admin, url);
+
+        Assert.Equal("failed", run.GetProperty("status").GetString());
+        Assert.Equal("RobotsDisallowed", run.GetProperty("errorCode").GetString());
+        Assert.DoesNotContain(url, _requests);
+    }
+
+    [Fact]
+    public async Task A_robots_txt_that_allows_the_feed_lets_the_run_through()
+    {
+        var host = Host();
+        var url = $"{host}/feed.json";
+        _routes[$"{host}/robots.txt"] = _ => Text("User-agent: *\nDisallow: /admin\n");
+        _routes[url] = _ => Json("{\"items\":[]}");
+        var admin = await LoginAsync(CreateClient());
+
+        Assert.Equal("succeeded", (await FetchAsync(admin, url)).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task An_unavailable_robots_txt_fails_the_run_and_is_asked_again_next_time()
+    {
+        var host = Host();
+        var url = $"{host}/feed.json";
+        _routes[$"{host}/robots.txt"] = attempt => attempt == 1
+            ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable))
+            : Text("User-agent: *\nDisallow:\n");
+        _routes[url] = _ => Json("{\"items\":[]}");
+        var admin = await LoginAsync(CreateClient());
+
+        var first = await FetchAsync(admin, url);
+        var second = await FetchAsync(admin, url);
+
+        Assert.Equal("RobotsDisallowed", first.GetProperty("errorCode").GetString());
+        Assert.Equal("succeeded", second.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task A_robots_txt_that_cannot_be_reached_keeps_the_network_error_code()
+    {
+        var host = Host();
+        _routes[$"{host}/robots.txt"] = _ => throw new HttpRequestException("reset");
+        var admin = await LoginAsync(CreateClient());
+
+        var run = await FetchAsync(admin, $"{host}/feed.json");
+
+        Assert.Equal("Unreachable", run.GetProperty("errorCode").GetString());
+    }
+
+    [Fact]
+    public async Task A_robots_txt_that_names_a_blocked_address_is_BlockedAddress_before_anything_else()
+    {
+        var host = Host();
+        _routes[$"{host}/robots.txt"] = _ => throw new HttpRequestException("x", new BlockedAddressException());
+        var admin = await LoginAsync(CreateClient());
+
+        Assert.Equal("BlockedAddress", (await FetchAsync(admin, $"{host}/feed.json")).GetProperty("errorCode").GetString());
+    }
+
+    [Fact]
+    public async Task The_robots_txt_is_fetched_once_per_host_and_reused()
+    {
+        var host = Host();
+        var url = $"{host}/feed.json";
+        _routes[$"{host}/robots.txt"] = _ => Text("User-agent: *\nDisallow:\n");
+        _routes[url] = _ => Json("{\"items\":[]}");
+        var admin = await LoginAsync(CreateClient());
+
+        await FetchAsync(admin, url);
+        await FetchAsync(admin, url);
+
+        Assert.Single(_requests, r => r == $"{host}/robots.txt");
+        Assert.Equal(2, _requests.Count(r => r == url));
+    }
+
+    [Fact]
+    public async Task Requests_to_one_host_are_spaced_and_the_wait_does_not_use_up_the_timeout()
+    {
+        var host = Host();
+        var url = $"{host}/feed.json";
+        _routes[url] = _ => Json("{\"items\":[]}");
+        var admin = await LoginAsync(CreateClient(timeoutSeconds: 1, perHostDelaySeconds: 2));
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var run = await FetchAsync(admin, url); // robots.txt now, the feed 2 s later
+        watch.Stop();
+
+        Assert.Equal("succeeded", run.GetProperty("status").GetString());
+        Assert.True(watch.Elapsed >= TimeSpan.FromSeconds(1.8), $"took only {watch.Elapsed}");
     }
 
     public void Dispose() => _factories.ForEach(f => f.Dispose());

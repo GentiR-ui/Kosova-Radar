@@ -38,6 +38,7 @@ public class SourceHttpFetcherTests
         var e = await FailureAsync(Fetcher((_, _) => Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent("secret body") })));
         Assert.Equal(RunErrorCodes.HttpStatus, e.ErrorCode);
         Assert.Equal($"The source answered with HTTP status {(int)status}.", e.Message);
+        Assert.Equal((int)status, e.HttpStatus);
     }
 
     [Fact]

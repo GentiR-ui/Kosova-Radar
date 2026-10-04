@@ -339,8 +339,8 @@ Site-specific adapters and an iCalendar adapter are added only for sources the c
 
 - User-Agent `KosovaRadarBot/1.0 (+{Site__BaseUrl}/bot)`; `UseProxy=false`; max 5 redirects; response limit 5 MB (`TooLarge`).
 - SSRF guard (REQ-020) runs in `SocketsHttpHandler.ConnectCallback` on the IP actually connected (defeats DNS rebinding; covers redirects). Blocked: loopback, 0.0.0.0/8, RFC 1918, 100.64/10, 169.254/16, 192.0.0/24, 198.18/15, multicast/broadcast, `::`, `::1`, fc00::/7, fe80::/10, and IPv4-mapped/compatible IPv6 forms of these.
-- robots.txt is fetched through the same guarded client (cached 24 h). The guard is checked first, so a blocked host yields `BlockedAddress`. Robots network failure → `Unreachable`/`Timeout`; robots 4xx → allow all; robots 5xx or a matching `Disallow` for our agent or `*` → `RobotsDisallowed`.
-- One request per host per `Ingestion__PerHostDelaySeconds`.
+- robots.txt is fetched through the same guarded client (cached 24 h). The guard is checked first, so a blocked host yields `BlockedAddress`. Robots network failure → `Unreachable`/`Timeout`; robots 4xx (not 429) → allow all; robots 5xx, 429 or a matching `Disallow` for our agent or `*` → `RobotsDisallowed`.
+- One request per host (scheme-less authority, so a port counts) per `Ingestion__PerHostDelaySeconds`: a handler innermost in the `sources` client reserves the next slot, so robots.txt fetches and retries are spaced too; the wait is not counted against `Ingestion__HttpTimeoutSeconds`. Only the configured URL is checked against robots.txt and throttled; a redirect to another host is followed without either (the SSRF guard still applies).
 
 ### AI provider contract
 

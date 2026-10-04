@@ -19,9 +19,12 @@ public static class RunErrorCodes
 /// A fetch that failed as a whole. <see cref="Exception.Message"/> is stored on the source and the run and shown to
 /// admins: it must never contain response bodies, query strings or credentials.
 /// </summary>
-public sealed class SourceFetchException(string errorCode, string message) : Exception(message)
+public sealed class SourceFetchException(string errorCode, string message, int? httpStatus = null) : Exception(message)
 {
     public string ErrorCode { get; } = errorCode;
+
+    /// <summary>The numeric status of an <see cref="RunErrorCodes.HttpStatus"/> failure (the robots.txt rules depend on it).</summary>
+    public int? HttpStatus { get; } = httpStatus;
 }
 
 /// <summary>The raw payload of one fetch, before parsing.</summary>
