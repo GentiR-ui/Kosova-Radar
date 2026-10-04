@@ -110,6 +110,7 @@ app.MapAuditEndpoints();
 app.MapUserEndpoints();
 app.MapSourceEndpoints();
 app.MapCandidateEndpoints();
+app.MapPublishedItemEndpoints();
 app.MapPublicItemEndpoints();
 if (testHooks) app.MapTestHookEndpoints();
 

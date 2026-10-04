@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T030 done
+- Built: `PublishedItems` (Application/Items) + `PublishedItemEndpoints`: `GET /api/admin/items` (kind/status/search/paging across events and deals; each table ordered and limited, merged in memory), admin event/deal GET (public detail incl. withdrawn + `adminStatus`, omitted on the public API), PUT edit (same required rules as approve, refreshes `SearchText`/discount, venue find-or-create), expire (idempotent, 409 when withdrawn), withdraw (idempotent); audit `item.edit/expire/withdraw` in the same save, none for no-op repeats. `ItemFields` extracted from `CandidateApproval` and shared.
+- Tests: integration +8 (401s, malformed id 404, bad filters 400, list filters/paging, huge page, withdrawn edit 409, reference validation, deal edit with public/search/audit, withdraw idempotency). Acceptance REQ-069..072 green (17), REQ-066/067/075 now fully green.
+- Verify: quick PASS. Reviewer: 2 MEDIUM (page overflow/memory, test gaps) fixed. LOWs left: edit of an expired item keeps it `expired` even with a future date, catch-all `DbUpdateException` → 409 (as in approval), `search` length not capped, `ItemFields` lives in Candidates, `admin` flag on `PublicItemQueries`, no test of the xmin 409.
+- Next: T031.
+
 ## 2026-10-04 · T029 done
 - Built: `POST /api/admin/candidates/{id}/merge` (`CandidateDecisions.MergeAsync`): open candidate → target must be a published item of the same kind (else 400 on `targetId`, also for a non-GUID, an expired/withdrawn item, or a changed-since-approval candidate whose `matchedItemId` differs, which would move its fingerprint away from its item); adds an `ItemSource` (skipped if the fingerprint is already linked), `lastVerifiedAt` = max(item, candidate.fetchedAt), status `Merged`, audit `candidate.merge`; no item created.
 - Tests: integration +7 (source added/audit/no item, 409 twice with nothing changed, older candidate keeps newer `lastVerifiedAt`, deal vs event, expired target, matched-item rule + bad GUID, 404/401). Acceptance REQ-066, 075, 067 green except the `withdrawn` case, which needs the withdraw endpoint (T030).

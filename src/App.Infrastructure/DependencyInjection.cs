@@ -1,3 +1,4 @@
+using App.Application.Items;
 using App.Application.Abstractions;
 using App.Application.Ai;
 using App.Application.Audit;
@@ -69,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<DuplicateDetector>();
         services.AddScoped<CandidateDecisions>();
         services.AddScoped<CandidateApproval>();
+        services.AddScoped<PublishedItems>();
         services.AddScoped<PublicItemQueries>();
         services.AddScoped<PublicEventQueries>();
         services.AddScoped<PublicDealQueries>();

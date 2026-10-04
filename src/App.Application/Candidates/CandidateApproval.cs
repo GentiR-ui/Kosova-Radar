@@ -2,7 +2,6 @@ using App.Application.Abstractions;
 using App.Application.Audit;
 using App.Domain.Content;
 using App.Domain.Reference;
-using App.Domain.Text;
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Application.Candidates;
@@ -21,7 +20,7 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
         if (!CandidateDecisions.IsOpen(c)) return new(ApprovalStatus.Conflict);
 
         var f = c.Fields;
-        var errors = MissingFields(c.Kind, f);
+        var errors = ItemFields.MissingFields(c.Kind, f);
         // Ingested fields were never run through the edit rules: lengths, currency and price ranges must fit the columns.
         foreach (var (key, messages) in CandidateRequestValidator.Validate(ToRequest(f)).Errors) errors.TryAdd(key, messages);
         if (c.Validation == ValidationOutcome.Rejected) errors["validation"] = ["The candidate is rejected by validation."];
@@ -43,23 +42,10 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
         Guid itemId;
         if (c.Kind == ItemKind.Event)
         {
-            var venueId = await FindOrCreateVenueAsync(f.VenueName, cityId!.Value, ct);
+            var venueId = await ItemFields.FindOrCreateVenueAsync(db, f.VenueName, cityId!.Value, ct);
             var e = matched?.Event ?? new Event { Title = f.Title!, SourceUrl = f.Url!, Fingerprint = c.Fingerprint, PublishedAt = now, CreatedAt = now };
-            e.Title = f.Title!;
-            e.Description = f.Description;
-            e.VenueId = venueId;
-            e.CityId = cityId.Value;
-            e.CategoryId = categoryId;
-            e.StartsAt = f.StartsAt!.Value.ToUniversalTime();
-            e.EndsAt = f.EndsAt?.ToUniversalTime();
-            e.PriceText = f.PriceText;
-            e.PriceAmount = f.PriceAmount;
-            e.Currency = f.Currency;
-            e.ImageUrl = f.ImageUrl;
-            e.SourceUrl = f.Url!;
-            e.SearchText = TextNormalizer.Fold($"{f.Title} {f.Description} {f.VenueName}");
+            ItemFields.ApplyEvent(e, f, cityId.Value, venueId, categoryId, now);
             e.LastVerifiedAt = c.FetchedAt;
-            e.UpdatedAt = now;
             if (matched is null)
             {
                 e.Status = ItemStatus.Published;
@@ -73,23 +59,8 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
         else
         {
             var d = matched?.Deal ?? new Deal { Title = f.Title!, SourceUrl = f.Url!, Fingerprint = c.Fingerprint, PublishedAt = now, CreatedAt = now };
-            d.Title = f.Title!;
-            d.Description = f.Description;
-            d.MerchantName = f.MerchantName;
-            d.CityId = cityId;
-            d.CategoryId = categoryId;
-            d.OldPrice = f.OldPrice;
-            d.NewPrice = f.NewPrice;
-            d.PriceText = f.PriceText;
-            d.Currency = f.Currency;
-            d.DiscountPercent = ContentRules.DiscountPercent(f.OldPrice, f.NewPrice);
-            d.ValidFrom = f.ValidFrom?.ToUniversalTime();
-            d.ValidUntil = f.ValidUntil?.ToUniversalTime();
-            d.ImageUrl = f.ImageUrl;
-            d.SourceUrl = f.Url!;
-            d.SearchText = TextNormalizer.Fold($"{f.Title} {f.Description} {f.MerchantName}");
+            ItemFields.ApplyDeal(d, f, cityId, categoryId, now);
             d.LastVerifiedAt = c.FetchedAt;
-            d.UpdatedAt = now;
             if (matched is null)
             {
                 d.Status = ItemStatus.Published;
@@ -152,34 +123,4 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
     private static CandidateFieldsRequest ToRequest(CandidateFields f) =>
         new(f.Title, f.Description, f.Url, f.ImageUrl, f.CitySlug, f.VenueName, f.CategorySlug, f.StartsAt, f.EndsAt, f.PriceText,
             f.PriceAmount, f.Currency, f.MerchantName, f.OldPrice, f.NewPrice, f.StatedDiscountPercent, f.ValidFrom, f.ValidUntil);
-
-    /// <summary>Required fields by kind (design.md §5); the keys are the field names.</summary>
-    private static Dictionary<string, string[]> MissingFields(ItemKind kind, CandidateFields f)
-    {
-        var errors = new Dictionary<string, string[]>();
-        void Require(bool present, string key, string message) { if (!present) errors[key] = [message]; }
-        Require(!string.IsNullOrWhiteSpace(f.Title), "title", "Title is required.");
-        Require(!string.IsNullOrWhiteSpace(f.Url), "url", "Url is required.");
-        if (kind == ItemKind.Event)
-        {
-            Require(!string.IsNullOrWhiteSpace(f.CitySlug), "citySlug", "A known city is required.");
-            Require(f.StartsAt is not null, "startsAt", "Start time is required.");
-        }
-        else
-        {
-            Require(f.NewPrice is not null || !string.IsNullOrWhiteSpace(f.PriceText), "newPrice", "A new price or a price text is required.");
-        }
-        return errors;
-    }
-
-    private async Task<Guid?> FindOrCreateVenueAsync(string? name, Guid cityId, CancellationToken ct)
-    {
-        var normalized = TextNormalizer.Fold(name);
-        if (normalized.Length == 0) return null;
-        var existing = await db.Venues.Where(v => v.CityId == cityId && v.NormalizedName == normalized).Select(v => (Guid?)v.Id).FirstOrDefaultAsync(ct);
-        if (existing is not null) return existing;
-        var venue = new Venue { Name = name!.Trim(), NormalizedName = normalized, CityId = cityId };
-        db.Venues.Add(venue);
-        return venue.Id;
-    }
 }

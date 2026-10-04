@@ -1,7 +1,9 @@
 using App.Application.Abstractions;
+using App.Application.Items;
 using App.Application.Reference;
 using App.Domain.Content;
 using App.Domain.Reference;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Application.Public;
@@ -12,20 +14,22 @@ public sealed record EventDetailDto(
     Guid Id, string Title, DateTimeOffset StartsAt, DateTimeOffset? EndsAt, CityDto City, string? VenueName, CategoryDto? Category,
     string? PriceText, decimal? PriceAmount, string? Currency, string? ImageUrl, string SourceName, string SourceUrl,
     DateTimeOffset LastVerifiedAt, string Freshness, string Status, bool IsSynthetic,
-    string? Description, IReadOnlyList<SourceRefDto> Sources);
+    string? Description, IReadOnlyList<SourceRefDto> Sources,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AdminStatus = null);
 
 public sealed record DealDetailDto(
     Guid Id, string Title, string? MerchantName, CityDto? City, CategoryDto? Category, decimal? OldPrice, decimal? NewPrice,
     string? PriceText, string? Currency, int? DiscountPercent, DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil,
     string? ImageUrl, string SourceName, string SourceUrl, DateTimeOffset LastVerifiedAt, string Freshness, string Status,
-    bool IsSynthetic, string? Description, IReadOnlyList<SourceRefDto> Sources);
+    bool IsSynthetic, string? Description, IReadOnlyList<SourceRefDto> Sources,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AdminStatus = null);
 
-/// <summary>Anonymous detail of a published event or deal (REQ-079, 085). Withdrawn items do not exist publicly.</summary>
+/// <summary>Anonymous detail of a published event or deal (REQ-079, 085). Withdrawn items do not exist publicly; the admin view (REQ-069) includes them with <c>adminStatus</c>.</summary>
 public sealed class PublicItemQueries(IAppDbContext db, IClock clock)
 {
-    public async Task<EventDetailDto?> GetEventAsync(Guid id, CancellationToken ct)
+    public async Task<EventDetailDto?> GetEventAsync(Guid id, CancellationToken ct, bool admin = false)
     {
-        var e = await db.Events.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.Status != ItemStatus.Withdrawn, ct);
+        var e = await db.Events.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && (admin || x.Status != ItemStatus.Withdrawn), ct);
         if (e is null) return null;
         var now = clock.UtcNow;
         var city = await db.Cities.AsNoTracking().Where(c => c.Id == e.CityId).Select(c => new CityDto(c.Slug, c.Name)).SingleAsync(ct);
@@ -33,12 +37,13 @@ public sealed class PublicItemQueries(IAppDbContext db, IClock clock)
         var (sourceName, sources) = await SourcesAsync(ItemKind.Event, e.Id, e.PrimarySourceId, e.SourceUrl, ct);
         return new(e.Id, e.Title, e.StartsAt, e.EndsAt, city, venue, await CategoryAsync(e.CategoryId, ct), e.PriceText, e.PriceAmount,
             e.Currency, e.ImageUrl, sourceName, e.SourceUrl, e.LastVerifiedAt, Freshness(e.LastVerifiedAt, now),
-            e.IsActive(now) ? "active" : "expired", e.IsSynthetic, e.Description, sources);
+            e.IsActive(now) ? "active" : "expired", e.IsSynthetic, e.Description, sources,
+            admin ? PublishedItems.AdminStatus(e.Status) : null);
     }
 
-    public async Task<DealDetailDto?> GetDealAsync(Guid id, CancellationToken ct)
+    public async Task<DealDetailDto?> GetDealAsync(Guid id, CancellationToken ct, bool admin = false)
     {
-        var d = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.Status != ItemStatus.Withdrawn, ct);
+        var d = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && (admin || x.Status != ItemStatus.Withdrawn), ct);
         if (d is null) return null;
         var now = clock.UtcNow;
         var city = d.CityId is { } c
@@ -48,7 +53,7 @@ public sealed class PublicItemQueries(IAppDbContext db, IClock clock)
         return new(d.Id, d.Title, d.MerchantName, city, await CategoryAsync(d.CategoryId, ct), d.OldPrice, d.NewPrice, d.PriceText,
             d.Currency, ContentRules.DiscountPercent(d.OldPrice, d.NewPrice), d.ValidFrom, d.ValidUntil, d.ImageUrl, sourceName,
             d.SourceUrl, d.LastVerifiedAt, Freshness(d.LastVerifiedAt, now), d.IsActive(now) ? "active" : "expired", d.IsSynthetic,
-            d.Description, sources);
+            d.Description, sources, admin ? PublishedItems.AdminStatus(d.Status) : null);
     }
 
     private static string Freshness(DateTimeOffset lastVerifiedAt, DateTimeOffset now) =>
