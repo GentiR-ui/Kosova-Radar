@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T022 done
+- Built: `ScheduledRuns.TickAsync` (Application) selects active sources that were never fetched or whose `lastFetchedAt + pollInterval <= now` (`Source.IsDue`, wall clock), oldest first, and runs each in its own scope with `JobTrigger.Schedule` and lock wait 0 (a locked source is skipped); a crash is logged and the next source still runs. `SourceScheduler` (`BackgroundService`) ticks at once and then every `Ingestion__SchedulerTickSeconds` (60 / Development 10 / Testing 2; in `.env.example`). `IngestionService` re-checks `IsDue` under the lock for scheduled runs (`RunStatus.NotDue`), so a source deactivated or fetched meanwhile is not fetched; a crashed run sets `lastFetchedAt` so it is not retried every tick.
+- Tests: integration +5 (due selection incl. never/due/fresh/inactive, locked source skipped, crashing source does not stop the others, crash not retried before the interval, NotDue under the lock); the integration host drops `SourceScheduler`; two older run tests now activate their source. Acceptance green: REQ-012 (2), 013, 017 (2) + REQ-014.
+- Verify: quick PASS. Reviewer: 3 MEDIUM (crash retried each tick, test order dependency, due re-check under lock) fixed; LOWs left: a crash is logged twice, no direct test of the hosted loop, runs are sequential within a tick (a slow source delays the others).
+- Next: T023 (adapters must create `SourceFetchException` messages from constants only).
+
 ## 2026-10-04 · T021 done
 - Built: `GET /api/deals` (`PublicDealQueries`: city/category(deal kind)/search filters, same paging and error reporting as events, order validUntil asc with undated last then id) and `GET /api/search` (`PublicSearchQueries`: active events by start then active deals, paged across the boundary, `q` ≥ 2 chars after trim, punctuation-only `q` → 400 since it folds to empty). `ActiveItems.Deal` = SQL twin of `IsActiveDeal` (dated: `validUntil > now`; undated: verified within 7 days).
 - Tests: integration +6 (SQL filter == domain rule at boundaries, ordering, search paging across events/deals, search 400s incl. `--`, deal filters/freshness/paging). Acceptance green for REQ-083 (filters), 084, 086, 087 (stale), 089, 079, 082; still red only: `Deals_list_shows_active_deals…` (needs `/api/admin/deals/{id}/expire|withdraw`, T030) and `Refetching_an_open_ended_deal_brings_it_back` (needs re-seen published item → `lastVerifiedAt`, T028).

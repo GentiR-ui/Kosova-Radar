@@ -66,6 +66,8 @@ public static class DependencyInjection
         services.AddSingleton<SourceRunLock>();
         services.AddScoped<ISourceAdapter, FixtureSourceAdapter>();
         services.AddScoped<IngestionService>();
+        services.AddSingleton<ScheduledRuns>();
+        services.AddHostedService<SourceScheduler>();
         return services;
     }
 }

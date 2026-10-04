@@ -54,6 +54,14 @@ public class IngestionRunTests(AppFactory app)
         return created.GetProperty("id").GetGuid();
     }
 
+    /// <summary>A scheduled run only happens for an active source (REQ-013); the helper sources are created inactive.</summary>
+    private async Task ActivateAsync(Guid id)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Sources.Where(s => s.Id == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsActive, true));
+    }
+
     private async Task SetPayloadAsync(HttpClient admin, Guid id, string payload) =>
         await JsonAsync(await admin.PutAsJsonAsync($"/api/admin/sources/{id}", new
         {
@@ -278,6 +286,7 @@ public class IngestionRunTests(AppFactory app)
     {
         var admin = await LoginAdminAsync();
         var id = await CreateSourceAsync(admin, Payload(Item("a", $"Planifikuar {Token()}")));
+        await ActivateAsync(id);
 
         await using var scope = app.Services.CreateAsyncScope();
         var result = await scope.ServiceProvider.GetRequiredService<IngestionService>()
@@ -294,6 +303,7 @@ public class IngestionRunTests(AppFactory app)
     {
         var admin = await LoginAdminAsync();
         var id = await CreateSourceAsync(admin, Payload());
+        await ActivateAsync(id);
         await using var scope = app.Services.CreateAsyncScope();
         var sp = scope.ServiceProvider;
         var locks = sp.GetRequiredService<SourceRunLock>();

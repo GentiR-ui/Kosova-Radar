@@ -64,4 +64,7 @@ public sealed class IngestionOptions
 
     /// <summary>Fixture sources carry synthetic data; they are refused unless this is on (Development/Testing).</summary>
     public bool AllowFixtureSources { get; set; }
+
+    /// <summary>Seconds between scheduler ticks (design.md §2: 60, Development 10, Testing 2).</summary>
+    public int SchedulerTickSeconds { get; set; } = 60;
 }

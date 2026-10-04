@@ -43,6 +43,12 @@ public sealed class Source
     public int ConsecutiveFailures { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>REQ-012/013: active, and never fetched or last fetched at least the poll interval ago.</summary>
+    public bool IsDue(DateTimeOffset now) => IsDue(IsActive, LastFetchedAt, PollIntervalMinutes, now);
+
+    public static bool IsDue(bool isActive, DateTimeOffset? lastFetchedAt, int pollIntervalMinutes, DateTimeOffset now) =>
+        isActive && (lastFetchedAt is null || lastFetchedAt.Value.AddMinutes(pollIntervalMinutes) <= now);
+
     /// <summary>Derived on read, never stored (design.md §2).</summary>
     public SourceHealth Health =>
         !IsActive ? SourceHealth.Disabled

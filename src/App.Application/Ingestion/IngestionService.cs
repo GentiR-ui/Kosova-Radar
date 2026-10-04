@@ -9,7 +9,8 @@ using Microsoft.Extensions.Logging;
 
 namespace App.Application.Ingestion;
 
-public enum RunStatus { Completed, NotFound, Busy }
+/// <summary><c>NotDue</c>: a scheduled run found, under the lock, that the source is inactive or was fetched meanwhile.</summary>
+public enum RunStatus { Completed, NotFound, Busy, NotDue }
 
 /// <summary><see cref="Run"/> is set when <see cref="Status"/> is <see cref="RunStatus.Completed"/> (also for a failed run).</summary>
 public sealed record RunResult(RunStatus Status, RunDto? Run = null);
@@ -57,6 +58,7 @@ public sealed class IngestionService(
         // Loaded after the lock so that the bookkeeping of the run that just ended is visible.
         var source = await db.Sources.SingleOrDefaultAsync(s => s.Id == sourceId, ct);
         if (source is null) return new(RunStatus.NotFound);
+        if (trigger == JobTrigger.Schedule && !source.IsDue(wallClock.GetUtcNow())) return new(RunStatus.NotDue);
 
         var run = new JobExecution
         {
@@ -119,6 +121,7 @@ public sealed class IngestionService(
             if (countAsFailure)
                 await db.Sources.Where(x => x.Id == sourceId).ExecuteUpdateAsync(s => s
                     .SetProperty(x => x.ConsecutiveFailures, x => x.ConsecutiveFailures + 1)
+                    .SetProperty(x => x.LastFetchedAt, clock.UtcNow) // not due again until the poll interval has passed
                     .SetProperty(x => x.LastErrorAt, clock.UtcNow)
                     .SetProperty(x => x.LastError, "The run stopped unexpectedly."), CancellationToken.None);
         }

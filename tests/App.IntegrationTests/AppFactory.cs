@@ -37,7 +37,11 @@ public sealed class AppFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", ConnectionString);
         // The real-clock expiration job would flip tests that seed fixed dates; tests call ExpirationRunner directly.
         builder.ConfigureServices(services =>
-            services.Remove(services.Single(d => d.ImplementationType == typeof(ExpirationJob))));
+            {
+                services.Remove(services.Single(d => d.ImplementationType == typeof(ExpirationJob)));
+                // Ticks would fetch the active sources other tests create; tests call ScheduledRuns.TickAsync themselves.
+                services.Remove(services.Single(d => d.ImplementationType == typeof(SourceScheduler)));
+            });
     }
 
     async Task IAsyncLifetime.DisposeAsync()
