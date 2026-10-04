@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-04 · T033 done
+- Built: public UI in `web/src/features/public`: `HomePage` (search "Kërko", tabs Sot/Evente/Oferta with arrow-key support, "Sot" = events with `from=to=` Pristina today + active deals), `EventsPage` (Qyteti, Kategoria, Nga data, Deri më, search; filters in the query string), `DealsPage` (list only; detail pages stay in T034), `EventCard`/`DealCard` (Pristina time, source link, freshness, synthetic badge, old/new price + discount, http(s)-only hrefs), `ListShell` (loading/empty/error+retry/"Shfaq më shumë" via `useInfiniteQuery`), debounced `SearchInput`, `format.ts` (Europe/Belgrade zone).
+- Tests: component tests (cards, states, tabs, filters, retry), `format.test.ts` with literal summer/winter/midnight cases. Acceptance REQ-100, 102, 104, 108 green on desktop + mobile; REQ-107 list part works, the detail part and REQ-103/106 detail need T034.
+- Verify: quick PASS. Reviewer: 3 MEDIUM (search debounce/flicker, thin tests, circular time tests) fixed. LOWs left: duplicated setParams/city-category fields across pages, Home/End keys on tabs, a failed "show more" replaces the loaded list with the error, from > to gives the generic error, `selectClass` name.
+- Next: T034.
+
 ## 2026-10-04 · T032 done
 - Built: `SeoEndpoints` + `SeoPages` (Api): `/events/{id}` and `/deals/{id}` return the SPA `index.html` from wwwroot (built-in shell if absent) with title, description, og:title/description/url, https-only og:image, `noindex` for synthetic items, JSON-LD `Event` for events (default JSON encoder, so `</script>` cannot appear); unknown/malformed/withdrawn id → shell + noindex + 404. `/sitemap.xml` (`SitemapQueries`, active published items via `ActiveItems`, capped at 50,000 URLs, `Cache-Control: max-age=300`), `/robots.txt`. The public rate limiter now also covers the item pages and the sitemap.
 - Tests: unit +5 (`SeoPagesTests`: markup injection, head replacement, image/noindex, truncation, sitemap/robots). Acceptance REQ-090..092 green (8).

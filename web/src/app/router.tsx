@@ -2,6 +2,9 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router'
 import { t } from '../lib/strings'
 import PublicLayout, { PageTitle } from '../features/public/PublicLayout'
+import HomePage from '../features/public/HomePage'
+import EventsPage from '../features/public/EventsPage'
+import DealsPage from '../features/public/DealsPage'
 
 // The admin area is a separate bundle: public visitors never download it.
 const LoginPage = lazy(() => import('../features/auth/LoginPage'))
@@ -24,9 +27,9 @@ export const router = createBrowserRouter([
   {
     element: <PublicLayout />,
     children: [
-      { path: '/', element: <PageTitle title={t.pages.home} /> },
-      { path: '/events', element: <PageTitle title={t.nav.events} /> },
-      { path: '/deals', element: <PageTitle title={t.nav.deals} /> },
+      { path: '/', element: <HomePage /> },
+      { path: '/events', element: <EventsPage /> },
+      { path: '/deals', element: <DealsPage /> },
       { path: '/search', element: <PageTitle title={t.pages.search} /> },
       { path: '*', element: <PageTitle title={t.notFound} /> },
     ],
