@@ -18,7 +18,7 @@ Default stack (see docs/stack/dotnet-react.md). Deviations need an ADR.
 | Multi-tenancy | **None** — single-operator content platform (ADR-001). No entity implements `ITenantOwned`. |
 | Background jobs | `BackgroundService` scheduler + `JobExecution` table in PostgreSQL (ADR-004) |
 | Outbound HTTP | `IHttpClientFactory` named client `sources` + `Microsoft.Extensions.Http.Resilience`, SSRF guard (§6) |
-| AI | `IAiProvider` abstraction: `Anthropic` (Claude Messages API, structured JSON output), `Fake` (Development/Testing), `None` (ADR-007) |
+| AI | `IAiProvider` abstraction: `Gemini` (Gemini API `generateContent`, JSON-schema output; default, ADR-034), `Anthropic` (Claude Messages API, structured JSON output), `Fake` (Development/Testing), `None` (ADR-007, ADR-034) |
 | Cache | none until measured need |
 | Tests | xUnit (unit, integration, API acceptance) + Playwright (UI acceptance) |
 | Delivery | One Docker image (API + SPA), GitHub Actions CI |
@@ -43,7 +43,7 @@ Scheduler tick ─► due active sources ─► run (JobExecution)          manu
   Fingerprint = sha256(sourceId + (externalId ?? url)); item with neither → counted "failed"
   ContentHash = sha256(normalized fields as parsed + evidence)
   Lookup by fingerprint, in this order (first match wins):
-    1. pending or auto-rejected candidate: same hash → unchanged; other hash → update in place, re-run AI + validation (REQ-053)
+    1. pending or auto-rejected candidate: same hash → unchanged (AI retry only, ADR-036); other hash → update in place, re-run AI + validation (REQ-053)
     2. candidate rejected by a person with the same content hash → unchanged
     3. withdrawn item → unchanged (never resurfaces)
     4. published or expired item (incl. items it was merged into via ItemSource):
@@ -58,6 +58,7 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 ```
 
 - `ISourceAdapter { bool CanHandle(Source); Task<FetchResult> FetchAsync(Source, ct); Task<FeedParseResult> ParseAsync(Source, FetchResult, ct); }` — returns normalized candidates (plus per-item failures), never entities; a whole-fetch failure is a `SourceFetchException` with a run error code (ADR-023).
+- Adapters: `FixtureSourceAdapter`, `JsonFeedSourceAdapter`, `RssSourceAdapter` and `HtmlSourceAdapter` (type `Html`). `HtmlSourceAdapter` does the fetching and page cleaning and delegates the site-specific part to an `IHtmlSiteParser` chosen by `Source.Adapter` (`prishtinaEvents` → `PrishtinaEventsParser`, `kapodalim` → `KapodalimParser`). Adding a site = one `IHtmlSiteParser`, its adapter key, saved fixtures and contract tests; `IngestionService` and the other pipeline steps do not change (ADR-035).
 - Runs of the same source never overlap: a per-source `SemaphoreSlim`. Scheduled runs skip a locked source; manual runs wait up to 30 s, then 409.
 - Retry policy: HTTP resilience handler (`Ingestion__HttpRetries` retries with exponential backoff, `Ingestion__HttpTimeoutSeconds` total timeout). A failed run is retried at the next due time; from the 3rd consecutive failure the source is `failing` and shows on the dashboard.
 - On startup, `JobExecution` rows left in `Running` are marked `failed` with error code `Interrupted`.
@@ -73,8 +74,11 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 | `Ingestion__AllowFixtureSources` | false | true | true |
 | `Ingestion__PerHostDelaySeconds` | 10 | 10 | 0 |
 | `Ingestion__HttpRetries` / `Ingestion__HttpTimeoutSeconds` | 2 / 20 | 2 / 20 | 0 / 5 |
-| `Ai__Provider` | `None` (`Anthropic` when `Ai__ApiKey` set; explicit `Anthropic` without a key stops startup) | `Fake` | `Fake` |
-| `Ai__Model` | `claude-haiku-4-5-20251001` | — | — |
+| `Ai__Provider` | `None` (`Gemini` when `Ai__ApiKey` set; explicit `Gemini`/`Anthropic` without a key stops startup) | `Fake` (environment variables `Ai__Provider=Gemini` + `Ai__ApiKey` override it for local trials, `scripts/dev.sh`) | `Fake` |
+| `Ai__Model` | per provider: `gemini-3.5-flash-lite` (Gemini), `claude-haiku-4-5-20251001` (Anthropic) | same | — |
+| `Ai__MinIntervalMs` | 0 (minimum spacing between two AI calls, process-wide; set ~4000 on the Gemini free tier) | 0 | 0 |
+| `Ingestion__HtmlHorizonDays` | 30 (HTML listings starting later are skipped, §6) | 30 | 30 |
+| `Seed__KnownSources` | true (creates the inactive Prishtina.com and Ka' Po Dalim sources, §6) | true | false |
 | `Ai__DailyCallLimit` | 500 | 100000 | 100000 |
 | `Ai__ApiKey` / `Ai__TimeoutSeconds` | — / 15 | — / 15 | — / 15 |
 | `RateLimit__PublicPerMinute` | 300 | 0 (disabled) | 0 (disabled) |
@@ -123,7 +127,7 @@ When disabled, the header is ignored and `/api/_test/**` responds 404. The sched
 | City | Id, Slug, Name, Aliases[] | seeded: 38 Kosovo municipalities (below); unique Slug |
 | Category | Id, Slug, Name, Kind (`Event`/`Deal`) | seeded (below); unique (Slug, Kind) |
 | Venue | Id, Name, NormalizedName, CityId | found-or-created on publish by (NormalizedName, CityId) |
-| Source | Id, Name, Type (`Fixture`/`JsonFeed`/`Rss`), BaseUrl?, FixturePayload?, DefaultKind (`Event`/`Deal`, for Rss), IsActive, IsUnreliable, PollIntervalMinutes, LastFetchedAt?, LastSuccessAt?, LastErrorAt?, LastError?, ConsecutiveFailures, CreatedAt | |
+| Source | Id, Name, Type (`Fixture`/`JsonFeed`/`Rss`/`Html`), BaseUrl?, Adapter? (`prishtinaEvents`/`kapodalim`; `Html` only, else null), FixturePayload?, DefaultKind (`Event`/`Deal`, for Rss), IsActive, IsUnreliable, PollIntervalMinutes, LastFetchedAt?, LastSuccessAt?, LastErrorAt?, LastError?, ConsecutiveFailures, CreatedAt | |
 | Candidate | Id, Kind, SourceId, ExternalId?, SourceUrl (as fetched, immutable), Fingerprint, ContentHash, Fields (jsonb `CandidateFields`; `fields.url` is the editable URL used on publish), Evidence (text ≤ 64 KB), Status (`Pending`/`Rejected`/`Published`/`Merged`), Validation (`Valid`/`NeedsReview`/`Rejected`), Issues (jsonb), SuggestedCategoryId?, DuplicateOfKind?, DuplicateOfId?, DuplicateOfIsCandidate?, MatchedItemId?, PublishedItemId?, RejectionReason?, RejectedByUserId?, IsSynthetic, Ai* (Model, RequestId, Confidence, ProcessedAt, SuggestedFields[]), FetchedAt, CreatedAt, UpdatedAt | indexes: Fingerprint, (Status, Validation), SourceId |
 | Event | Id, Title, Description?, VenueId?, CityId, CategoryId?, StartsAt, EndsAt?, PriceText?, PriceAmount?, Currency?, ImageUrl?, Status (`Published`/`Expired`/`Withdrawn`), PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: StartsAt, CityId, CategoryId, Status, PrimarySourceId, Fingerprint |
 | Deal | Id, Title, Description?, MerchantName?, CityId?, CategoryId?, OldPrice?, NewPrice?, PriceText?, Currency?, DiscountPercent?, ValidFrom?, ValidUntil?, ImageUrl?, Status, PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: ValidUntil, Status, PrimarySourceId, Fingerprint |
@@ -223,13 +227,14 @@ Filters: `from` = start on/after 00:00 Pristina of that date; `to` = start befor
 | POST | /api/admin/sources/{id}/fetch | — | 200 `RunDto` (also when the run failed: `status: "failed"`); works for active and inactive sources and ignores the poll interval; waits up to 30 s for a run in progress, then 409; 404 | 014–021 |
 
 ```
-SourceRequest = { name (1–120), type: "fixture"|"jsonFeed"|"rss",
+SourceRequest = { name (1–120), type: "fixture"|"jsonFeed"|"rss"|"html",
+                  adapter: "prishtinaEvents"|"kapodalim"|null (required for html; ignored and stored null for other types),
                   baseUrl|null (absolute http/https, ≤ 2000; required unless fixture),
                   fixturePayload|null (string ≤ 1 MB; required for fixture; not validated as JSON on save),
                   defaultKind: "event"|"deal" (default "event"; used by rss),
                   pollIntervalMinutes (fixture: 1–1440; others: 15–1440),
                   isActive (bool), isUnreliable (bool) }
-SourceDto = { id, name, type, baseUrl|null, defaultKind, isActive, isUnreliable, pollIntervalMinutes,
+SourceDto = { id, name, type, baseUrl|null, adapter|null, defaultKind, isActive, isUnreliable, pollIntervalMinutes,
               health: "never"|"healthy"|"degraded"|"failing"|"disabled",
               lastFetchedAt|null, lastSuccessAt|null, lastErrorAt|null, lastError|null, consecutiveFailures }
 SourceDetailDto = SourceDto + { fixturePayload|null, recentRuns: RunDto[] }
@@ -237,7 +242,7 @@ RunDto = { id, sourceId, trigger: "schedule"|"manual", status: "running"|"succee
            received, created, updated, unchanged, failed, errorCode|null, error|null }
 ```
 
-`type: "fixture"` when `Ingestion__AllowFixtureSources=false` → 400 on `type`.
+`type: "fixture"` when `Ingestion__AllowFixtureSources=false` → 400 on `type`. `type: "html"` without a known `adapter` → 400 on `adapter`; html poll interval 15–1440.
 Run error codes: `Unreachable`, `Timeout`, `HttpStatus` (non-2xx), `MalformedPayload`, `BlockedAddress` (REQ-020), `RobotsDisallowed`, `TooLarge` (> 5 MB), `Interrupted`.
 
 ### Admin — candidates (policy `Reviewer`)
@@ -335,7 +340,25 @@ Each `<item>`/`<entry>` → candidate of the source's `defaultKind`; `externalId
 `text` = description/summary/content with HTML stripped (the AI fills start time, city, venue, prices). Evidence = the item/entry outer XML.
 Parsed with `DtdProcessing=Prohibit`, `XmlResolver=null`, max 5 MB. Without AI, missing required fields surface as their issues plus `AiUnavailable`.
 
-Site-specific adapters and an iCalendar adapter are added only for sources the client names and clears (ADR-006).
+An iCalendar adapter is deferred (ADR-006). Site-specific HTML parsers are added per source (ADR-035, below).
+
+### HTML pages (`html`, ADR-035)
+
+`HtmlSourceAdapter` fetches `baseUrl` with the guarded `sources` client (robots.txt, per-host delay, 5 MB limit and the same run error codes), parses it with AngleSharp, removes `script`, `style`, `noscript`, `template`, `nav`, `header`, `footer`, `form`, `iframe` and ad containers, and asks the site parser for the listing elements. One listing = one raw item (REQ-022):
+- `externalId` = `url` = the absolute event page URL (relative links resolved against the page URL). A listing without a link → per-item failure.
+- Evidence = the listing's cleaned text (whitespace collapsed, ≤ 64 KB) followed by a line `URL: <url>` — never the whole page.
+- The parser maps what the listing shows, deterministically: title, start date/time (Europe/Pristina local → instant with offset), end, venue, city, category text, price text, image (an `<img>` inside the listing, absolute http(s)) and description when shown. Anything not shown stays null (REQ-030). Event kind only.
+- `text` (AI input) = the evidence text, set only when `startsAt`, the city or the category could not be determined deterministically; otherwise empty so no AI call is made (cost, ADR-035). The AI step itself is unchanged (fill-only-null, REQ-040..043).
+- Listings whose start date is more than `Ingestion__HtmlHorizonDays` days after the fetch are skipped and not counted. Past listings are parsed as usual; validation rejects them as `Expired`.
+- V1 fetches only the configured page: no detail pages, no "load more" requests.
+- A 2xx page on which the parser finds no listing → run fails `MalformedPayload` (the site layout probably changed).
+
+Site parsers — each with saved HTML fixtures in `tests/App.UnitTests/Fixtures/Html/` (captured once from the live page with the bot User-Agent, file name with the capture date) and contract tests asserting the parsed items. Cards are located by stable signals (event-link URL pattern first, then the text inside the link/card), never by generated CSS class names:
+- `prishtinaEvents` — https://prishtina.com/events (robots.txt allows `/`). Server-rendered, grouped by day ("Today", "Tomorrow", weekday headings). Each event card is one link `/events/{slug}-{YYYY-MM-DD}-{6 hex}` showing: title (may end with "+ N more", kept), date ("Fri, 11 Sep"), optional festival label (e.g. "PriFest", ignored), category ("Culture & Arts", "Music", "Clubs", "Food & Drinks", "Tech & Business", "Other"), time ("14:30", optional) and venue. Start date from the URL (year-safe), time from the card; no time → `startsAt` null (`text` set). City = Prishtinë (the site covers Prishtina only). Category: Music → `muzike`; Clubs → `nate`; Food & Drinks → `ushqim`; Tech & Business → `edukim`; Culture & Arts → `teater` when the card text contains film/kino/theat/teat, else `art`; Other → null.
+- `kapodalim` — https://kapodalim.com/ks (robots.txt allows `/`). Server-rendered "N'RADAR" cards linking to `/event/{slug}`: city badge ("PRISHTINË / 2026KPD-…"), date ("22 SHTATOR" or a range "14 SHTATOR … 25 SHTATOR"), time ("18:00", "18:00-21:00", "SEPTEMBER 22 AT 15:00"; "ORARI TBA"/"… TBA" → null), entry line (→ `priceText` unless it says the price is not published, e.g. "Hyrja s'u publikua", "Kostoja nuk është publikuar"), title, venue and city, category tag. Albanian month names (janar … dhjetor); year from the slug's trailing `-YYYY`, else from the event code (`2026KPD-…`), else the next occurrence after the fetch date. Date range → `startsAt` = first day (with the time when given), `endsAt` = last day 23:59 local. City via city matching on the badge/city text. Category: Koncert/Muzikë/Live → `muzike`; Teatër/Film/Kino → `teater`; Art/Ekspozitë → `art`; Sport → `sport`; Familje/Fëmijë → `familje`; Ushqim/Pije/Food → `ushqim`; Party/Natë/DJ/Club → `nate`; Edukim/Konferencë/Workshop/Kurs → `edukim`; others (e.g. Komunitet, Lojëra) → null. If the page server-renders only the first N cards behind "Shiko më shumë", V1 takes those N.
+
+Seeding (`Seed__KnownSources`): at startup, for each known adapter a source is created when no source has its `baseUrl` — "Prishtina.com — Evente" (`html`, `prishtinaEvents`, https://prishtina.com/events) and "Ka' Po Dalim" (`html`, `kapodalim`, https://kapodalim.com/ks) — with `isActive: false`, poll interval 180 and `isUnreliable: false`. An Admin activates them or uses "Merr tani" (sources stay disabled until the operator decides, client brief §16).
+
 
 ### HTTP fetching rules
 
@@ -356,7 +379,9 @@ IAiProvider.ExtractAsync(AiExtractionRequest { kind, text, knownFields, categori
 - Called whenever `text` is non-empty and a provider is enabled. The Anthropic provider uses structured outputs (JSON schema) and the prompt states "unknown = null"; every response is still validated server-side against the schema and domain rules (dates parse, prices ≥ 0, slugs exist). Any violation → `AiUnavailable` (REQ-041).
 - AI fills only null fields (REQ-040); `ai.suggestedFields` uses `CandidateFields` key names (a city filled by AI lists `cityText` and `citySlug`); category goes only to `suggestedCategory` (REQ-043).
 - Conflicts (REQ-042): `startsAt`/`endsAt` compared as instants, city by resolved slug, prices by decimal equality; source value kept.
-- Every call is stored in `AiCall`. Timeout 15 s. Daily limit `Ai__DailyCallLimit` counted from `AiCall` rows of the current UTC day.
+- Every call is stored in `AiCall`. Timeout 15 s. Daily limit `Ai__DailyCallLimit` counted from `AiCall` rows of the current UTC day. Calls are spaced by at least `Ai__MinIntervalMs` (process-wide).
+- **Gemini provider** (ADR-034): `POST https://generativelanguage.googleapis.com/v1beta/models/{Ai__Model}:generateContent` with the key in the `x-goog-api-key` header (never in the URL, logs or exceptions), the same prompt and extraction schema as the Anthropic provider (nullable fields as `"type": ["…", "null"]`, category as an enum of the kind's slugs plus null), temperature 0. JSON text from `candidates[0].content.parts[0].text`; `responseId` → request id; `usageMetadata.promptTokenCount` / `candidatesTokenCount` → tokens. The structured-output request field names have changed between API versions (`responseMimeType` + `responseJsonSchema` vs `responseFormat`): use the shape in the official structured-output docs at implementation time and pin it with a unit test. HTTP 429/5xx, timeout, a blocked/empty candidate, non-JSON or schema-violating output → `AiUnavailable` (REQ-041). `GeminiAiProviderTests.Live_smoke_test_against_the_real_API` runs only when `Ai__ApiKey` is set (`scripts/ai-smoke.sh`).
+- **Retry (ADR-036):** an open candidate (`Pending`, or `Rejected` without a reviewer) whose content is unchanged on a later fetch but still has `AiUnavailable` is sent to the AI again when a provider is enabled, the daily limit allows it and it has fewer than 3 `AiCall` rows; then validation and the duplicate check re-run. It still counts as `unchanged`.
 
 **Fake provider (Development/Testing, deterministic — acceptance tests rely on it):**
 - If `text` contains `#ai-fail` → throws (provider failure). If it contains `#ai-invalid` → returns output that violates the schema.
@@ -398,12 +423,12 @@ Images: lazy-loaded, explicit width/height, `referrerpolicy="no-referrer"`; no i
 | /admin/login | sign in | `h1` "Hyrje për administratorë"; inputs "Email", "Fjalëkalimi"; button "Hyr"; errors "Email ose fjalëkalim i pasaktë" (401) and "Shumë përpjekje. Provo pas një minute." (429) | P02, P10 |
 | (all admin) | layout | nav links "Paneli", "Shqyrtimi", "Të publikuarat", "Burimet" (Admin only), "Përdoruesit" (Admin only); button "Dil" | P11 |
 | /admin | dashboard | `h1` "Paneli"; stats labelled "Në pritje për shqyrtim", "Kërkojnë vëmendje", "Evente aktive", "Oferta aktive", "Burime me probleme" | P10 |
-| /admin/review | candidate queue | `h1` "Radha e shqyrtimit"; selects "Statusi" (default "Në pritje"; options "Të gjitha", "Në pritje", "Refuzuar", "Publikuar", "Bashkuar"), "Validimi", "Lloji", "Burimi"; table with column headers "Titulli", "Burimi", "Validimi", "Statusi"; rows with a link named by candidate title (or "(pa titull)"), validation badge ("Valid", "Kërkon shqyrtim", "Refuzuar") and status cell ("Në pritje", "Refuzuar", "Publikuar", "Bashkuar"); filters in the query string | 060, 112 |
+| /admin/review | candidate queue | `h1` "Radha e shqyrtimit"; selects "Statusi" (default "Në pritje"; options "Të gjitha", "Në pritje", "Refuzuar", "Publikuar", "Bashkuar"), "Validimi", "Lloji", "Burimi"; table with column headers "Titulli", "Burimi", "Validimi", "Statusi"; rows with a link named by candidate title (or "(pa titull)"), validation badge ("Valid", "Kërkon shqyrtim", "Refuzuar") and status cell ("Në pritje", "Refuzuar", "Publikuar", "Bashkuar"); filters in the query string; pending `Valid` rows have a checkbox "Zgjidh {title}" and the page a button "Aprovo të zgjedhurat" that approves the selected candidates one by one through the approve endpoint and then shows "U aprovuan {n}" (plus ", {m} dështuan" when some fail) (ADR-038) | 060, 112 |
 | /admin/items/:id | candidate review | `h1` candidate title or "(pa titull)"; region "Evidenca nga burimi" (evidence text + link "Hap burimin"); region "Fushat e normalizuara" (side by side ≥ 1024 px, stacked below) with inputs "Titulli", "Përshkrimi", "Lidhja e burimit", "Qyteti", "Vendi", "Kategoria", "Fillon më", "Përfundon më", "Çmimi (tekst)", "Çmimi", "Monedha", and for deals "Tregtari", "Çmimi i vjetër", "Çmimi i ri", "Vlen nga", "Vlen deri"; list "Problemet e validimit"; buttons "Ruaj ndryshimet", "Aprovo", "Refuzo", "Bashko"; reject dialog with textarea "Arsyeja" and button "Konfirmo refuzimin"; merge dialog with the suggested duplicate and button "Bashko me këtë"; after approve status message "U publikua" and link "Shiko faqen publike" | 110–112 |
-| /admin/published | published items | `h1` "Të publikuarat"; filters "Lloji", "Statusi"; rows with link "Ndrysho" (to the edit page, ADR-032) and buttons "Skado", "Tërhiq" | 069–071 |
+| /admin/published | published items | `h1` "Të publikuarat"; filters "Lloji", "Statusi"; rows with link "Ndrysho" (to the edit page, ADR-032) and buttons "Skado", "Tërhiq"; each opens a confirmation dialog (role `dialog`) with buttons "Po, skado" / "Po, tërhiq" and "Anulo" (ADR-037) | 069–071 |
 | /admin/published/:kind/:id | edit published item | same field labels as candidate review; button "Ruaj ndryshimet" | 069 |
-| /admin/sources | sources | `h1` "Burimet"; button "Shto burim" opens form with "Emri", "Lloji", "URL", "Të dhënat testuese (JSON)", "Lloji i paracaktuar", "Intervali (minuta)", checkboxes "Aktiv" (default unchecked), "I pabesueshëm"; "Intervali (minuta)" defaults to 60; button "Ruaj burimin"; table rows: name, health badge ("Pa u marrë ende", "Në rregull", "Me probleme", "Dështon", "Joaktiv"), last success, last error, buttons "Merr tani" and "Ndrysho"; after "Merr tani" a status message "Marrja përfundoi: {created} të reja, {updated} të përditësuara, {unchanged} pa ndryshim, {failed} të dështuara", "Marrja dështoi: {errorCode}" or (409) "Një marrje është në vazhdim. Provo pas pak." | 113 |
-| /admin/users | users | `h1` "Përdoruesit"; form inputs "Email", "Fjalëkalimi", select "Roli" ("Administrator", "Shqyrtues"); button "Krijo përdoruesin"; rows with button "Çaktivizo" | 001–004 |
+| /admin/sources | sources | `h1` "Burimet"; button "Shto burim" opens form with "Emri", "Lloji", "URL", "Të dhënat testuese (JSON)", "Lloji i paracaktuar", "Intervali (minuta)", select "Adapteri" (options "Prishtina.com — evente", "Ka' Po Dalim"; shown only when "Lloji" is "Faqe HTML" (value `html`)); checkboxes "Aktiv" (default unchecked), "I pabesueshëm"; "Intervali (minuta)" defaults to 60; button "Ruaj burimin"; table rows: name, health badge ("Pa u marrë ende", "Në rregull", "Me probleme", "Dështon", "Joaktiv"), last success, last error, buttons "Merr tani" and "Ndrysho"; after "Merr tani" a status message "Marrja përfundoi: {created} të reja, {updated} të përditësuara, {unchanged} pa ndryshim, {failed} të dështuara", "Marrja dështoi: {errorCode}" or (409) "Një marrje është në vazhdim. Provo pas pak." | 113 |
+| /admin/users | users | `h1` "Përdoruesit"; form inputs "Email", "Fjalëkalimi", select "Roli" ("Administrator", "Shqyrtues"); button "Krijo përdoruesin"; rows with button "Çaktivizo", which opens a confirmation dialog with buttons "Po, çaktivizo" and "Anulo" (ADR-037) | 001–004 |
 
 Reviewer role: Admin-only links hidden; direct navigation shows "Nuk keni leje për këtë faqe".
 
@@ -411,8 +436,9 @@ Reviewer role: Admin-only links hidden; direct navigation shows "Nuk keni leje p
 
 | Service | Purpose | Status |
 |---|---|---|
-| Anthropic Claude API (Messages, structured outputs) | extraction/classification (REQ-040..043) | built behind `IAiProvider`; needs `Ai__ApiKey` for production; Fake in dev/test |
-| Public source sites (Radar JSON / RSS) | content | generic adapters; concrete sources named and cleared by the client (ADR-006) |
+| Google Gemini API (`generateContent`, JSON schema) | extraction/classification (REQ-040..043), default provider (ADR-034) | behind `IAiProvider`; `Ai__ApiKey` from the environment (`.env`, never committed); Fake in dev/test |
+| Anthropic Claude API (Messages, structured outputs) | alternative provider (`Ai__Provider=Anthropic`) | built behind `IAiProvider` |
+| Public source sites | content | generic Radar JSON / RSS adapters; HTML parsers for Prishtina.com and Ka' Po Dalim (ADR-035), seeded inactive |
 | Payments | — | not in V1 |
 | Email | — | not in V1 (source failures surface on the dashboard) |
 

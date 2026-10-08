@@ -202,3 +202,33 @@
 - Context: design.md §9 listed "duplicate title" and "changed time" among the 24 fixture items, but duplicates are detected against published items or other sources, and change detection needs a published item; a single inactive fixture source seeded into an empty DB cannot produce either.
 - Decision: the fixture keeps two same-title items in different cities instead; design.md §9 updated. Both cases remain covered by DuplicateAndChangeTests.
 - Consequences: dev data does not demo `PossibleDuplicate`/`ChangedSinceApproval`; approve some fixtures and re-fetch to see them.
+
+## ADR-034 — Gemini is the default AI provider (supersedes the provider choice of ADR-007)
+- Date: 2026-10-08 · Status: accepted · Task: spec amendment v2 (T046)
+- Context: the client brief "Automated Data Collection Agent" (docs/briefs/data-collection-agent.md) asks for Gemini to minimise AI cost; the client supplied a Gemini API key.
+- Decision: add `GeminiAiProvider` behind `IAiProvider` (design.md §6) and make it the provider inferred when `Ai__ApiKey` is set; default model `gemini-3.5-flash-lite` (configurable). The Anthropic provider stays as `Ai__Provider=Anthropic`. Everything else of ADR-007 holds: fill-only-null, server-side validation, `AiCall` audit, daily limit, Fake in Development/Testing. New `Ai__MinIntervalMs` spaces calls for free-tier rate limits.
+- Consequences: the key lives only in the environment (`.env`, git-ignored); `scripts/ai-smoke.sh` runs the live smoke test. Switching back is a config change.
+
+## ADR-035 — HTML sources: deterministic site parsers first, AI only for gaps (supersedes ADR-006 in part)
+- Date: 2026-10-08 · Status: accepted · Task: spec amendment v2 (T042, T044, T045)
+- Context: the client named Prishtina.com (https://prishtina.com/events) and Ka' Po Dalim (https://kapodalim.com/ks) as the V1 sources (brief §V1 Sources) and asked for per-source adapters, a cleaning step before AI, no AI on unchanged content, sources disabled by default and no circumvention of access controls (brief §1, §2, §7, §16). Both robots.txt files allow `/` (checked 2026-10-08). Both pages are server-rendered.
+- Decision: new source type `Html` with a required `adapter` key. `HtmlSourceAdapter` owns fetching (guarded client, robots, per-host delay) and cleaning; one `IHtmlSiteParser` per site maps a listing to raw fields deterministically. The cleaned listing text is the evidence; it is sent to the AI only when the start time, city or category could not be determined, so most listings cost no AI call. Only the configured page is fetched (no detail pages); listings beyond `Ingestion__HtmlHorizonDays` (30) are skipped to keep the review queue manageable. Both sources are seeded inactive (`Seed__KnownSources`). Parsers are pinned by saved-fixture contract tests; zero listings on a 2xx page fails the run (`MalformedPayload`) so layout changes surface on the dashboard.
+- Consequences: no descriptions/images unless the listing shows them (the public page links to the original, REQ-022/REQ-030). A third site = one parser + fixtures + adapter key. The operator remains responsible for the sites' terms of use; sources stay inactive until an Admin enables them.
+
+## ADR-036 — AI retry for unchanged candidates (resolves B-003, first part)
+- Date: 2026-10-08 · Status: accepted · Task: T047
+- Context: an open candidate whose AI call failed (`AiUnavailable`, e.g. a 429 on the free tier) was never re-enriched, because unchanged content skips processing (lookup row 1).
+- Decision: on a later fetch with the same content hash, an open candidate (`Pending`, or auto-rejected) that still has `AiUnavailable` is re-sent to the AI when a provider is enabled, the daily limit allows it and it has fewer than 3 `AiCall` rows; validation and the duplicate check re-run; the run still counts it `unchanged` (REQ-015). No admin button in V1.
+- Consequences: bounded extra cost (≤ 3 calls per candidate); the reviewer sees the result on the next run.
+
+## ADR-037 — Confirmation dialogs for destructive admin actions (resolves B-003, second part; supersedes the "no confirmation" note of ADR-032)
+- Date: 2026-10-08 · Status: accepted · Task: T047
+- Context: "Skado", "Tërhiq" and "Çaktivizo" acted on one click; "Tërhiq" is permanent (withdrawn items never resurface). The locked UI acceptance tests do not click these buttons (only `web/e2e/flows` do), so a confirmation step does not touch the locked spec.
+- Decision: each opens an in-page confirmation dialog (role `dialog`, not `window.confirm`) with "Po, skado" / "Po, tërhiq" / "Po, çaktivizo" and "Anulo"; focus moves into the dialog and returns to the trigger on cancel. The API is unchanged.
+- Consequences: one extra click; the flows in `web/e2e/flows` are updated.
+
+## ADR-038 — Bulk approve of valid candidates in the review queue
+- Date: 2026-10-08 · Status: accepted · Task: T048
+- Context: every publish needs human approval in V1 (ADR-005, confirmed by the client 2026-10-08), and the two HTML sources produce dozens of candidates per run.
+- Decision: the review queue offers checkboxes on pending `Valid` rows and "Aprovo të zgjedhurat", which calls the existing approve endpoint per candidate (same rules, audit and 409 handling) and reports successes and failures. No new API.
+- Consequences: approval stays a human decision; reviewing a full run takes minutes instead of one page per item.

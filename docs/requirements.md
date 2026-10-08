@@ -65,8 +65,8 @@
 
 ### Sources and fetching
 
-- **REQ-010** WHEN an Admin creates a source with a name, a type (`Fixture`, `JsonFeed`, `Rss`), a poll interval in range and the type's location (`fixturePayload` for `Fixture`, an absolute http(s) `baseUrl` otherwise) THE SYSTEM SHALL save it and return it with health `never` if it is active.
-- **REQ-011** IF a source is created or updated with a missing name, an unknown type, a poll interval outside the allowed range of its type (design.md §5), or a missing/invalid location for its type THEN THE SYSTEM SHALL respond 400 naming each invalid field.
+- **REQ-010** WHEN an Admin creates a source with a name, a type (`Fixture`, `JsonFeed`, `Rss`, `Html`), a poll interval in range, the type's location (`fixturePayload` for `Fixture`, an absolute http(s) `baseUrl` otherwise) and, for `Html`, a known site adapter (`prishtinaEvents` or `kapodalim`) THE SYSTEM SHALL save it and return it with health `never` if it is active.
+- **REQ-011** IF a source is created or updated with a missing name, an unknown type, a poll interval outside the allowed range of its type (design.md §5), a missing/invalid location for its type, or an `Html` source without a known site adapter THEN THE SYSTEM SHALL respond 400 naming each invalid field.
 - **REQ-012** WHILE a source is active THE SYSTEM SHALL fetch it automatically whenever it has never been fetched or its last fetch is at least its poll interval old, without any manual trigger.
 - **REQ-013** WHILE a source is inactive THE SYSTEM SHALL NOT fetch it automatically and SHALL report its health as `disabled`.
 - **REQ-014** WHEN an Admin triggers "fetch now" for a source (active or inactive) THE SYSTEM SHALL fetch and process it immediately and return a run summary with the counts `received`, `created`, `updated`, `unchanged` and `failed` as defined in design.md §2.
@@ -77,6 +77,7 @@
 - **REQ-019** WHEN a fetch of a source succeeds THE SYSTEM SHALL set its `lastSuccessAt`, reset its consecutive-failure count to 0 and, while the source is active, report health `healthy`.
 - **REQ-020** IF a source's URL resolves to a loopback, private, link-local or otherwise non-public network address THEN THE SYSTEM SHALL NOT send the request and SHALL fail the run with error code `BlockedAddress`.
 - **REQ-021** WHERE a source is of type `Fixture` THE SYSTEM SHALL mark every candidate and published item from it as synthetic (`isSynthetic: true`).
+- **REQ-022** WHERE a source is of type `Html` THE SYSTEM SHALL create one candidate per event listed on the fetched page, using only that listing's cleaned text (no navigation, footer, scripts, styles or other listings) as source evidence, the absolute event page URL as its URL, and null for every field the listing does not show. [manual] (verified by the saved-fixture contract tests of each site adapter, design.md §6, and a live "Merr tani" in release QA)
 
 ### Normalization and validation
 

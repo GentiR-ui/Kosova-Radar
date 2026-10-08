@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-08 · Spec amendment v2 (human)
+- Client brief `docs/briefs/data-collection-agent.md`: Prishtina.com + Ka' Po Dalim as V1 sources, Gemini as AI provider, manual approval kept, B-003 decided.
+- Changed: REQ-010/011 (type `Html` + `adapter`), new REQ-022 [manual]; acceptance tests in `SourceTests.cs`; design.md §1, §2, §4–§8; ADR-034..038; B-002/B-003 closed.
+- New/changed tasks: T042 (HTML source type), T044 (Prishtina.com parser), T045 (Ka' Po Dalim parser), T046 (Gemini), T047 (AI retry + confirm dialogs), T048 (bulk approve); T091 QA adds a live run of both sources.
+- Next: T042.
+
 ## 2026-10-05 · T090 done
 - Hardening pass by `security-reviewer` over the whole app (live Production-mode probe: auth, SSRF guard, headers, cookies, rate limits; `dotnet list --vulnerable` and `npm audit` clean): no HIGH, 2 MEDIUM, 8 LOW.
 - Fixed: MEDIUM-1 Production/Staging now refuse to start without `Proxy__KnownProxies`/`KnownNetworks` (`ProductionGuards.RequireTrustedProxy`, integration test, RUNBOOK); MEDIUM-2 `.env.*` git- and docker-ignored (except `.env.example`) and `.env.example` lists the compose variables; LOW HSTS 365 days + includeSubDomains; dev compose Postgres bound to 127.0.0.1; `EntityFrameworkCore.Design` `PrivateAssets="all"`.

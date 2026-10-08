@@ -60,6 +60,29 @@ public class SourceTests(AppFactory app)
     }
 
     [Theory, Trait("Req", "REQ-010")]
+    [InlineData("prishtinaEvents")]
+    [InlineData("kapodalim")]
+    public async Task Admin_creates_an_html_source_with_a_site_adapter(string adapter)
+    {
+        var admin = await Radar.AdminAsync(app);
+        var body = Radar.UrlSource("html", "https://kosovaradar-test.invalid/events", isActive: true, pollIntervalMinutes: 180);
+        body["adapter"] = adapter;
+
+        var dto = await Radar.CreateSourceAsync(admin, body);
+
+        Assert.Equal("html", dto.Str("type"));
+        Assert.Equal(adapter, dto.Str("adapter"));
+        Assert.Equal("https://kosovaradar-test.invalid/events", dto.Str("baseUrl"));
+        Assert.Equal(180, dto.Int("pollIntervalMinutes"));
+        Assert.Equal("never", dto.Str("health"));
+        Assert.Equal(adapter, (await Radar.SourceAsync(admin, dto.Id())).Str("adapter"));
+
+        // Not left active: the test only needs the creation response.
+        body["isActive"] = false;
+        await Radar.UpdateSourceAsync(admin, dto.Id(), body);
+    }
+
+    [Theory, Trait("Req", "REQ-010")]
     [InlineData(1)]
     [InlineData(1440)]
     public async Task Fixture_poll_interval_boundaries_are_accepted(int poll)
@@ -73,7 +96,11 @@ public class SourceTests(AppFactory app)
     {
         { """{"name":"","type":"fixture","fixturePayload":"{\"items\":[]}","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["name"] },
         { """{"type":"fixture","fixturePayload":"{\"items\":[]}","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["name"] },
-        { """{"name":"X","type":"html","baseUrl":"https://example.com/","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["type"] },
+        { """{"name":"X","type":"ical","baseUrl":"https://example.com/","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["type"] },
+        { """{"name":"X","type":"html","baseUrl":"https://example.com/events","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["adapter"] },
+        { """{"name":"X","type":"html","baseUrl":"https://example.com/events","adapter":"facebookEvents","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["adapter"] },
+        { """{"name":"X","type":"html","baseUrl":"/events","adapter":"kapodalim","pollIntervalMinutes":60,"isActive":false,"isUnreliable":false}""", ["baseUrl"] },
+        { """{"name":"X","type":"html","baseUrl":"https://example.com/events","adapter":"prishtinaEvents","pollIntervalMinutes":14,"isActive":false,"isUnreliable":false}""", ["pollIntervalMinutes"] },
         { """{"name":"X","type":"fixture","fixturePayload":"{\"items\":[]}","pollIntervalMinutes":0,"isActive":false,"isUnreliable":false}""", ["pollIntervalMinutes"] },
         { """{"name":"X","type":"fixture","fixturePayload":"{\"items\":[]}","pollIntervalMinutes":1441,"isActive":false,"isUnreliable":false}""", ["pollIntervalMinutes"] },
         { """{"name":"X","type":"jsonFeed","baseUrl":"https://example.com/feed.json","pollIntervalMinutes":14,"isActive":false,"isUnreliable":false}""", ["pollIntervalMinutes"] },
