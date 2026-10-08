@@ -10,6 +10,14 @@ export const r = {
     columns: { title: 'Titulli', source: 'Burimi', validation: 'Validimi', status: 'Statusi' },
     untitled: '(pa titull)',
     list: 'Kandidatët',
+    select: (title: string) => `Zgjidh ${title}`,
+    selectColumn: 'Zgjedhja',
+    approveSelected: 'Aprovo të zgjedhurat',
+    selectedCount: (n: number) => `${n} të zgjedhur`,
+    bulkResult: (ok: number, failed: number) =>
+      failed === 0
+        ? `${ok} u aprovuan.`
+        : `${ok} u aprovuan, ${failed} dështuan (mund të jenë ndryshuar nga dikush tjetër). Rifreskoni listën.`,
   },
   status: { pending: 'Në pritje', rejected: 'Refuzuar', published: 'Publikuar', merged: 'Bashkuar' },
   validation: { valid: 'Valid', needsReview: 'Kërkon shqyrtim', rejected: 'Refuzuar' },

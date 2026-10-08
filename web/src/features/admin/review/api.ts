@@ -124,6 +124,31 @@ export const useApprove = (id: string) =>
   useDecision<undefined, { kind: Kind; itemId: string }>(id, 'approve')
 export const useReject = (id: string) => useDecision<{ reason: string }, CandidateDto>(id, 'reject')
 
+/** Approves candidates one by one through the single-item endpoint (ADR-038); reports how many failed. */
+export function useBulkApprove() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      let approved = 0
+      let failed = 0
+      for (const id of ids) {
+        try {
+          await api(`/api/admin/candidates/${encodeURIComponent(id)}/approve`, { method: 'POST' })
+          approved++
+        } catch {
+          failed++
+        }
+      }
+      return { approved, failed }
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ['admin', 'candidates'] })
+      void client.invalidateQueries({ queryKey: ['admin', 'candidate'] })
+      void client.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+    },
+  })
+}
+
 export type FieldsRequest = Omit<CandidateFields, 'cityText' | 'categoryText' | 'discountPercent'>
 
 export function useSaveFields(id: string) {

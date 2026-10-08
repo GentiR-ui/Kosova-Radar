@@ -95,6 +95,33 @@ describe('ReviewQueuePage', () => {
     expect(await within(await screen.findByRole('table')).findByText('Bashkuar')).toBeInTheDocument()
     expect(calls).toContain('GET /api/admin/candidates?page=1&pageSize=25')
   })
+
+  it('bulk-approves selected valid rows and reports a failure', async () => {
+    const calls = stubFetch({
+      'GET /api/admin/candidates/sources': [200, sources],
+      'GET /api/admin/candidates?status=pending&page=1&pageSize=25': [
+        200,
+        page([
+          summary({ id: 'a', title: 'Një', validation: 'valid' }),
+          summary({ id: 'b', title: 'Dy', validation: 'valid' }),
+          summary({ id: 'c', title: 'Tre', validation: 'needsReview' }),
+        ]),
+      ],
+      'POST /api/admin/candidates/a/approve': [200, { kind: 'event', itemId: 'i1' }],
+      'POST /api/admin/candidates/b/approve': [409, { status: 409 }],
+    })
+    renderRoutes(routes, '/admin/review')
+    await screen.findByRole('link', { name: 'Një' })
+    expect(screen.queryByRole('checkbox', { name: 'Zgjidh Tre' })).not.toBeInTheDocument()
+    const approve = screen.getByRole('button', { name: 'Aprovo të zgjedhurat' })
+    expect(approve).toBeDisabled()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Zgjidh Një' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Zgjidh Dy' }))
+    await userEvent.click(approve)
+    expect(await screen.findByText(/1 u aprovuan, 1 dështuan/)).toBeInTheDocument()
+    expect(calls).toContain('POST /api/admin/candidates/a/approve')
+    expect(calls).toContain('POST /api/admin/candidates/b/approve')
+  })
 })
 
 describe('CandidatePage', () => {

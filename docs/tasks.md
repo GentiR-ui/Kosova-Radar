@@ -54,7 +54,7 @@
 - [x] T045 — Ka' Po Dalim parser: capture https://kapodalim.com/ks the same way; `KapodalimParser` per design.md §6 (Albanian months, date ranges, time formats incl. TBA, city badge, entry line → `priceText`, category map) — contributes REQ-022; ADR-035 — DoD: as T044
 - [x] T046 — Gemini provider 🔒: `GeminiAiProvider` per design.md §6 (key only from the environment, header auth, model from config, timeout, JSON schema, token usage → `AiCall`), inferred provider `Gemini` when `Ai__ApiKey` is set, `Ai__MinIntervalMs`, Anthropic kept; `.env.example` and RUNBOOK updated; `GeminiAiProviderTests.Live_smoke_test_against_the_real_API` skipped without `Ai__ApiKey` — production path of REQ-040..043; ADR-034 — DoD: unit tests with a stubbed HTTP handler (success, 429, 5xx, timeout, blocked/empty candidate, invalid JSON, schema violations, key never in URL/logs); security-reviewer has no HIGH/MEDIUM
 - [x] T047 — Review follow-ups (former B-003): AI retry for unchanged `AiUnavailable` candidates (ADR-036); in-page confirmation dialogs for "Skado", "Tërhiq", "Çaktivizo" (ADR-037) with `web/e2e/flows` updated — DoD: integration tests for the retry (3-call cap, daily limit, counted `unchanged`); Playwright flows green; UI acceptance tests still green
-- [ ] T048 — Bulk approve in the review queue (ADR-038): checkboxes "Zgjidh {title}" on pending `Valid` rows, "Aprovo të zgjedhurat", result message — DoD: Playwright flow in `web/e2e/flows` (two approved, one 409 reported); keyboard-only operable
+- [x] T048 — Bulk approve in the review queue (ADR-038): checkboxes "Zgjidh {title}" on pending `Valid` rows, "Aprovo të zgjedhurat", result message — DoD: Playwright flow in `web/e2e/flows` (two approved, one 409 reported); keyboard-only operable
 
 ## Release
 

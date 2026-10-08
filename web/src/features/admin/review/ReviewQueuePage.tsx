@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Field, selectClass } from '../../public/Field'
 import { flat } from '../../public/api'
 import ListShell from '../../public/ListShell'
-import { useCandidates, useSourceOptions, type QueueFilters } from './api'
+import { useBulkApprove, useCandidates, useSourceOptions, type QueueFilters } from './api'
 import { r } from './strings'
 
 const q = r.queue
@@ -46,6 +47,27 @@ export default function ReviewQueuePage() {
   }
   const candidates = useCandidates(filters)
   const sources = useSourceOptions()
+  const bulk = useBulkApprove()
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const [result, setResult] = useState<string | null>(null)
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+
+  const approveSelected = () => {
+    const ids = [...selected]
+    setResult(null)
+    bulk.mutate(ids, {
+      onSuccess: ({ approved, failed }) => {
+        setSelected(new Set())
+        setResult(q.bulkResult(approved, failed))
+      },
+    })
+  }
 
   const set = (key: string, value: string) =>
     setParams(
@@ -121,12 +143,30 @@ export default function ReviewQueuePage() {
         </Field>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          className="border border-ink px-4 py-2 text-sm disabled:opacity-50"
+          disabled={selected.size === 0 || bulk.isPending}
+          onClick={approveSelected}
+        >
+          {q.approveSelected}
+        </button>
+        <span className="text-sm text-muted">{q.selectedCount(selected.size)}</span>
+        <p role="status" className="text-sm">
+          {result}
+        </p>
+      </div>
+
       <ListShell queries={[candidates]}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{q.list}</caption>
             <thead>
               <tr className="border-b border-line text-muted">
+                <th scope="col" className="py-2 pr-4 font-medium">
+                  <span className="sr-only">{q.selectColumn}</span>
+                </th>
                 <th scope="col" className="py-2 pr-4 font-medium">
                   {q.columns.title}
                 </th>
@@ -144,6 +184,17 @@ export default function ReviewQueuePage() {
             <tbody>
               {flat(candidates).map((c) => (
                 <tr key={c.id} className="border-b border-line">
+                  <td className="py-3 pr-4">
+                    {c.status === 'pending' && c.validation === 'valid' && (
+                      <input
+                        type="checkbox"
+                        className="size-5"
+                        aria-label={q.select(c.title ?? q.untitled)}
+                        checked={selected.has(c.id)}
+                        onChange={() => toggle(c.id)}
+                      />
+                    )}
+                  </td>
                   <td className="py-3 pr-4">
                     <Link to={`/admin/items/${c.id}`} className="underline underline-offset-2">
                       {c.title ?? q.untitled}

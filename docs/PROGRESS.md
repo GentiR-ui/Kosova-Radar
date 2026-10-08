@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-08 · T048 done
+- Built: bulk approve in the review queue (ADR-038): checkbox "Zgjidh {title}" on pending `Valid` rows, "Aprovo të zgjedhurat" (disabled with no selection), sequential calls to the existing approve endpoint (`useBulkApprove`), `role=status` result message with approved/failed counts. No API change.
+- Tests: component test (2 selected, one 409 reported, non-valid row has no checkbox); Playwright flow `web/e2e/flows/bulk-approve.spec.ts` (keyboard-only, two approved, one 409) written but NOT run (no Docker/browser stack in this session).
+- Verify: quick PASS. Review: skipped (small; no business rules, UI over an existing endpoint).
+- Next: T091.
+
 ## 2026-10-08 · T047 done
 - Built: AI retry (ADR-036): an unchanged open candidate with `AiUnavailable` is re-enriched when a provider is enabled, the daily limit allows (`AiEnricher.CanCall`) and it has < 3 `AiCall` rows; starts from stored fields so reviewer edits survive; counted `unchanged`. `ConfirmDialog` (ADR-037) for "Skado", "Tërhiq", "Çaktivizo"; `web/e2e/flows` and component tests updated.
 - Tests: 3 integration tests (3-call cap, success clears `AiUnavailable`, daily limit) written and compiled but NOT run (no Docker in this session); web component tests green.
