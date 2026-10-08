@@ -17,8 +17,12 @@ internal sealed partial class PrishtinaEventsParser : IHtmlSiteParser
 
     public string Key => HtmlAdapters.PrishtinaEvents;
 
-    public IReadOnlyList<IElement> FindListings(IDocument page) =>
-        page.QuerySelectorAll("a[href]").Where(a => EventPath().IsMatch(a.GetAttribute("href")!)).ToList();
+    public IReadOnlyList<IElement> FindListings(IDocument page, CancellationToken ct) =>
+        page.QuerySelectorAll("a[href]").Where(a =>
+        {
+            ct.ThrowIfCancellationRequested();
+            return EventPath().IsMatch(a.GetAttribute("href")!);
+        }).ToList();
 
     public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now)
     {

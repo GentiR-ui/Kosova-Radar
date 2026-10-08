@@ -69,7 +69,8 @@ export default function ReviewQueuePage() {
     })
   }
 
-  const set = (key: string, value: string) =>
+  const set = (key: string, value: string) => {
+    setSelected(new Set()) // a selection must never approve rows the new filter hides
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -79,6 +80,7 @@ export default function ReviewQueuePage() {
       },
       { replace: true },
     )
+  }
 
   return (
     <>

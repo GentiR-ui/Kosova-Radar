@@ -13,7 +13,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace App.IntegrationTests;
 
-/// <summary>T042: an HTML page over a stubbed HTTP client becomes candidates; the two known sources are seeded once.</summary>
+/// <summary>
+/// T042: an HTML page over a stubbed HTTP client becomes candidates; the two known sources are seeded once. The saved pages
+/// of T044/T045 also run end to end through the real site parsers, reference resolution and the database.
+/// </summary>
 [Collection(IntegrationCollection.Name)]
 public sealed class HtmlSourceTests(AppFactory app) : IDisposable
 {
@@ -31,7 +34,7 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
     {
         public string Key => HtmlAdapters.PrishtinaEvents;
 
-        public IReadOnlyList<IElement> FindListings(IDocument page) => page.QuerySelectorAll("li.card").ToList();
+        public IReadOnlyList<IElement> FindListings(IDocument page, CancellationToken ct) => page.QuerySelectorAll("li.card").ToList();
 
         public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now) =>
             new(listing.QuerySelector("a")?.GetAttribute("href"), new CandidateFields
@@ -43,14 +46,17 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
             });
     }
 
-    private HttpClient CreateClient()
+    private HttpClient CreateClient(bool realParsers = false)
     {
         var factory = app.WithWebHostBuilder(b => b.ConfigureServices(services =>
         {
             services.RemoveAll<IngestionOptions>();
             services.AddSingleton(new IngestionOptions { AllowFixtureSources = true, HttpRetries = 0, HttpTimeoutSeconds = 5, PerHostDelaySeconds = 0 });
-            services.RemoveAll<IHtmlSiteParser>();
-            services.AddSingleton<IHtmlSiteParser, CardParser>();
+            if (!realParsers)
+            {
+                services.RemoveAll<IHtmlSiteParser>();
+                services.AddSingleton<IHtmlSiteParser, CardParser>();
+            }
             services.AddHttpClient<SourceHttpFetcher>(SourceHttpFetcher.ClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
                 {
@@ -72,13 +78,13 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         return client;
     }
 
-    private static async Task<(Guid Id, JsonElement Run)> FetchAsync(HttpClient admin, string url)
+    private static async Task<(Guid Id, JsonElement Run)> FetchAsync(HttpClient admin, string url, string adapter = HtmlAdapters.PrishtinaEvents)
     {
         var created = await admin.PostAsJsonAsync("/api/admin/sources", new
         {
             name = $"Html {Guid.NewGuid():N}",
             type = "html",
-            adapter = HtmlAdapters.PrishtinaEvents,
+            adapter,
             baseUrl = url,
             pollIntervalMinutes = 180,
             isActive = false,
@@ -86,10 +92,19 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var id = JsonDocument.Parse(await created.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetGuid();
-        var run = await admin.PostAsync($"/api/admin/sources/{id}/fetch", null);
-        Assert.Equal(HttpStatusCode.OK, run.StatusCode);
-        return (id, JsonDocument.Parse(await run.Content.ReadAsStringAsync()).RootElement.Clone());
+        return (id, await RunAsync(admin, id));
     }
+
+    private static async Task<JsonElement> RunAsync(HttpClient admin, Guid id)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/sources/{id}/fetch");
+        req.Headers.Add("X-Test-Now", "2026-10-08T07:00:00Z"); // the day the pages were saved: horizon and expiry as on that day
+        var run = await admin.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, run.StatusCode);
+        return JsonDocument.Parse(await run.Content.ReadAsStringAsync()).RootElement.Clone();
+    }
+
+    private static string SavedPage(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "Html", name));
 
     private static string NewUrl() => $"https://html-{Guid.NewGuid():N}.example/events";
 
@@ -172,6 +187,47 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         var again = await KnownAsync(factory.Services);
         Assert.Equal(2, again.Count);
         Assert.Equal("Ka Po Dalim (riemëruar)", again.Single(s => s.BaseUrl == "https://kapodalim.com/ks").Name);
+    }
+
+    [Theory]
+    [InlineData(HtmlAdapters.PrishtinaEvents, "prishtina-events-2026-10-08.html", "/events/")]
+    [InlineData(HtmlAdapters.Kapodalim, "kapodalim-ks-2026-10-08.html", "/event/")]
+    public async Task A_saved_page_runs_end_to_end_through_the_real_parser_and_a_second_fetch_is_unchanged(
+        string adapter, string page, string eventPath)
+    {
+        var url = NewUrl();
+        _pages[url] = SavedPage(page);
+        var admin = await LoginAsync(CreateClient(realParsers: true));
+
+        var (id, run) = await FetchAsync(admin, url, adapter);
+
+        Assert.Equal("succeeded", run.GetProperty("status").GetString());
+        Assert.Equal(0, run.GetProperty("failed").GetInt32());
+        var created = run.GetProperty("created").GetInt32();
+        Assert.True(created >= 10, $"created {created}");
+
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var candidates = await db.Candidates.AsNoTracking().Where(c => c.SourceId == id).ToListAsync();
+            Assert.Equal(created, candidates.Count);
+            Assert.All(candidates, c =>
+            {
+                Assert.Contains(eventPath, c.SourceUrl);
+                Assert.DoesNotContain("?date=", c.SourceUrl);
+                Assert.EndsWith("\nURL: " + c.SourceUrl, c.Evidence);
+                Assert.Equal(c.SourceUrl, c.Fields.Url);
+            });
+            // Reference resolution keeps what the parser mapped (T044 review: the slug used to be overwritten).
+            Assert.Contains(candidates, c => c.Fields.CitySlug == "prishtine" && c.Fields.CategorySlug == "muzike");
+        }
+
+        // The same page again, as on the next day for Ka' Po Dalim's running series: nothing new, nothing changed.
+        _pages[url] = SavedPage(page).Replace("?date=2026-10-08", "?date=2026-10-09", StringComparison.Ordinal);
+        var again = await RunAsync(admin, id);
+        Assert.Equal("succeeded", again.GetProperty("status").GetString());
+        Assert.Equal(0, again.GetProperty("created").GetInt32());
+        Assert.Equal(0, again.GetProperty("updated").GetInt32());
     }
 
     public void Dispose() => _factories.ForEach(f => f.Dispose());

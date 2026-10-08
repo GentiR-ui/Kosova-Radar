@@ -15,8 +15,11 @@ public interface IHtmlSiteParser
     /// <summary>The <c>Source.Adapter</c> key (<see cref="App.Domain.Sources.HtmlAdapters"/>).</summary>
     string Key { get; }
 
-    /// <summary>The listing elements of the cleaned page, in page order. Locate by stable signals, never by generated class names.</summary>
-    IReadOnlyList<IElement> FindListings(IDocument page);
+    /// <summary>
+    /// The listing elements of the cleaned page, in page order. Locate by stable signals, never by generated class names;
+    /// stay linear in the page size and observe <paramref name="ct"/> (the adapter's deadline).
+    /// </summary>
+    IReadOnlyList<IElement> FindListings(IDocument page, CancellationToken ct);
 
     /// <summary>Maps one listing; anything it does not show stays null. <paramref name="now"/> is the fetch time.</summary>
     HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now);

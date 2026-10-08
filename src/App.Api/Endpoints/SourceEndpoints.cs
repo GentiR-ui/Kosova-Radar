@@ -49,10 +49,12 @@ public static class SourceEndpoints
     }
 
     // A failed run is still a 200 with status "failed"; 409 only when another run of the source does not finish in time.
+    // The run is not tied to the request: a proxy timeout or a closed tab must not throw away AI calls already made
+    // (an HTML page with AI spacing can take minutes); only shutdown stops it.
     private static async Task<Results<Ok<RunDto>, NotFound, ProblemHttpResult>> Fetch(
-        Guid id, IngestionService ingestion, CancellationToken ct)
+        Guid id, IngestionService ingestion, IHostApplicationLifetime lifetime)
     {
-        var result = await ingestion.RunAsync(id, JobTrigger.Manual, IngestionService.ManualLockWait, ct);
+        var result = await ingestion.RunAsync(id, JobTrigger.Manual, IngestionService.ManualLockWait, lifetime.ApplicationStopping);
         return result.Status switch
         {
             RunStatus.NotFound => TypedResults.NotFound(),

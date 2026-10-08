@@ -21,36 +21,35 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
 
     public string Key => HtmlAdapters.Kapodalim;
 
-    public IReadOnlyList<IElement> FindListings(IDocument page)
+    public IReadOnlyList<IElement> FindListings(IDocument page, CancellationToken ct)
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var indexByPath = new Dictionary<string, int>(StringComparer.Ordinal); // linear: a page of repeated links must not rescan cards
         var result = new List<IElement>();
         foreach (var a in page.QuerySelectorAll("a[href]"))
         {
+            ct.ThrowIfCancellationRequested();
             var path = PathOf(a.GetAttribute("href")!);
             if (path is null) continue;
             var card = a.Closest("article") ?? (a.QuerySelector("h3") is not null ? a : null);
             if (card is null) continue;
-            if (!seen.Add(path))
+            if (indexByPath.TryGetValue(path, out var at))
             {
                 // The grid card (article) is richer than a featured card: let it replace one found earlier.
-                var at = result.FindIndex(r => PathIn(r) == path);
-                if (at >= 0 && card.LocalName == "article" && result[at].LocalName != "article") result[at] = card;
+                if (card.LocalName == "article" && result[at].LocalName != "article") result[at] = card;
                 continue;
             }
+            indexByPath[path] = result.Count;
             result.Add(card);
         }
         return result;
     }
 
-    private static string? PathIn(IElement card) =>
-        card.LocalName == "a" ? PathOf(card.GetAttribute("href")!) : card.QuerySelectorAll("a[href]").Select(a => PathOf(a.GetAttribute("href")!)).FirstOrDefault(p => p is not null);
-
     public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now)
     {
         var link = listing.LocalName == "a" ? listing : listing.QuerySelectorAll("a[href]").FirstOrDefault(a => PathOf(a.GetAttribute("href")!) is not null);
-        var href = link?.GetAttribute("href");
-        var path = href is null ? null : PathOf(href);
+        var path = link is null ? null : PathOf(link.GetAttribute("href")!);
+        // The canonical event page is the identity: "?date=" names today's occurrence and changes every day.
+        var href = path is null ? null : $"/event/{path}";
 
         var title = NullIfEmpty(Collapse(listing.QuerySelector("h3")?.TextContent ?? ""));
         var posterVenue = NullIfEmpty(Collapse(listing.QuerySelector(".poster-venue")?.TextContent ?? ""));
@@ -89,7 +88,11 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
         });
     }
 
-    /// <summary>No clock time ("ORARI TBA", "PROGRAMI TBA") → no start; a day range sets the end to the last day 23:59.</summary>
+    /// <summary>
+    /// No clock time ("ORARI TBA", "PROGRAMI TBA") → no start. A day range ("9–10 TETOR" after the poster date, else the
+    /// slug's "-7-16-tetor-2026") sets the start date to its first day and the end to its last day 23:59, so a running
+    /// series keeps the same fields while the poster shows each day's occurrence.
+    /// </summary>
     private static (DateTimeOffset? Start, DateTimeOffset? End) ParseWhen(IElement listing, string? path)
     {
         var time = listing.QuerySelector("time");
@@ -104,6 +107,10 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
         if (time?.GetAttribute("datetime") is { } dt && DateOnly.TryParseExact(dt, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) first = d;
         else if (path is not null && SlugDate().Match(path) is { Success: true } sd
                  && DateOnly.TryParseExact(sd.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d2)) first = d2;
+
+        var range = (first is null ? null : ReadRange(DayRange().Match(NormalizeText(descriptor)), first.Value.Year))
+            ?? (path is null ? null : ReadRange(SlugRange().Match(path), null));
+        if (range is { } r) first = r.First;
         if (first is null) return (null, null);
 
         DateTimeOffset? starts = null, ends = null;
@@ -117,18 +124,35 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
             }
         }
 
-        if (DayRange().Match(NormalizeText(descriptor)) is { Success: true } r
-            && Array.IndexOf(Months, r.Groups["m2"].Value) + 1 is var endMonth and > 0)
-        {
-            var endDay = int.Parse(r.Groups["d2"].Value, CultureInfo.InvariantCulture);
-            var year = endMonth < first.Value.Month ? first.Value.Year + 1 : first.Value.Year;
-            if (endDay >= 1 && endDay <= DateTime.DaysInMonth(year, endMonth))
-            {
-                var last = new DateTime(year, endMonth, endDay, 23, 59, 0);
-                if (last > first.Value.ToDateTime(TimeOnly.MinValue)) ends = Local(last);
-            }
-        }
+        if (range is { } days) ends = Local(days.Last.ToDateTime(new TimeOnly(23, 59)));
         return (starts, ends);
+    }
+
+    /// <summary>
+    /// "D1[ month1]–D2 month2" with the year of the poster date, or the slug's "-D1[-month1]-D2-month2-YYYY"; a first
+    /// month after the last month is in the previous year (the poster date is then the first day, never the last).
+    /// </summary>
+    private static (DateOnly First, DateOnly Last)? ReadRange(Match m, int? posterYear)
+    {
+        if (!m.Success) return null;
+        var lastMonth = Array.IndexOf(Months, m.Groups["m2"].Value) + 1;
+        var firstMonth = m.Groups["m1"].Length > 0 ? Array.IndexOf(Months, m.Groups["m1"].Value) + 1 : lastMonth;
+        if (lastMonth == 0 || firstMonth == 0) return null;
+
+        var d1 = int.Parse(m.Groups["d1"].Value, CultureInfo.InvariantCulture);
+        var d2 = int.Parse(m.Groups["d2"].Value, CultureInfo.InvariantCulture);
+        int firstYear, lastYear;
+        if (posterYear is { } y)
+            (firstYear, lastYear) = (y, lastMonth < firstMonth ? y + 1 : y);
+        else
+        {
+            lastYear = int.Parse(m.Groups["y"].Value, CultureInfo.InvariantCulture);
+            firstYear = firstMonth > lastMonth ? lastYear - 1 : lastYear;
+        }
+
+        if (d1 < 1 || d1 > DateTime.DaysInMonth(firstYear, firstMonth) || d2 < 1 || d2 > DateTime.DaysInMonth(lastYear, lastMonth)) return null;
+        var (first, last) = (new DateOnly(firstYear, firstMonth, d1), new DateOnly(lastYear, lastMonth, d2));
+        return last > first ? (first, last) : null;
     }
 
     private static TimeOnly Clock(string h, string m) => new(int.Parse(h, CultureInfo.InvariantCulture), int.Parse(m, CultureInfo.InvariantCulture));
@@ -175,8 +199,11 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
     [GeneratedRegex(@"(?<!\d)(?<h>\d{1,2}):(?<m>\d{2})(?:\s*[–-]\s*(?<eh>\d{1,2}):(?<em>\d{2}))?")]
     private static partial Regex ClockRange();
 
-    [GeneratedRegex(@"\d{1,2}\s*[a-z]*\s*[–-]\s*(?<d2>\d{1,2})\s*(?<m2>[a-z]+)")]
+    [GeneratedRegex(@"(?<!\d)(?<d1>\d{1,2})\s*(?<m1>[a-z]*)\s*[–-]\s*(?<d2>\d{1,2})\s*(?<m2>[a-z]+)")]
     private static partial Regex DayRange();
+
+    [GeneratedRegex(@"-(?<d1>\d{1,2})(?:-(?<m1>[a-z]+))?-(?<d2>\d{1,2})-(?<m2>[a-z]+)-(?<y>\d{4})$")]
+    private static partial Regex SlugRange();
 
     [GeneratedRegex(@"publikua|\bTBA\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex NotPublished();

@@ -2,6 +2,7 @@ using System.Text;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using App.Application.Abstractions;
+using App.Application.Candidates;
 using App.Application.Ingestion;
 using App.Application.Sources;
 using App.Domain.Content;
@@ -23,12 +24,17 @@ internal sealed class HtmlSourceAdapter(
     /// <summary>Like <see cref="RssFeedParser.MaxItems"/>: one page cannot flood the review queue or the AI budget.</summary>
     public const int MaxListings = 1000;
 
-    /// <summary>AngleSharp is quadratic in nesting depth; a hostile page must not hold the scheduler for minutes.</summary>
+    /// <summary>
+    /// AngleSharp is quadratic in nesting depth; a hostile page must not hold the scheduler for minutes. Applies to parsing
+    /// and, separately, to cleaning, finding and mapping the listings.
+    /// </summary>
     public static readonly TimeSpan ParseTimeout = TimeSpan.FromSeconds(5);
 
     private const string RemovedElements =
         "script, style, noscript, template, nav, header, footer, form, iframe, ins.adsbygoogle, "
-        + "[class*='advert' i], [id*='advert' i], [class*='adsbygoogle' i], [aria-label='advertisement' i]";
+        + "[class*='advert' i], [id*='advert' i], [class*='adsbygoogle' i], [aria-label='advertisement' i], "
+        // Text a visitor cannot see must not reach the AI or the evidence (hidden instructions to the model).
+        + "[hidden], [style*='display:none' i], [style*='display: none' i], [style*='visibility:hidden' i], [style*='visibility: hidden' i]";
 
     protected override SourceType Type => SourceType.Html;
 
@@ -60,94 +66,112 @@ internal sealed class HtmlSourceAdapter(
             }
         }
 
-        foreach (var element in page.QuerySelectorAll(RemovedElements).ToList()) element.Remove();
-
-        IReadOnlyList<IElement> listings;
+        using var document = page;
+        // The same deadline for everything after parsing: a crafted page must fail one run, not hold the scheduler (ADR-039).
+        using var work = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        work.CancelAfter(parseTimeout);
         try
         {
-            listings = parser.FindListings(page);
-        }
-        catch (Exception e) when (e is not OperationCanceledException)
-        {
-            return FeedParseResult.Malformed; // the layout is not what the parser expects
-        }
+            foreach (var element in page.QuerySelectorAll(RemovedElements).ToList()) element.Remove();
 
-        if (listings.Count == 0) return FeedParseResult.Malformed; // a 2xx page without listings: the layout probably changed
-
-        var items = new List<NormalizedCandidate>();
-        var failures = new List<ItemFailure>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var received = 0;
-        foreach (var listing in listings)
-        {
-            if (received >= MaxListings)
-            {
-                failures.Add(new ItemFailure(received, "TooManyItems"));
-                received++;
-                break;
-            }
-
-            HtmlListing mapped;
+            IReadOnlyList<IElement> listings;
             try
             {
-                mapped = parser.Map(listing, pageUrl, now);
+                listings = parser.FindListings(page, work.Token);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
-                // A parser reads uncontrolled markup: whatever it trips over is this listing's failure, not the run's.
-                failures.Add(new ItemFailure(received++, "InvalidListing"));
-                continue;
+                return FeedParseResult.Malformed; // the layout is not what the parser expects
             }
 
-            if (mapped.Fields.StartsAt is { } start && start > now.AddDays(horizonDays)) continue; // beyond the horizon: skipped, not counted
-            if (mapped.Href is null)
+            if (listings.Count == 0) return FeedParseResult.Malformed; // a 2xx page without listings: the layout probably changed
+
+            var items = new List<NormalizedCandidate>();
+            var failures = new List<ItemFailure>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var received = 0;
+            foreach (var listing in listings)
             {
-                failures.Add(new ItemFailure(received++, "MissingIdentity"));
-                continue;
+                work.Token.ThrowIfCancellationRequested();
+                if (received >= MaxListings)
+                {
+                    failures.Add(new ItemFailure(received, "TooManyItems"));
+                    received++;
+                    break;
+                }
+
+                HtmlListing mapped;
+                try
+                {
+                    mapped = parser.Map(listing, pageUrl, now);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    // A parser reads uncontrolled markup: whatever it trips over is this listing's failure, not the run's.
+                    failures.Add(new ItemFailure(received++, "InvalidListing"));
+                    continue;
+                }
+
+                if (mapped.Fields.StartsAt is { } start && start > now.AddDays(horizonDays)) continue; // beyond the horizon: skipped, not counted
+                if (mapped.Href is null)
+                {
+                    failures.Add(new ItemFailure(received++, "MissingIdentity"));
+                    continue;
+                }
+
+                if (!Uri.TryCreate(pageUrl, mapped.Href, out var link) || link.Scheme is not ("http" or "https")
+                    || !string.IsNullOrEmpty(link.UserInfo) || link.AbsoluteUri.Length > RadarFeedParser.MaxUrlLength)
+                {
+                    failures.Add(new ItemFailure(received++, "InvalidField:url"));
+                    continue;
+                }
+
+                var url = link.GetLeftPart(UriPartial.Query); // a fragment never identifies another page
+                if (url.Length > RadarFeedParser.MaxExternalIdLength) // the url is the externalId, whose column is shorter than a url
+                {
+                    failures.Add(new ItemFailure(received++, "InvalidField:externalId"));
+                    continue;
+                }
+
+                if (!seen.Add(url)) continue; // the same event shown twice on the page is one listing
+
+                var text = CleanText(listing);
+                var fields = mapped.Fields with { Url = url };
+                if (!RadarFeedParser.IsStorableText(text) || !AreStorable(fields))
+                {
+                    failures.Add(new ItemFailure(received++, "InvalidField:text"));
+                    continue;
+                }
+
+                var evidence = $"{text}\nURL: {url}";
+                var fingerprint = ItemIdentity.Fingerprint(sourceId, url, url)!;
+                // The AI only fills what the listing did not show (a shown but unmapped category included: the AI may suggest one),
+                // and costs nothing when everything is known (ADR-035).
+                var aiText = fields.StartsAt is null || fields.CityText is null || fields.CategorySlug is null
+                    ? text
+                    : null;
+                // The hash leaves out the evidence: card text also shows display-only parts (the poster day of a running
+                // series) that would make every fetch a change; the fields and the AI text are what the candidate is built from.
+                items.Add(new NormalizedCandidate(ItemKind.Event, url, url, fingerprint,
+                    ItemIdentity.ContentHash(ItemKind.Event, fields, aiText, url), fields, aiText, evidence));
+                received++;
             }
 
-            if (!Uri.TryCreate(pageUrl, mapped.Href, out var link) || link.Scheme is not ("http" or "https")
-                || !string.IsNullOrEmpty(link.UserInfo) || link.AbsoluteUri.Length > RadarFeedParser.MaxUrlLength)
-            {
-                failures.Add(new ItemFailure(received++, "InvalidField:url"));
-                continue;
-            }
-
-            var url = link.GetLeftPart(UriPartial.Query); // a fragment never identifies another page
-            if (url.Length > RadarFeedParser.MaxExternalIdLength) // the url is the externalId, whose column is shorter than a url
-            {
-                failures.Add(new ItemFailure(received++, "InvalidField:externalId"));
-                continue;
-            }
-
-            if (!seen.Add(url)) continue; // the same event shown twice on the page is one listing
-
-            var text = CleanText(listing);
-            var fields = mapped.Fields with { Url = url };
-            if (!RadarFeedParser.IsStorableText(text) || !AreStorable(fields))
-            {
-                failures.Add(new ItemFailure(received++, "InvalidField:text"));
-                continue;
-            }
-
-            var evidence = $"{text}\nURL: {url}";
-            var fingerprint = ItemIdentity.Fingerprint(sourceId, url, url)!;
-            // The AI only fills what the listing did not show, and costs nothing when everything is known (ADR-035).
-            var aiText = fields.StartsAt is null || fields.CityText is null || (fields.CategoryText is null && fields.CategorySlug is null)
-                ? text
-                : null;
-            items.Add(new NormalizedCandidate(ItemKind.Event, url, url, fingerprint,
-                ItemIdentity.ContentHash(ItemKind.Event, fields, aiText, evidence), fields, aiText, evidence));
-            received++;
+            return new FeedParseResult(received, items, failures);
         }
-
-        return new FeedParseResult(received, items, failures);
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return FeedParseResult.Malformed;
+        }
     }
 
     // PostgreSQL cannot store NUL or lone surrogates; one listing with such text must not abort the run.
+    // Short fields keep the limits of a reviewer's edit, so a huge heading cannot reach every queue response.
     private static bool AreStorable(CandidateFields f) =>
         new[] { f.Title, f.Description, f.CityText, f.VenueName, f.CategoryText, f.PriceText }
             .All(s => s is null || RadarFeedParser.IsStorableText(s))
+        && new[] { f.Title, f.CityText, f.VenueName, f.CategoryText, f.PriceText }.All(s => s is null || s.Length <= CandidateRequestValidator.MaxText)
+        && (f.Description is null || f.Description.Length <= CandidateRequestValidator.MaxDescription)
         && (f.ImageUrl is null || (f.ImageUrl.Length <= RadarFeedParser.MaxUrlLength && IsHttpUrl(f.ImageUrl)));
 
     private static bool IsHttpUrl(string s) => Uri.TryCreate(s, UriKind.Absolute, out var u) && u.Scheme is "http" or "https";

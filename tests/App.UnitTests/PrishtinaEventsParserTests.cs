@@ -70,6 +70,7 @@ public class PrishtinaEventsParserTests
         Assert.Equal("edukim", Item("gameher-s-workshop-game-jam-2026-10-09-f8da8b").Fields.CategorySlug);
         Assert.Null(Item("echo-e-gjirit-falas-2026-10-10-04b97f").Fields.CategorySlug);
         Assert.Equal("Other", Item("echo-e-gjirit-falas-2026-10-10-04b97f").Fields.CategoryText);
+        Assert.NotNull(Item("echo-e-gjirit-falas-2026-10-10-04b97f").Text); // shown but unmapped: the AI may suggest a category
     }
 
     [Fact]

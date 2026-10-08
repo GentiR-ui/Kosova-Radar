@@ -41,7 +41,7 @@ public class KapodalimParserTests
         Assert.Equal("Muzikë", f.CategoryText);
         Assert.Equal("muzike", f.CategorySlug);
         Assert.Equal("Hyrja falas", f.PriceText);
-        Assert.Equal("https://kapodalim.com/event/orkestra-simfonike-e-korces-prishtine-2026-10-08?date=2026-10-08", f.Url);
+        Assert.Equal("https://kapodalim.com/event/orkestra-simfonike-e-korces-prishtine-2026-10-08", f.Url); // "?date=" is dropped
     }
 
     [Fact]
@@ -63,7 +63,29 @@ public class KapodalimParserTests
         Assert.Equal("3 €", f.PriceText);
         Assert.Equal("Pejë", f.CityText);
         Assert.Equal("teater", f.CategorySlug); // Kinema
-        Assert.Equal(new DateTimeOffset(2026, 10, 8, 19, 0, 0, TimeSpan.FromHours(2)), f.StartsAt);
+        // The poster shows today's screening; the series runs 7–16 TETOR (slug), so the fields stay the same every day.
+        Assert.Equal(new DateTimeOffset(2026, 10, 7, 19, 0, 0, TimeSpan.FromHours(2)), f.StartsAt);
+        Assert.Equal(new DateTimeOffset(2026, 10, 16, 23, 59, 0, TimeSpan.FromHours(2)), f.EndsAt);
+    }
+
+    [Fact]
+    public void The_same_event_on_another_day_keeps_its_identity_and_content()
+    {
+        static string Card(string date) => $"""
+            <html><body><main><article>
+            <a href="/event/dua-kinema-peje-7-16-tetor-2026?date={date}"><h3>Dua Kinema</h3></a>
+            <time datetime="{date}"><span>{date[8..]}<br>19:00</span></time>
+            <span class="event-card-location">PEJË</span><span class="category-chip">Kinema</span>
+            </article></main></body></html>
+            """;
+
+        var today = Assert.Single(Parse(Card("2026-10-08")).Items);
+        var tomorrow = Assert.Single(Parse(Card("2026-10-09")).Items);
+
+        Assert.Equal("https://kapodalim.com/event/dua-kinema-peje-7-16-tetor-2026", today.Fields.Url);
+        Assert.Equal(today.Fingerprint, tomorrow.Fingerprint);
+        Assert.Equal(today.ContentHash, tomorrow.ContentHash);
+        Assert.Equal(new DateTimeOffset(2026, 10, 7, 19, 0, 0, TimeSpan.FromHours(2)), today.Fields.StartsAt);
     }
 
     [Theory]
@@ -117,7 +139,7 @@ public class KapodalimParserTests
 
         Assert.Contains("Quiz Night", item.Evidence);
         Assert.Contains("Retroverse", item.Evidence);
-        Assert.EndsWith("URL: https://kapodalim.com/event/quiz-night-retroverse-prishtine-8-tetor-2026?date=2026-10-08", item.Evidence);
+        Assert.EndsWith("URL: https://kapodalim.com/event/quiz-night-retroverse-prishtine-8-tetor-2026", item.Evidence);
         Assert.DoesNotContain("MitroRun", item.Evidence);
     }
 
@@ -191,5 +213,35 @@ public class KapodalimParserTests
     public void A_page_without_event_links_is_malformed()
     {
         Assert.Equal("MalformedPayload", Parse("<html><body><a href='/about'>About</a></body></html>").ErrorCode);
+    }
+
+    [Fact]
+    public void Many_links_to_the_same_event_in_one_card_are_found_in_linear_time()
+    {
+        // Security review (release): each repeated link used to rescan the whole card (820 KB took 125 s).
+        var links = string.Concat(Enumerable.Repeat("<a href=\"/event/a\">x</a>", 40_000));
+        var html = $"<html><body><main><article><h3>A</h3>{links}</article></main></body></html>";
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var result = Parse(html);
+
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"took {watch.Elapsed}");
+        Assert.Single(result.Items);
+    }
+
+    [Fact]
+    public async Task A_page_that_takes_too_long_to_map_fails_as_malformed_within_the_deadline()
+    {
+        // 1000 nested cards sharing one large subtree: every card's text and selectors walk all of it.
+        var cards = string.Concat(Enumerable.Range(0, 1000).Select(i => $"<article><a href=\"/event/e{i}\"><h3>E{i}</h3></a>"));
+        var html = $"<html><body><main>{cards}{string.Concat(Enumerable.Repeat("<p>x</p>", 100_000))}"
+                   + string.Concat(Enumerable.Repeat("</article>", 1000)) + "</main></body></html>";
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var result = await HtmlSourceAdapter.ParseAsync(Source, new KapodalimParser(), Page, html, Now, 100_000, TimeSpan.FromSeconds(1));
+
+        // Parsing alone may use its own 1 s, then cleaning, finding and mapping get 1 s more.
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(6), $"took {watch.Elapsed}");
+        Assert.Equal(FeedParseResult.Malformed.ErrorCode, result.ErrorCode);
     }
 }

@@ -4,13 +4,15 @@
 `docker-compose.prod.yml` runs three containers: `app` (API + built SPA on :8080, bound to 127.0.0.1 only), `db`
 (PostgreSQL 17, volume `db-data`) and `backup` (nightly `pg_dump -Fc` into volume `backups`). TLS is **not** terminated
 here: put Caddy or nginx on the host in front of `127.0.0.1:8080` (the auth cookie is `Secure`, so plain HTTP does not log in).
+Set the proxy's read timeout to at least 300 s (nginx `proxy_read_timeout 300s;`, default 60 s): "Merr tani" on an HTML source
+with AI spacing can take minutes. The run itself continues if the proxy gives up; the result then shows in the source's run history.
 
 ## First start
 1. `cp .env.example .env.prod`, then set the values below. Never commit it.
 2. `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --wait`
 3. Check `curl -i http://127.0.0.1:8080/health` → 200, then sign in at `SITE_BASE_URL/admin/login`.
-4. Remove `BOOTSTRAP_ADMIN_*` from `.env.prod`, change the admin password in the UI if it was ever shared, and recreate the app
-   (`up -d app`).
+4. Remove `BOOTSTRAP_ADMIN_*` from `.env.prod` and recreate the app (`up -d app`). V1 has no password change: if the bootstrap
+   password was ever shared, create a new Admin under "Përdoruesit" with a fresh password, sign in as it and deactivate the bootstrap admin.
 
 **Start one instance only.** Migrations, bootstrap admin, reference-data seed and the interrupted-run recovery all run at
 start-up without a lock; never start two app containers against the same database at the same time (also not during a rolling restart).
@@ -69,4 +71,5 @@ Logs: `docker compose logs -f app`. The admin dashboard (`/admin`) shows source 
 - Backups are on the same host by default; off-host copies are a manual step.
 - AI calls go straight to the provider (no HTTP proxy, no redirects); a host behind an egress proxy cannot reach it. On the Gemini free tier Google may use the prompts (public feed text) to improve its products.
 - The Gemini live smoke test is still outstanding (BLOCKERS B-001, `bash scripts/ai-smoke.sh`); first live AI call per schema may time out once.
-- Site-specific source adapters (T042) are not built until the client names sources.
+- HTML sources (Prishtina.com, Ka' Po Dalim) depend on the sites' markup: a layout change makes runs fail with `MalformedPayload`
+  (source health "Me probleme"/"Dështon") until the parser is updated against a new saved page.

@@ -118,6 +118,7 @@ public class GeminiAiProviderTests
 
         var config = body["generationConfig"]!;
         Assert.Equal(0, (int)config["temperature"]!);
+        Assert.Equal(4096, (int)config["maxOutputTokens"]!); // thinking tokens may count against it (design.md §6)
         Assert.Equal("application/json", (string?)config["responseMimeType"]);
         var schema = config["responseJsonSchema"]!;
         Assert.False((bool)schema["additionalProperties"]!);

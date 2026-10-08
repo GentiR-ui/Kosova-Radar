@@ -244,3 +244,22 @@
 - Context: Gemini and Anthropic need the same prompt, schema and strict answer parsing; the Gemini free tier needs spaced calls (`Ai__MinIntervalMs`).
 - Decision: `AiExtractionContract` holds prompt, schema (the provider supplies only the "type or null" spelling) and answer parsing; providers only add their envelope. `ThrottledAiProvider` decorates a remote provider and spaces call starts. Its wait counts against `Ai__TimeoutSeconds` (the enricher owns the timeout), so start-up requires `Ai__MinIntervalMs < Ai__TimeoutSeconds * 1000`.
 - Consequences: many concurrent manual runs behind a long interval can still time out; the scheduler is sequential. A model name of the other vendor is refused at start-up so an old `.env` fails loudly.
+
+## ADR-041 — Migrations run at start-up in every environment
+- Date: 2026-10-08 · Status: accepted · Task: T043 (recorded in the release review)
+- Context: design.md §9 said Production migrates in a separate deploy step, but T043 found Production never migrated and made `Program.cs` migrate at every start; no ADR recorded it.
+- Decision: the app applies pending EF Core migrations at start-up in every environment. Single instance only (RUNBOOK), so no migration lock is needed.
+- Consequences: a deploy is `up -d --build`; a failing migration stops the app before it serves traffic (restore from the nightly dump if needed). Two app containers must never start against the same database at once.
+
+## ADR-042 — HTML listing identity, content hash and processing deadline
+- Date: 2026-10-08 · Status: accepted · Task: release review (T045/T042 follow-up)
+- Context: Ka' Po Dalim links a running series to today's occurrence (`/event/{slug}?date=YYYY-MM-DD`) and its poster shows that day, so identity and content changed every day: one new candidate per day and multiple public copies after bulk approve. The security review measured a hostile Ka' Po Dalim page stalling the scheduler for over an hour (listing discovery was quadratic and only the parse had a deadline).
+- Decision: the Ka' Po Dalim identity and `url` are the canonical `/event/{slug}` without the query; a day range (from the date line, else from the slug's `-D1[-month]-D2-month-YYYY`) gives `startsAt` on the first day (with the shown time) and `endsAt` on the last day 23:59. The content hash of HTML listings covers the fields, the AI text and the URL but not the evidence (display-only card text such as the poster day). Listings whose category is shown but not mapped go to the AI like unknown ones. Cleaning, finding and mapping listings run under one deadline equal to the parse timeout (5 s; expiry → `MalformedPayload`); site parsers receive it as a `CancellationToken` and must stay linear in the page size.
+- Consequences: an unchanged series is `unchanged` on every fetch; the stored evidence is the text first seen until the fields change. A page that needs more than 5 s after parsing fails one run.
+
+## ADR-043 — Manual fetch runs to completion when the request is aborted
+- Date: 2026-10-08 · Status: accepted · Task: release review
+- Context: "Merr tani" passed `RequestAborted` to the run; an HTML page with AI spacing (about 4 s per call on the Gemini free tier) can take minutes, so a 60 s proxy timeout cancelled the run after the AI calls were made and paid, and nothing was saved.
+- Decision: the manual fetch endpoint runs with `ApplicationStopping` instead of the request token; the response contract (200 with the run summary, 409 when busy) is unchanged. RUNBOOK asks for a proxy read timeout of at least 300 s.
+- Consequences: a client that gives up still gets the result in the source's run history; only shutdown interrupts a run (recorded as `Interrupted`).
+
