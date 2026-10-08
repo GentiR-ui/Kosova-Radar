@@ -71,4 +71,16 @@ public class ReferenceResolverTests
     [InlineData(ItemKind.Event, "  ", null)]
     public void Category_text_resolves_only_within_the_kind(ItemKind kind, string text, string? slug) =>
         Assert.Equal(slug, Resolver.Resolve(kind, new CandidateFields { CategoryText = text }).CategorySlug);
+
+    [Fact]
+    public void A_category_slug_mapped_by_a_site_parser_survives_when_it_exists_for_the_kind()
+    {
+        var kept = Resolver.Resolve(ItemKind.Event, new CandidateFields { CategoryText = "Music", CategorySlug = "muzike" });
+        var unknown = Resolver.Resolve(ItemKind.Event, new CandidateFields { CategoryText = "Music", CategorySlug = "nuk-ekziston" });
+        var wrongKind = Resolver.Resolve(ItemKind.Deal, new CandidateFields { CategoryText = "Music", CategorySlug = "muzike" });
+
+        Assert.Equal("muzike", kept.CategorySlug);
+        Assert.Null(unknown.CategorySlug);
+        Assert.Null(wrongKind.CategorySlug);
+    }
 }

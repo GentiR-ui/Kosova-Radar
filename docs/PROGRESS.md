@@ -10,6 +10,14 @@
 - Next: T011.
 -->
 
+## 2026-10-08 · T044 done
+- Built: `PrishtinaEventsParser` (cards = links `/events/{slug}-{date}-{hex}`; date from the URL, time/venue/category from the card paragraphs around the `h3`, Europe/Pristina offset, city Prishtinë, category map per design §6); fixture `Fixtures/Html/prishtina-events-2026-10-08.html` captured once with the bot User-Agent (HTTP 200, one request). `ReferenceResolver.Resolve` now keeps a parser-mapped `CategorySlug` that exists for the kind (before, it was overwritten from `CategoryText`, so the map had no effect end to end; found in review).
+- Result on the saved page: 78 listings, 0 failures; 43 with time (start set), 35 without (start null, text to the AI).
+- Tests: contract tests on the saved page (5+ named cards, DST day, no-time card, festival label, evidence), hand-made page (missing time/venue/category, "+ N more"), Kino/Film rule, zero-listings; resolver test. Unit green.
+- NOT done: the Development "Merr tani" run against the DB (counts of created candidates) because Docker/PostgreSQL is unavailable in this session; T091 QA runs it live.
+- Verify: quick PASS. Review: reviewer found 1 HIGH (slug overwritten) and 1 MEDIUM (coverage), both fixed, plus LOW fixes (title collapse, regex rename, CultureInvariant). Left (LOW): fourth copy of the Europe/Belgrade zone lookup; absolute hrefs would yield MalformedPayload.
+- Next: T045.
+
 ## 2026-10-08 · T042 done
 - Built: `Source.Adapter` + `SourceType.Html` + migration `HtmlSources`; `adapter` in `SourceRequest`/`SourceDto`/audit state, validated in `SourceValidator` (required and canonical for `html`, null otherwise, poll 15–1440); `HtmlSourceAdapter` (guarded fetch + robots, AngleSharp cleaning, `IHtmlSiteParser` registry by adapter key, evidence = listing text + `URL:` line, `text` for the AI only when start/city/category are unknown, `Ingestion__HtmlHorizonDays`, zero listings → `MalformedPayload`); `KnownSourcesSeeder` (`Seed__KnownSources`, default true, false in Testing) for the two inactive sources; admin form option "Faqe HTML" + select "Adapteri"; `.env.example`, RUNBOOK. ADR-039 (safety limits).
 - Parsers `PrishtinaEventsParser`/`KapodalimParser` are stubs that find no listing: until T044/T045 "Merr tani" on the two seeded sources fails with `MalformedPayload`.

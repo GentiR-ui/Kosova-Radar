@@ -45,7 +45,10 @@ public sealed class ReferenceResolver
         fields with
         {
             CitySlug = CitySlug(fields.CityText),
-            CategorySlug = FindCategory(kind, fields.CategoryText),
+            // A slug a site parser already mapped deterministically survives when it is a known category of this kind.
+            CategorySlug = fields.CategorySlug is { } mapped && CategoryId(kind, mapped) is not null
+                ? mapped
+                : FindCategory(kind, fields.CategoryText),
         };
 
     // A category matches when its slug or its name equals the text after folding; only categories of the item's kind count.

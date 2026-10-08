@@ -3,16 +3,7 @@ using App.Domain.Sources;
 
 namespace App.Infrastructure.Ingestion;
 
-// Placeholders until T044/T045 add the real parsers: they find no listing, so a run of these sources fails with MalformedPayload.
-
-internal sealed class PrishtinaEventsParser : IHtmlSiteParser
-{
-    public string Key => HtmlAdapters.PrishtinaEvents;
-
-    public IReadOnlyList<IElement> FindListings(IDocument page) => [];
-
-    public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now) => throw new NotSupportedException();
-}
+// Placeholder until T045 adds the real parser: it finds no listing, so a run of this source fails with MalformedPayload.
 
 internal sealed class KapodalimParser : IHtmlSiteParser
 {
