@@ -7,7 +7,7 @@ under `tests/App.AcceptanceTests` (API) or `web/e2e/acceptance` (UI, desktop + m
 `traceability` step (every REQ has a test). Result of the last full run: see the top of `docs/PROGRESS.md`.
 
 [manual] checks (done by the `qa` agent, desktop 1280, Pixel 7, 360 px): no horizontal overflow, AA contrast, visible focus,
-keyboard-only login/reject/logout, loading/error/empty states. REQ-114 confirmed. The live Anthropic path (B-001) is **not** verified.
+keyboard-only login/reject/logout, loading/error/empty states. REQ-114 confirmed. The live Gemini path (B-001) is **not** verified.
 T042 (client-specific source adapters) is not built: blocked (B-002).
 
 ## Run locally
@@ -23,7 +23,7 @@ Terminate HTTPS at the reverse proxy; the app sets HSTS, compresses responses an
 ## Human checklist before going live
 - [ ] Secrets set; bootstrap admin password rotated (RUNBOOK) and the bootstrap variables removed.
 - [ ] Domain + TLS, proxy IP/network configured, backups enabled and one restore rehearsed on the server.
-- [ ] B-001: run the live Anthropic smoke test once, or keep `Ai__Provider=None`.
+- [ ] B-001: run the live Gemini smoke test once (`bash scripts/ai-smoke.sh`), or keep `Ai__Provider=None`.
 - [ ] B-002: name the cleared sources and written permission, then T042.
 - [ ] Privacy/terms pages if you collect personal data (only staff accounts are stored in V1).
 - [ ] Re-run Lighthouse against the production container behind the real proxy (T041 measured `vite preview`).

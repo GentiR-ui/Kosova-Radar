@@ -41,7 +41,7 @@ public sealed record AiExtractionResult(
 /// </summary>
 public interface IAiProvider
 {
-    /// <summary>Name stored on every <see cref="AiCall"/> (<c>Anthropic</c>, <c>Fake</c>, <c>None</c>).</summary>
+    /// <summary>Name stored on every <see cref="AiCall"/> (<c>Gemini</c>, <c>Anthropic</c>, <c>Fake</c>, <c>None</c>).</summary>
     string Name { get; }
 
     /// <summary>False for the <c>None</c> provider: the pipeline does not call it.</summary>
@@ -58,15 +58,19 @@ public sealed class AiOptions
 {
     public const string Section = "Ai";
 
-    /// <summary><c>None</c>, <c>Fake</c> or <c>Anthropic</c>; empty = <c>Anthropic</c> when <see cref="ApiKey"/> is set, else <c>None</c>.</summary>
+    /// <summary><c>None</c>, <c>Fake</c>, <c>Gemini</c> or <c>Anthropic</c>; empty = <c>Gemini</c> when <see cref="ApiKey"/> is set, else <c>None</c> (ADR-034).</summary>
     public string? Provider { get; set; }
 
     public string? ApiKey { get; set; }
 
-    /// <summary>The provider that is really used: <see cref="Provider"/>, else <c>Anthropic</c> with an API key, else <c>None</c>.</summary>
-    public string EffectiveProvider => string.IsNullOrWhiteSpace(Provider) ? (string.IsNullOrWhiteSpace(ApiKey) ? "None" : "Anthropic") : Provider.Trim();
+    /// <summary>The provider that is really used: <see cref="Provider"/>, else <c>Gemini</c> with an API key, else <c>None</c>.</summary>
+    public string EffectiveProvider => string.IsNullOrWhiteSpace(Provider) ? (string.IsNullOrWhiteSpace(ApiKey) ? "None" : "Gemini") : Provider.Trim();
 
-    public string Model { get; set; } = "claude-haiku-4-5-20251001";
+    /// <summary>Empty = the default model of the provider; registration fills it in.</summary>
+    public string Model { get; set; } = "";
+
+    /// <summary>Minimum spacing between two provider calls in this process (free-tier rate limits); 0 = none.</summary>
+    public int MinIntervalMs { get; set; }
 
     /// <summary>Calls per UTC day, counted from <see cref="AiCall"/> rows; 0 = no calls at all.</summary>
     public int DailyCallLimit { get; set; } = 500;

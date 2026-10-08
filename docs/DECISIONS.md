@@ -238,3 +238,9 @@
 - Context: the security review of T042 measured AngleSharp parsing time as quadratic in nesting depth (500 KB of nested `div` took 91 s) and a 5 MB page can hold ~200k listings, each of which may cost an AI call.
 - Decision: `HtmlSourceAdapter` parses with a 5 s deadline (a timeout is `MalformedPayload`), reads at most 1000 listings (the rest is one `TooManyItems` failure, as for RSS), caps the evidence text at 16,000 characters (stricter than the 64 KB item limit of design.md §6; cutting stops early, so cost does not grow with the listing), rejects item links with credentials or longer than the 200-character `externalId` column, and turns any exception of a site parser into a per-listing failure `InvalidListing`.
 - Consequences: a hostile or broken page fails one run instead of stalling the scheduler. Relative links resolve against the configured URL, not a redirect target (known limitation). The seeder identifies the known sources by URL only.
+
+## ADR-040 — Shared AI extraction contract and process-wide call spacing
+- Date: 2026-10-08 · Status: accepted · Task: T046
+- Context: Gemini and Anthropic need the same prompt, schema and strict answer parsing; the Gemini free tier needs spaced calls (`Ai__MinIntervalMs`).
+- Decision: `AiExtractionContract` holds prompt, schema (the provider supplies only the "type or null" spelling) and answer parsing; providers only add their envelope. `ThrottledAiProvider` decorates a remote provider and spaces call starts. Its wait counts against `Ai__TimeoutSeconds` (the enricher owns the timeout), so start-up requires `Ai__MinIntervalMs < Ai__TimeoutSeconds * 1000`.
+- Consequences: many concurrent manual runs behind a long interval can still time out; the scheduler is sequential. A model name of the other vendor is refused at start-up so an old `.env` fails loudly.

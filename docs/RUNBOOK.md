@@ -22,10 +22,10 @@ start-up without a lock; never start two app containers against the same databas
 | `SITE_BASE_URL` | yes | public URL, e.g. `https://radar.example.com` (crawler User-Agent, SEO URLs, sitemap) |
 | `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` | first start only | creates the first Admin when no user exists; start-up fails if none is set on an empty DB. The documented development credentials (`admin@kosovaradar.local` / dev password) are refused in Production |
 | `PROXY_KNOWN_PROXIES` / `PROXY_KNOWN_NETWORKS` | yes (start-up fails without one) | IPs / CIDRs whose `X-Forwarded-For`/`-Proto` are trusted. A host proxy reaches the container from the Docker bridge gateway: find it with `docker network inspect <project>_default` and use e.g. `172.18.0.0/16`. Without it every visitor shares one IP (rate limits, login throttle) and HSTS is not sent |
-| `AI_PROVIDER`, `AI_API_KEY` | optional | `Anthropic` + key enables AI extraction; empty/None = off. `Fake` is refused in Production |
+| `AI_PROVIDER`, `AI_API_KEY` | optional | a key alone enables AI extraction with Gemini (default model `gemini-3.5-flash-lite`); `Anthropic` + key selects Claude; empty/None = off. `Fake` is refused in Production. `AI_MODEL` overrides the model; `AI_MIN_INTERVAL_MS` (about 4000 on the Gemini free tier) spaces calls and must stay below `Ai__TimeoutSeconds` × 1000 because the wait counts against the call timeout. **Upgrading from the Anthropic-only version:** a key alone now selects Gemini, so keep Claude with `AI_PROVIDER=Anthropic` and an empty or `claude-*` `AI_MODEL` |
 | `BACKUP_HOUR_UTC` (02), `BACKUP_KEEP_DAYS` (14) | no | backup schedule and retention |
 
-More tunables (`Ingestion__*`, `RateLimit__*`, `Login__*`, `Ai__Model`, `Ai__DailyCallLimit`) are listed in `.env.example`; add them to the `app`
+More tunables (`Ingestion__*`, `RateLimit__*`, `Login__*`, `Ai__DailyCallLimit`) are listed in `.env.example`; add them to the `app`
 environment in the compose file if you need to change them.
 
 ## Migrations
@@ -67,5 +67,6 @@ Logs: `docker compose logs -f app`. The admin dashboard (`/admin`) shows source 
   backups as secrets. Rotating means deleting the keys table rows (all sessions end).
 - Single instance only (see First start); no horizontal scaling.
 - Backups are on the same host by default; off-host copies are a manual step.
-- The Anthropic live smoke test is still outstanding (BLOCKERS B-001); first live AI call per schema may time out once.
+- AI calls go straight to the provider (no HTTP proxy, no redirects); a host behind an egress proxy cannot reach it. On the Gemini free tier Google may use the prompts (public feed text) to improve its products.
+- The Gemini live smoke test is still outstanding (BLOCKERS B-001, `bash scripts/ai-smoke.sh`); first live AI call per schema may time out once.
 - Site-specific source adapters (T042) are not built until the client names sources.

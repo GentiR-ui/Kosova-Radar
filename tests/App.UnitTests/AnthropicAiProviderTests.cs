@@ -11,13 +11,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace App.UnitTests;
 
-/// <summary>Runs only when <c>Ai__ApiKey</c> is in the environment: it makes one real, paid call (a few hundred tokens).</summary>
+/// <summary>Runs only when <c>Ai__Provider=Anthropic</c> and <c>Ai__ApiKey</c> are in the environment: it makes one real, paid call (a few hundred tokens).</summary>
 public sealed class LiveAnthropicFactAttribute : FactAttribute
 {
     public LiveAnthropicFactAttribute()
     {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("Ai__ApiKey")))
-            Skip = "Set Ai__ApiKey to run the live Anthropic smoke test.";
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("Ai__ApiKey"))
+            || !string.Equals(Environment.GetEnvironmentVariable("Ai__Provider"), "Anthropic", StringComparison.OrdinalIgnoreCase))
+            Skip = "Set Ai__Provider=Anthropic and Ai__ApiKey to run the live Anthropic smoke test.";
     }
 }
 
@@ -356,9 +357,9 @@ public class AnthropicAiProviderTests
         Assert.Throws<InvalidOperationException>(() => Register(("Ai:Provider", "Anthropic")));
 
     [Fact]
-    public void A_key_alone_selects_the_Anthropic_provider_with_a_working_named_client()
+    public void The_Anthropic_provider_is_selected_explicitly_with_a_working_named_client()
     {
-        using var services = Services(("Ai:ApiKey", Key + "\n"));
+        using var services = Services(("Ai:Provider", "Anthropic"), ("Ai:ApiKey", Key + "\n"));
 
         Assert.Equal("Anthropic", services.GetRequiredService<IAiProvider>().Name);
         using var client = services.GetRequiredService<IHttpClientFactory>().CreateClient(AnthropicAiProvider.ClientName);
@@ -382,5 +383,5 @@ public class AnthropicAiProviderTests
 
     [Fact]
     public void An_unknown_provider_stops_registration() =>
-        Assert.Throws<InvalidOperationException>(() => Register(("Ai:Provider", "Gemini")));
+        Assert.Throws<InvalidOperationException>(() => Register(("Ai:Provider", "OpenAI")));
 }

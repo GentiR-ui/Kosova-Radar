@@ -33,6 +33,8 @@ services:
       Proxy__KnownNetworks: ${PROXY_KNOWN_NETWORKS:-}
       Ai__Provider: ${AI_PROVIDER:-}
       Ai__ApiKey: ${AI_API_KEY:-}
+      Ai__Model: ${AI_MODEL:-}
+      Ai__MinIntervalMs: ${AI_MIN_INTERVAL_MS:-0}
       Ingestion__AllowFixtureSources: "false"
     ports:
       - "127.0.0.1:8080:8080"
