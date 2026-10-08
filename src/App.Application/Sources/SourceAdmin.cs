@@ -20,6 +20,7 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
             Id = s.Id,
             Name = s.Name,
             Type = s.Type,
+            Adapter = s.Adapter,
             BaseUrl = s.BaseUrl,
             DefaultKind = s.DefaultKind,
             IsActive = s.IsActive,
@@ -77,6 +78,7 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
     {
         source.Name = v.Name;
         source.Type = v.Type;
+        source.Adapter = v.Adapter;
         source.BaseUrl = v.BaseUrl;
         source.FixturePayload = v.FixturePayload;
         source.DefaultKind = v.DefaultKind;

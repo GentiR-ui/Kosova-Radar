@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 
-export type SourceType = 'fixture' | 'jsonFeed' | 'rss'
+export type SourceType = 'fixture' | 'jsonFeed' | 'rss' | 'html'
+export type HtmlAdapter = 'prishtinaEvents' | 'kapodalim'
 export type SourceHealth = 'never' | 'healthy' | 'degraded' | 'failing' | 'disabled'
 
 export interface SourceDto {
   id: string
   name: string
   type: SourceType
+  adapter: HtmlAdapter | null
   baseUrl: string | null
   defaultKind: 'event' | 'deal'
   isActive: boolean
@@ -28,6 +30,7 @@ export interface SourceDetailDto extends SourceDto {
 export interface SourceRequest {
   name: string
   type: SourceType
+  adapter: HtmlAdapter | null
   baseUrl: string | null
   fixturePayload: string | null
   defaultKind: 'event' | 'deal'

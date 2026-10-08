@@ -7,10 +7,10 @@ namespace App.UnitTests;
 public class SourceValidatorTests
 {
     private static SourceRequest Fixture(string? name = "Burim", string? payload = "{\"items\":[]}", int? poll = 60) =>
-        new(name, "fixture", null, payload, null, poll, false, false);
+        new(name, "fixture", null, null, payload, null, poll, false, false);
 
     private static SourceRequest Url(string type, string? url, int? poll = 60, string? kind = null) =>
-        new("Burim", type, url, null, kind, poll, true, false);
+        new("Burim", type, null, url, null, kind, poll, true, false);
 
     private static string[] Fields(SourceRequest req, bool allowFixture = true) =>
         SourceValidator.Validate(req, allowFixture).Errors.Keys.Order().ToArray();
@@ -75,17 +75,58 @@ public class SourceValidatorTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("html")]
+    [InlineData("ical")]
     [InlineData("")]
     public void Unknown_type_is_reported_on_type_only(string? type) =>
-        Assert.Equal(["type"], Fields(new SourceRequest("X", type, "https://example.com/", "{}", null, 60, false, false)));
+        Assert.Equal(["type"], Fields(new SourceRequest("X", type, null, "https://example.com/", "{}", null, 60, false, false)));
+
+    private static SourceRequest Html(string? adapter, string? url = "https://example.com/events", int? poll = 180) =>
+        new("Faqe", "html", adapter, url, null, null, poll, false, false);
+
+    [Theory]
+    [InlineData("prishtinaEvents", "prishtinaEvents")]
+    [InlineData("KAPODALIM", "kapodalim")]
+    [InlineData(" kapodalim ", "kapodalim")]
+    public void Html_source_keeps_a_known_adapter_in_its_canonical_spelling(string given, string stored)
+    {
+        var (source, errors) = SourceValidator.Validate(Html(given), false);
+
+        Assert.Empty(errors);
+        Assert.Equal(SourceType.Html, source!.Type);
+        Assert.Equal(stored, source.Adapter);
+        Assert.Equal("https://example.com/events", source.BaseUrl);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("facebookEvents")]
+    public void Html_source_needs_a_known_adapter(string? adapter) => Assert.Equal(["adapter"], Fields(Html(adapter)));
+
+    [Fact]
+    public void Html_source_needs_an_absolute_url_and_a_poll_interval_of_at_least_15()
+    {
+        Assert.Equal(["baseUrl"], Fields(Html("kapodalim", url: "/events")));
+        Assert.Equal(["baseUrl"], Fields(Html("kapodalim", url: null)));
+        Assert.Equal(["pollIntervalMinutes"], Fields(Html("kapodalim", poll: 14)));
+        Assert.Empty(Fields(Html("kapodalim", poll: 15)));
+    }
+
+    [Fact]
+    public void The_adapter_is_ignored_and_stored_null_for_other_types()
+    {
+        var (source, errors) = SourceValidator.Validate(Url("rss", "https://example.com/rss") with { Adapter = "kapodalim" }, false);
+
+        Assert.Empty(errors);
+        Assert.Null(source!.Adapter);
+    }
 
     [Theory]
     [InlineData("1")]
     [InlineData("Fixture, Rss")]
     public void Type_and_kind_accept_names_only(string value)
     {
-        Assert.Equal(["type"], Fields(new SourceRequest("X", value, "https://example.com/", "{}", null, 60, false, false)));
+        Assert.Equal(["type"], Fields(new SourceRequest("X", value, null, "https://example.com/", "{}", null, 60, false, false)));
         Assert.Equal(["defaultKind"], Fields(Url("rss", "https://example.com/r", kind: value)));
     }
 
@@ -142,7 +183,7 @@ public class SourceValidatorTests
     [Fact]
     public void Every_invalid_field_is_named_at_once() =>
         Assert.Equal(["baseUrl", "name", "pollIntervalMinutes"],
-            Fields(new SourceRequest("", "jsonFeed", "not a url", null, null, 5, false, false)));
+            Fields(new SourceRequest("", "jsonFeed", null, "not a url", null, null, 5, false, false)));
 
     [Theory]
     [InlineData(false, 0, 0, SourceHealth.Disabled)]

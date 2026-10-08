@@ -115,6 +115,8 @@ await using (var scope = app.Services.CreateAsyncScope())
     await scope.ServiceProvider.GetRequiredService<ReferenceDataSeeder>().SeedAsync();
     await scope.ServiceProvider.GetRequiredService<BootstrapAdmin>().EnsureAsync();
     await scope.ServiceProvider.GetRequiredService<IngestionService>().MarkInterruptedAsync(default);
+    if (builder.Configuration.GetValue("Seed:KnownSources", true))
+        await scope.ServiceProvider.GetRequiredService<KnownSourcesSeeder>().SeedAsync();
     if (builder.Configuration.GetValue<bool>("Seed:SyntheticFixtures"))
         await scope.ServiceProvider.GetRequiredService<SyntheticFixtureSeeder>().SeedAsync();
 }

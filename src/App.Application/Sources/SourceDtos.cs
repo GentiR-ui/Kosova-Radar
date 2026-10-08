@@ -9,29 +9,29 @@ namespace App.Application.Sources;
 /// validation error on its own field instead of a body binding failure.
 /// </summary>
 public sealed record SourceRequest(
-    string? Name, string? Type, string? BaseUrl, string? FixturePayload, string? DefaultKind,
+    string? Name, string? Type, string? Adapter, string? BaseUrl, string? FixturePayload, string? DefaultKind,
     int? PollIntervalMinutes, bool IsActive, bool IsUnreliable);
 
 public record SourceDto(
-    Guid Id, string Name, SourceType Type, string? BaseUrl, ItemKind DefaultKind, bool IsActive, bool IsUnreliable,
+    Guid Id, string Name, SourceType Type, string? Adapter, string? BaseUrl, ItemKind DefaultKind, bool IsActive, bool IsUnreliable,
     int PollIntervalMinutes, SourceHealth Health, DateTimeOffset? LastFetchedAt, DateTimeOffset? LastSuccessAt,
     DateTimeOffset? LastErrorAt, string? LastError, int ConsecutiveFailures)
 {
     public static SourceDto From(Source s) =>
-        new(s.Id, s.Name, s.Type, s.BaseUrl, s.DefaultKind, s.IsActive, s.IsUnreliable, s.PollIntervalMinutes,
+        new(s.Id, s.Name, s.Type, s.Adapter, s.BaseUrl, s.DefaultKind, s.IsActive, s.IsUnreliable, s.PollIntervalMinutes,
             s.Health, s.LastFetchedAt, s.LastSuccessAt, s.LastErrorAt, s.LastError, s.ConsecutiveFailures);
 }
 
 public sealed record SourceDetailDto(
-    Guid Id, string Name, SourceType Type, string? BaseUrl, ItemKind DefaultKind, bool IsActive, bool IsUnreliable,
+    Guid Id, string Name, SourceType Type, string? Adapter, string? BaseUrl, ItemKind DefaultKind, bool IsActive, bool IsUnreliable,
     int PollIntervalMinutes, SourceHealth Health, DateTimeOffset? LastFetchedAt, DateTimeOffset? LastSuccessAt,
     DateTimeOffset? LastErrorAt, string? LastError, int ConsecutiveFailures,
     string? FixturePayload, IReadOnlyList<RunDto> RecentRuns)
-    : SourceDto(Id, Name, Type, BaseUrl, DefaultKind, IsActive, IsUnreliable, PollIntervalMinutes, Health,
+    : SourceDto(Id, Name, Type, Adapter, BaseUrl, DefaultKind, IsActive, IsUnreliable, PollIntervalMinutes, Health,
         LastFetchedAt, LastSuccessAt, LastErrorAt, LastError, ConsecutiveFailures)
 {
     public static SourceDetailDto From(Source s, IReadOnlyList<RunDto> recentRuns) =>
-        new(s.Id, s.Name, s.Type, s.BaseUrl, s.DefaultKind, s.IsActive, s.IsUnreliable, s.PollIntervalMinutes,
+        new(s.Id, s.Name, s.Type, s.Adapter, s.BaseUrl, s.DefaultKind, s.IsActive, s.IsUnreliable, s.PollIntervalMinutes,
             s.Health, s.LastFetchedAt, s.LastSuccessAt, s.LastErrorAt, s.LastError, s.ConsecutiveFailures,
             s.FixturePayload, recentRuns);
 }
@@ -49,11 +49,11 @@ public sealed record RunDto(
 
 /// <summary>What the audit log keeps about a source. The fixture payload can be 1 MB, so only its length is kept.</summary>
 public sealed record SourceAuditState(
-    string Name, SourceType Type, string? BaseUrl, ItemKind DefaultKind, bool IsActive, bool IsUnreliable,
+    string Name, SourceType Type, string? Adapter, string? BaseUrl, ItemKind DefaultKind, bool IsActive, bool IsUnreliable,
     int PollIntervalMinutes, int? FixturePayloadLength)
 {
     public static SourceAuditState From(Source s) =>
-        new(s.Name, s.Type, s.BaseUrl, s.DefaultKind, s.IsActive, s.IsUnreliable, s.PollIntervalMinutes,
+        new(s.Name, s.Type, s.Adapter, s.BaseUrl, s.DefaultKind, s.IsActive, s.IsUnreliable, s.PollIntervalMinutes,
             s.FixturePayload?.Length);
 }
 
@@ -76,4 +76,7 @@ public sealed class IngestionOptions
 
     /// <summary>Minimum seconds between two requests to the same host (design.md §6: 10, Testing 0).</summary>
     public int PerHostDelaySeconds { get; set; } = 10;
+
+    /// <summary>HTML listings starting more than this many days after the fetch are skipped (design.md §6, ADR-035).</summary>
+    public int HtmlHorizonDays { get; set; } = 30;
 }

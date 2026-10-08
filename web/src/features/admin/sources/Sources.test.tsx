@@ -8,6 +8,7 @@ const source = {
   id: 's1',
   name: 'Burimi një',
   type: 'fixture',
+  adapter: null,
   baseUrl: null,
   defaultKind: 'event',
   isActive: false,
@@ -79,12 +80,38 @@ describe('SourcesPage', () => {
     expect(JSON.parse(String(post?.[1]?.body))).toEqual({
       name: 'Test',
       type: 'fixture',
+      adapter: null,
       baseUrl: null,
       fixturePayload: '[]',
       defaultKind: 'event',
       pollIntervalMinutes: 60,
       isActive: false,
       isUnreliable: false,
+    })
+  })
+
+  it('adds an HTML source with the chosen adapter and hides the adapter for other types', async () => {
+    stubFetch({
+      'GET /api/admin/sources': [200, []],
+      'POST /api/admin/sources': [201, source],
+    })
+    const spy = vi.spyOn(globalThis, 'fetch')
+    renderRoutes(routes, '/admin/sources')
+    await screen.findByText('Nuk ka burime.')
+    await userEvent.click(screen.getByRole('button', { name: 'Shto burim' }))
+    expect(screen.queryByLabelText('Adapteri')).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Emri'), 'Faqe')
+    await userEvent.selectOptions(screen.getByLabelText('Lloji'), 'html')
+    await userEvent.selectOptions(screen.getByLabelText('Adapteri'), "Ka' Po Dalim")
+    await userEvent.type(screen.getByLabelText('URL'), 'https://kapodalim.com/ks')
+    await userEvent.click(screen.getByRole('button', { name: 'Ruaj burimin' }))
+    expect(await screen.findByText('Burimi u ruajt.')).toBeInTheDocument()
+    const post = spy.mock.calls.find(([, init]) => init?.method === 'POST')
+    expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({
+      type: 'html',
+      adapter: 'kapodalim',
+      baseUrl: 'https://kapodalim.com/ks',
+      fixturePayload: null,
     })
   })
 

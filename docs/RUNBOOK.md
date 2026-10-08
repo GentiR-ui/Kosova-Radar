@@ -35,7 +35,11 @@ The app applies pending EF Core migrations at every start, before anything else;
 ## Sources and ingestion
 Sources are configured in the admin UI (`/admin/sources`): type, URL, interval (15–1440 min), then tick "Aktiv". "Merr tani" runs one fetch.
 Fixture sources are disabled in Production (`Ingestion__AllowFixtureSources=false`); synthetic fixture seeding is off. Only add sources
-the client has confirmed in writing (ADR-006, BLOCKERS B-002); the crawler honours robots.txt and a per-host delay.
+the client has confirmed in writing (ADR-006); the crawler honours robots.txt and a per-host delay.
+HTML sources (type "Faqe HTML", ADR-035) need an adapter ("Prishtina.com — evente" or "Ka' Po Dalim"). With `Seed__KnownSources=true` (default) both are
+created at start-up, inactive, when no source has their URL; they stay disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
+responsible for the sites' terms of use. A run that finds no listing fails with `MalformedPayload`: the site layout probably changed and its parser needs an update.
+Listings starting later than `Ingestion__HtmlHorizonDays` (30) are skipped.
 
 ## Bootstrap-admin rotation
 Bootstrap only acts on an empty user table. To rotate: create a new Admin in `/admin/users`, sign in as it, deactivate the old one.

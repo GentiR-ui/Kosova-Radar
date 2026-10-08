@@ -62,9 +62,9 @@ public static class DependencyInjection
         services.AddScoped<BootstrapAdmin>();
         services.AddScoped<UserAdmin>();
         var ingestion = config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions();
-        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0)
+        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0 || ingestion.HtmlHorizonDays < 1)
             throw new InvalidOperationException(
-                "Ingestion__HttpTimeoutSeconds must be at least 1, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
+                "Ingestion__HttpTimeoutSeconds and Ingestion__HtmlHorizonDays must be at least 1, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
         services.AddSingleton(ingestion);
         services.AddAi(config);
         services.AddScoped<SourceAdmin>();
@@ -89,8 +89,12 @@ public static class DependencyInjection
         services.AddSourceHttpClient(config);
         services.AddScoped<ISourceAdapter, JsonFeedSourceAdapter>();
         services.AddScoped<ISourceAdapter, RssSourceAdapter>();
+        services.AddSingleton<IHtmlSiteParser, PrishtinaEventsParser>();
+        services.AddSingleton<IHtmlSiteParser, KapodalimParser>();
+        services.AddScoped<ISourceAdapter, HtmlSourceAdapter>();
         services.AddScoped<IngestionService>();
         services.AddScoped<SyntheticFixtureSeeder>();
+        services.AddScoped<KnownSourcesSeeder>();
         services.AddSingleton<ScheduledRuns>();
         services.AddHostedService<SourceScheduler>();
         return services;

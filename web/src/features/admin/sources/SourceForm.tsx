@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../../lib/api'
-import type { SourceDetailDto, SourceRequest, SourceType } from './api'
+import type { HtmlAdapter, SourceDetailDto, SourceRequest, SourceType } from './api'
 import { s } from './strings'
 
 const inputClass = 'w-full rounded-md border border-line bg-surface px-3 py-2.5'
@@ -25,6 +25,7 @@ function fieldErrors(error: unknown): Set<string> {
 export default function SourceForm({ initial, pending, error, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [type, setType] = useState<SourceType>(initial?.type ?? 'jsonFeed')
+  const [adapter, setAdapter] = useState<HtmlAdapter>(initial?.adapter ?? 'prishtinaEvents')
   const [baseUrl, setBaseUrl] = useState(initial?.baseUrl ?? '')
   const [payload, setPayload] = useState(initial?.fixturePayload ?? '')
   const [kind, setKind] = useState<'event' | 'deal'>(initial?.defaultKind ?? 'event')
@@ -41,6 +42,7 @@ export default function SourceForm({ initial, pending, error, onSubmit, onCancel
     onSubmit({
       name: name.trim(),
       type,
+      adapter: type === 'html' ? adapter : null,
       baseUrl: type === 'fixture' ? null : baseUrl.trim() || null,
       fixturePayload: type === 'fixture' ? payload : null,
       defaultKind: kind,
@@ -89,6 +91,26 @@ export default function SourceForm({ initial, pending, error, onSubmit, onCancel
           ))}
         </select>
       </div>
+      {type === 'html' && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <label htmlFor="src-adapter" className="block text-sm font-medium">
+            {s.fields.adapter}
+          </label>
+          <select
+            id="src-adapter"
+            value={adapter}
+            aria-invalid={invalid('adapter')}
+            onChange={(e) => setAdapter(e.target.value as HtmlAdapter)}
+            className={inputClass}
+          >
+            {(Object.keys(s.adapters) as HtmlAdapter[]).map((k) => (
+              <option key={k} value={k}>
+                {s.adapters[k]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {type === 'fixture' ? (
         <div className="space-y-1.5 sm:col-span-2">
           <label htmlFor="src-payload" className="block text-sm font-medium">

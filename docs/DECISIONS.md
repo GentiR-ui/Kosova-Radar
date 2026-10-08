@@ -232,3 +232,9 @@
 - Context: every publish needs human approval in V1 (ADR-005, confirmed by the client 2026-10-08), and the two HTML sources produce dozens of candidates per run.
 - Decision: the review queue offers checkboxes on pending `Valid` rows and "Aprovo të zgjedhurat", which calls the existing approve endpoint per candidate (same rules, audit and 409 handling) and reports successes and failures. No new API.
 - Consequences: approval stays a human decision; reviewing a full run takes minutes instead of one page per item.
+
+## ADR-039 — Safety limits of the HTML adapter
+- Date: 2026-10-08 · Status: accepted · Task: T042
+- Context: the security review of T042 measured AngleSharp parsing time as quadratic in nesting depth (500 KB of nested `div` took 91 s) and a 5 MB page can hold ~200k listings, each of which may cost an AI call.
+- Decision: `HtmlSourceAdapter` parses with a 5 s deadline (a timeout is `MalformedPayload`), reads at most 1000 listings (the rest is one `TooManyItems` failure, as for RSS), caps the evidence text at 16,000 characters (stricter than the 64 KB item limit of design.md §6; cutting stops early, so cost does not grow with the listing), rejects item links with credentials or longer than the 200-character `externalId` column, and turns any exception of a site parser into a per-listing failure `InvalidListing`.
+- Consequences: a hostile or broken page fails one run instead of stalling the scheduler. Relative links resolve against the configured URL, not a redirect target (known limitation). The seeder identifies the known sources by URL only.

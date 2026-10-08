@@ -10,6 +10,14 @@
 - Next: T011.
 -->
 
+## 2026-10-08 · T042 done
+- Built: `Source.Adapter` + `SourceType.Html` + migration `HtmlSources`; `adapter` in `SourceRequest`/`SourceDto`/audit state, validated in `SourceValidator` (required and canonical for `html`, null otherwise, poll 15–1440); `HtmlSourceAdapter` (guarded fetch + robots, AngleSharp cleaning, `IHtmlSiteParser` registry by adapter key, evidence = listing text + `URL:` line, `text` for the AI only when start/city/category are unknown, `Ingestion__HtmlHorizonDays`, zero listings → `MalformedPayload`); `KnownSourcesSeeder` (`Seed__KnownSources`, default true, false in Testing) for the two inactive sources; admin form option "Faqe HTML" + select "Adapteri"; `.env.example`, RUNBOOK. ADR-039 (safety limits).
+- Parsers `PrishtinaEventsParser`/`KapodalimParser` are stubs that find no listing: until T044/T045 "Merr tani" on the two seeded sources fails with `MalformedPayload`.
+- Review: security-reviewer found 1 HIGH (parse time quadratic in nesting depth), 2 MEDIUM (no listing cap, regex in `CleanText`), LOW (links with credentials); reviewer found 2 MEDIUM (`externalId` > 200 chars crashes the run, too narrow `catch`): all fixed with unit tests. Left (LOW): relative links resolve against the configured URL not the redirect target; seeding by URL only (no unique index); hidden CSS text reaches the AI like in other sources; `min={1}` on the interval input.
+- Tests: unit 468 green (adapter with a stub parser, validator); web component tests green; integration `HtmlSourceTests` (stub HTTP page → candidates, zero listings, idempotent seeding) written and compiled but NOT run, and the REQ-010/011 acceptance tests were not run either: Docker/PostgreSQL is not available in this session. The full `./scripts/verify.sh` must run them.
+- Verify: quick PASS.
+- Next: T044.
+
 ## 2026-10-08 · Spec amendment v2 (human)
 - Client brief `docs/briefs/data-collection-agent.md`: Prishtina.com + Ka' Po Dalim as V1 sources, Gemini as AI provider, manual approval kept, B-003 decided.
 - Changed: REQ-010/011 (type `Html` + `adapter`), new REQ-022 [manual]; acceptance tests in `SourceTests.cs`; design.md §1, §2, §4–§8; ADR-034..038; B-002/B-003 closed.

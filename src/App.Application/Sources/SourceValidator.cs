@@ -5,7 +5,7 @@ namespace App.Application.Sources;
 
 /// <summary>A request that passed <see cref="SourceValidator"/>, with defaults applied.</summary>
 public sealed record ValidSource(
-    string Name, SourceType Type, string? BaseUrl, string? FixturePayload, ItemKind DefaultKind,
+    string Name, SourceType Type, string? Adapter, string? BaseUrl, string? FixturePayload, ItemKind DefaultKind,
     int PollIntervalMinutes, bool IsActive, bool IsUnreliable);
 
 /// <summary>Per-type rules of <see cref="SourceRequest"/> (REQ-010, REQ-011, design.md §5).</summary>
@@ -25,7 +25,7 @@ public static class SourceValidator
         else if (name.Any(char.IsControl)) errors["name"] = ["Name must not contain control characters."];
 
         var type = ParseType(req.Type);
-        if (type is null) errors["type"] = ["Type must be one of: fixture, jsonFeed, rss."];
+        if (type is null) errors["type"] = ["Type must be one of: fixture, jsonFeed, rss, html."];
         else if (type == SourceType.Fixture && !allowFixtureSources) errors["type"] = ["Fixture sources are not allowed in this environment."];
 
         var kind = ItemKind.Event;
@@ -55,8 +55,16 @@ public static class SourceValidator
             else baseUrl = url;
         }
 
+        // Only html sources have a site parser; for the other types the field is ignored and stored null.
+        string? adapter = null;
+        if (type == SourceType.Html)
+        {
+            adapter = HtmlAdapters.All.FirstOrDefault(a => string.Equals(a, req.Adapter?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (adapter is null) errors["adapter"] = [$"Adapter must be one of: {string.Join(", ", HtmlAdapters.All)}."];
+        }
+
         if (errors.Count > 0) return (null, errors);
-        return (new ValidSource(name!, type!.Value, baseUrl, payload, kind, req.PollIntervalMinutes!.Value, req.IsActive, req.IsUnreliable), errors);
+        return (new ValidSource(name!, type!.Value, adapter, baseUrl, payload, kind, req.PollIntervalMinutes!.Value, req.IsActive, req.IsUnreliable), errors);
     }
 
     private static SourceType? ParseType(string? value) => ParseName<SourceType>(value);

@@ -154,7 +154,7 @@ public static partial class RadarFeedParser
     }
 
     /// <summary>PostgreSQL text/jsonb cannot hold NUL, and a lone surrogate is not valid Unicode; one such item must not abort the whole run.</summary>
-    internal static bool IsStorableText(string text)
+    public static bool IsStorableText(string text)
     {
         for (var i = 0; i < text.Length; i++)
         {

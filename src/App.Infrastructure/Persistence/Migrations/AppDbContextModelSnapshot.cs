@@ -674,6 +674,10 @@ namespace App.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Adapter")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("BaseUrl")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
