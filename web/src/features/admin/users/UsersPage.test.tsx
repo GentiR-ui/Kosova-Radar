@@ -83,6 +83,7 @@ describe('UsersPage', () => {
     })
     renderRoutes(routes, '/admin/users')
     await userEvent.click(await screen.findByRole('button', { name: 'Çaktivizo rev@test.local' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Po, çaktivizo' }))
     expect(await screen.findByText('Përdoruesi u çaktivizua.')).toBeInTheDocument()
     expect(calls).toContain('POST /api/admin/users/u2/deactivate')
   })

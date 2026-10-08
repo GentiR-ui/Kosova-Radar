@@ -119,6 +119,79 @@ public sealed class AiEnrichmentTests(AppFactory app) : IDisposable
         return await scope.ServiceProvider.GetRequiredService<AppDbContext>().AiCalls.CountAsync(a => a.StartedAt >= dayStart);
     }
 
+    private static async Task<JsonElement> FetchRunAsync(HttpClient admin, Guid id)
+    {
+        var res = await admin.PostAsync($"/api/admin/sources/{id}/fetch", null);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        return await res.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    [Fact]
+    public async Task An_unchanged_candidate_with_AiUnavailable_is_retried_at_most_three_times_and_counted_unchanged()
+    {
+        var failing = true;
+        var provider = new ScriptedProvider((_, _) => failing
+            ? throw new HttpRequestException("429")
+            : Task.FromResult(Answer(new AiExtractedFields { City = "Gjilan" })));
+        var admin = CreateAdmin(provider);
+        await LoginAsync(admin);
+        var id = await CreateSourceAsync(admin, Payload(Item("a", $"Retry {Token()}", "Diçka në qytet", $",\"startsAt\":\"{Future(10)}\"")));
+
+        await FetchAsync(admin, id); // call 1 fails
+        var run2 = await FetchRunAsync(admin, id); // call 2 fails
+        var run3 = await FetchRunAsync(admin, id); // call 3 fails
+        var run4 = await FetchRunAsync(admin, id); // cap reached: no call
+
+        Assert.Equal(3, provider.Calls);
+        foreach (var run in new[] { run2, run3, run4 })
+        {
+            Assert.Equal(1, run.GetProperty("unchanged").GetInt32());
+            Assert.Equal(0, run.GetProperty("updated").GetInt32());
+        }
+        var (candidates, calls) = await StoredAsync(id);
+        Assert.Equal(3, calls.Count);
+        Assert.Contains(Assert.Single(candidates).Issues, i => i.Code == IssueCodes.AiUnavailable);
+    }
+
+    [Fact]
+    public async Task A_retry_that_succeeds_clears_AiUnavailable_and_later_fetches_make_no_call()
+    {
+        var failing = true;
+        var provider = new ScriptedProvider((_, _) => failing
+            ? throw new HttpRequestException("429")
+            : Task.FromResult(Answer(new AiExtractedFields { City = "Gjilan" })));
+        var admin = CreateAdmin(provider);
+        await LoginAsync(admin);
+        var id = await CreateSourceAsync(admin, Payload(Item("a", $"Retry {Token()}", "Diçka në qytet", $",\"startsAt\":\"{Future(10)}\"")));
+
+        await FetchAsync(admin, id);
+        failing = false;
+        var run = await FetchRunAsync(admin, id);
+        await FetchAsync(admin, id);
+
+        Assert.Equal(2, provider.Calls);
+        Assert.Equal(1, run.GetProperty("unchanged").GetInt32());
+        var (candidates, _) = await StoredAsync(id);
+        var c = Assert.Single(candidates);
+        Assert.DoesNotContain(c.Issues, i => i.Code == IssueCodes.AiUnavailable);
+        Assert.Equal("gjilan", c.Fields.CitySlug);
+    }
+
+    [Fact]
+    public async Task The_retry_respects_the_daily_limit()
+    {
+        var provider = new ScriptedProvider((_, _) => throw new HttpRequestException("429"));
+        var before = await CallsTodayAsync();
+        var admin = CreateAdmin(provider, dailyLimit: before + 1);
+        await LoginAsync(admin);
+        var id = await CreateSourceAsync(admin, Payload(Item("a", $"Retry {Token()}", "Diçka në qytet", $",\"startsAt\":\"{Future(10)}\"")));
+
+        await FetchAsync(admin, id);
+        await FetchAsync(admin, id);
+
+        Assert.Equal(1, provider.Calls);
+    }
+
     [Fact]
     public async Task A_successful_call_is_stored_and_the_candidate_records_the_model_request_and_confidence()
     {

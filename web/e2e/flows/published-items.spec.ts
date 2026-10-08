@@ -74,12 +74,14 @@ test('a reviewer edits, expires and withdraws published items', async ({ page })
   // Expire: still readable publicly as expired.
   await page.getByRole('link', { name: 'Kthehu te të publikuarat' }).click()
   await rowOf(expire).getByRole('button', { name: 'Skado' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Po, skado' }).click()
   await expect(rowOf(expire).getByText('Skaduar')).toBeVisible()
   const publicExpired = await page.request.get(`/api/events/${ids.get(expire)}`)
   expect(((await publicExpired.json()) as { status: string }).status).toBe('expired')
 
   // Withdraw: gone publicly.
   await rowOf(withdraw).getByRole('button', { name: 'Tërhiq' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Po, tërhiq' }).click()
   await expect(rowOf(withdraw).getByText('Tërhequr')).toBeVisible()
   expect((await page.request.get(`/api/events/${ids.get(withdraw)}`)).status()).toBe(404)
 })

@@ -26,6 +26,7 @@ test('an admin creates a reviewer and deactivates them', async ({ page }) => {
   await expect(page.getByRole('alert')).toContainText('Ky email përdoret tashmë.')
 
   await row.getByRole('button', { name: /Çaktivizo/ }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Po, çaktivizo' }).click()
   await expect(row).toContainText('Jo aktiv')
   await expect(row.getByRole('button')).toHaveCount(0)
 })

@@ -38,6 +38,7 @@ public sealed class IngestionService(
     public static readonly TimeSpan ManualLockWait = TimeSpan.FromSeconds(30);
 
     private const int MaxErrorLength = 1000;
+    private const int MaxAiAttempts = 3;
 
     /// <summary>Marks runs left <c>Running</c> by a previous process as failed (<c>Interrupted</c>). Call once at startup, single instance.</summary>
     public async Task MarkInterruptedAsync(CancellationToken ct)
@@ -174,10 +175,16 @@ public sealed class IngestionService(
             var open = existing
                 .Where(c => c.Status == CandidateStatus.Pending || (c.Status == CandidateStatus.Rejected && c.RejectedByUserId is null))
                 .OrderByDescending(c => c.CreatedAt).ThenBy(c => c.Id).FirstOrDefault();
+            var retryAi = false;
             if (open is not null && open.ContentHash == item.ContentHash)
             {
-                run.Unchanged++;
-                continue;
+                // ADR-036: unchanged content, but the AI failed earlier: try again (bounded), still counted unchanged.
+                retryAi = await NeedsAiRetryAsync(open, item, ct);
+                if (!retryAi)
+                {
+                    run.Unchanged++;
+                    continue;
+                }
             }
 
             Guid? matchedItemId = null;
@@ -213,7 +220,8 @@ public sealed class IngestionService(
 
             // Only items that are stored or updated reach the AI, so unchanged feeds cost nothing.
             var id = open?.Id ?? Guid.NewGuid();
-            var (validation, enrichment) = await EnrichAndValidateAsync(id, item, resolver, fetchedAt, source.IsUnreliable, ct);
+            var (validation, enrichment) = await EnrichAndValidateAsync(
+                id, item, resolver, fetchedAt, source.IsUnreliable, retryAi ? open!.Fields : null, ct);
             var match = await duplicates.ApplyAsync(validation, item.Kind, id, source.Id, matchedItemId, pending, ct);
             validation = match.Validation;
             var fields = validation.Fields;
@@ -228,7 +236,7 @@ public sealed class IngestionService(
                 open.Evidence = item.Evidence;
                 open.FetchedAt = fetchedAt;
                 open.UpdatedAt = now;
-                run.Updated++;
+                if (retryAi) run.Unchanged++; else run.Updated++;
             }
             else
             {
@@ -289,11 +297,20 @@ public sealed class IngestionService(
         return result;
     }
 
+    /// <summary>ADR-036: an open candidate that still has <c>AiUnavailable</c> and fewer than 3 stored AI calls is sent to the AI again.</summary>
+    private async Task<bool> NeedsAiRetryAsync(Candidate open, NormalizedCandidate item, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(item.Text) || !open.Issues.Any(i => i.Code == IssueCodes.AiUnavailable) || !ai.CanCall) return false;
+        return await db.AiCalls.CountAsync(a => a.CandidateId == open.Id, ct) < MaxAiAttempts;
+    }
+
     /// <summary>AI step, then the validation rules, then the issues that come from the AI step (design.md §2 order).</summary>
     private async Task<(ValidationResult Validation, AiEnrichment Enrichment)> EnrichAndValidateAsync(
-        Guid candidateId, NormalizedCandidate item, ReferenceResolver resolver, DateTimeOffset fetchedAt, bool unreliable, CancellationToken ct)
+        Guid candidateId, NormalizedCandidate item, ReferenceResolver resolver, DateTimeOffset fetchedAt, bool unreliable,
+        CandidateFields? current, CancellationToken ct)
     {
-        var enrichment = await ai.EnrichAsync(candidateId, item.Kind, item.Text, resolver.Resolve(item.Kind, item.Fields), resolver, ct);
+        // A retry starts from the stored fields so that a reviewer's edits survive.
+        var enrichment = await ai.EnrichAsync(candidateId, item.Kind, item.Text, resolver.Resolve(item.Kind, current ?? item.Fields), resolver, ct);
         var validation = CandidateValidator.Validate(item.Kind, enrichment.Fields, fetchedAt, unreliable).WithIssues(enrichment.Issues);
 
         // Without a provider nothing could have filled a gap: say so next to the gap (design.md §6, RSS items).

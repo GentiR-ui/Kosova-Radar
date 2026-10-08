@@ -42,6 +42,9 @@ public sealed class AiEnricher(
         _callsToday = await db.AiCalls.CountAsync(c => c.StartedAt >= dayStart, ct);
     }
 
+    /// <summary>True when a provider is enabled and today's daily limit still has room.</summary>
+    public bool CanCall => provider.IsEnabled && _callsToday < options.DailyCallLimit;
+
     public async Task<AiEnrichment> EnrichAsync(
         Guid candidateId, ItemKind kind, string? text, CandidateFields fields, ReferenceResolver resolver, CancellationToken ct)
     {

@@ -10,6 +10,12 @@
 - Next: T011.
 -->
 
+## 2026-10-08 · T047 done
+- Built: AI retry (ADR-036): an unchanged open candidate with `AiUnavailable` is re-enriched when a provider is enabled, the daily limit allows (`AiEnricher.CanCall`) and it has < 3 `AiCall` rows; starts from stored fields so reviewer edits survive; counted `unchanged`. `ConfirmDialog` (ADR-037) for "Skado", "Tërhiq", "Çaktivizo"; `web/e2e/flows` and component tests updated.
+- Tests: 3 integration tests (3-call cap, success clears `AiUnavailable`, daily limit) written and compiled but NOT run (no Docker in this session); web component tests green.
+- Verify: quick PASS. Review: reviewer 1 MEDIUM (dialog effect re-ran on every parent render, stealing focus): fixed with a ref for `onClose`. Left (LOW): no focus trap (same as Reject/Merge dialogs), dialog titles do not name the target, `Anulo` string defined three times, no tests for edited-field survival / auto-rejected retry.
+- Next: T048.
+
 ## 2026-10-08 · T046 done
 - Built: `GeminiAiProvider` (`generateContent`, key only in `x-goog-api-key`, `generationConfig` = temperature 0 + `responseMimeType` + `responseJsonSchema`, nullable fields as type arrays, thought parts skipped, `finishReason` ≠ `STOP` / blocked / empty / non-schema → `AiInvalidOutputException`; model name validated for the URL path); prompt, schema and answer parsing moved to the shared `AiExtractionContract` (Anthropic behaviour unchanged); `ThrottledAiProvider` for `Ai__MinIntervalMs`; a key alone now selects Gemini (default model `gemini-3.5-flash-lite`, filled in by `AddAi`); start-up refuses a `claude*` model for Gemini (old `.env`), a `gemini*` model for Anthropic, a key that is not printable ASCII, and an interval ≥ the call timeout. `.env.example`, `docker-compose.prod.yml` (`AI_MODEL`, `AI_MIN_INTERVAL_MS`), RUNBOOK (incl. upgrade note), RELEASE, design §6 updated. Gemini `maxOutputTokens` 4096 (thinking tokens may count).
 - Tests: 55+ new unit tests with a stubbed handler (success, 429/5xx/403/400, network, cancellation, blocked/empty/thought-only/non-JSON/wrong-shape output, key never in URL/body/exception, oversized response, pinned request shape, registration, throttle with `FakeTimeProvider`); `Live_smoke_test_against_the_real_API` skipped without `Ai__ApiKey`. NOT done: the live call (B-001, human), integration/acceptance suites (no Docker in this session).

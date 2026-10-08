@@ -79,9 +79,25 @@ describe('PublishedPage', () => {
     renderRoutes(routes, '/admin/published')
     await screen.findByText('Koncert')
     await userEvent.click(screen.getByRole('button', { name: 'Skado' }))
+    expect(calls).not.toContain('POST /api/admin/events/e1/expire')
+    await userEvent.click(await screen.findByRole('button', { name: 'Po, skado' }))
     await userEvent.click(screen.getByRole('button', { name: 'Tërhiq' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Po, tërhiq' }))
     expect(calls).toContain('POST /api/admin/events/e1/expire')
     expect(calls).toContain('POST /api/admin/events/e1/withdraw')
+  })
+
+  it('cancelling the confirmation sends nothing and returns focus to the trigger', async () => {
+    const calls = stubFetch({ [listUrl]: [200, page([row({})])] })
+    renderRoutes(routes, '/admin/published')
+    await screen.findByText('Koncert')
+    const trigger = screen.getByRole('button', { name: 'Tërhiq' })
+    await userEvent.click(trigger)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Anulo' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(calls.some((c) => c.startsWith('POST'))).toBe(false)
   })
 
   it('shows an error when the action fails and filters through the query string', async () => {
@@ -93,6 +109,7 @@ describe('PublishedPage', () => {
     renderRoutes(routes, '/admin/published')
     await screen.findByText('Koncert')
     await userEvent.click(screen.getByRole('button', { name: 'Skado' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Po, skado' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('u ndryshua nga dikush tjetër')
     await userEvent.selectOptions(screen.getByLabelText('Statusi'), 'Skaduar')
     await waitFor(() => expect(screen.queryByText('Koncert')).not.toBeInTheDocument())

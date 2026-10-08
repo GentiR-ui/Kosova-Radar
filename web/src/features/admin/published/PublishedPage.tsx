@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ApiError } from '../../../lib/api'
 import { Field, selectClass } from '../../public/Field'
 import { flat } from '../../public/api'
 import ListShell from '../../public/ListShell'
 import { formatDate } from '../../public/format'
+import ConfirmDialog from '../ConfirmDialog'
 import { r } from '../review/strings'
 import { useItemAction, usePublishedItems, type PublishedFilters, type PublishedItemDto } from './api'
 import { p } from './strings'
@@ -34,6 +36,7 @@ export default function PublishedPage() {
   const expire = useItemAction('expire')
   const withdraw = useItemAction('withdraw')
   const failure = expire.error ?? withdraw.error
+  const [confirm, setConfirm] = useState<{ action: 'expire' | 'withdraw'; item: PublishedItemDto } | null>(null)
 
   const act = (m: typeof expire, item: PublishedItemDto) => {
     expire.reset()
@@ -120,7 +123,7 @@ export default function PublishedPage() {
                         type="button"
                         className={buttonClass}
                         disabled={i.adminStatus !== 'published' || expire.isPending}
-                        onClick={() => act(expire, i)}
+                        onClick={() => setConfirm({ action: 'expire', item: i })}
                       >
                         {p.expire}
                       </button>
@@ -128,7 +131,7 @@ export default function PublishedPage() {
                         type="button"
                         className={buttonClass}
                         disabled={i.adminStatus === 'withdrawn' || withdraw.isPending}
-                        onClick={() => act(withdraw, i)}
+                        onClick={() => setConfirm({ action: 'withdraw', item: i })}
                       >
                         {p.withdraw}
                       </button>
@@ -140,6 +143,18 @@ export default function PublishedPage() {
           </table>
         </div>
       </ListShell>
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.action === 'expire' ? p.confirmExpire : p.confirmWithdraw}
+          confirmLabel={confirm.action === 'expire' ? p.yesExpire : p.yesWithdraw}
+          cancelLabel={p.cancel}
+          onClose={() => setConfirm(null)}
+          onConfirm={() => {
+            act(confirm.action === 'expire' ? expire : withdraw, confirm.item)
+            setConfirm(null)
+          }}
+        />
+      )}
     </>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ApiError } from '../../../lib/api'
 import { t } from '../../../lib/strings'
+import ConfirmDialog from '../ConfirmDialog'
 import { useMe, type Role } from '../../auth/api'
 import { useCreateUser, useDeactivateUser, useUsers } from './api'
 
@@ -17,6 +18,7 @@ export default function UsersPage() {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<Role>('reviewer')
   const [notice, setNotice] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const onCreate = (e: FormEvent) => {
     e.preventDefault()
@@ -186,7 +188,7 @@ export default function UsersPage() {
                     {u.isActive && me.data && u.id !== me.data.userId && (
                       <button
                         type="button"
-                        onClick={() => onDeactivate(u.id)}
+                        onClick={() => setConfirmId(u.id)}
                         disabled={deactivate.isPending}
                         aria-label={`${s.deactivate} ${u.email}`}
                         className="rounded-md border border-line px-3 py-1.5 hover:bg-surface disabled:opacity-60"
@@ -200,6 +202,18 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+      )}
+      {confirmId && (
+        <ConfirmDialog
+          title={s.confirmDeactivate}
+          confirmLabel={s.yesDeactivate}
+          cancelLabel={s.cancel}
+          onClose={() => setConfirmId(null)}
+          onConfirm={() => {
+            onDeactivate(confirmId)
+            setConfirmId(null)
+          }}
+        />
       )}
     </>
   )
