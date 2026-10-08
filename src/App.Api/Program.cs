@@ -76,6 +76,8 @@ builder.Services.AddAuthorizationBuilder()
 
 builder.Services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; });
 
+builder.Services.AddResponseCompression();
+
 var app = builder.Build();
 var isDevOrTesting = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing");
 
@@ -85,8 +87,18 @@ app.UseExceptionHandler();           // problem details without exception text (
 app.UseStatusCodePages();
 if (!isDevOrTesting) app.UseHsts();
 if (testHooks) app.UseTestClock();
+app.UseResponseCompression();
 app.UseDefaultFiles();
-app.UseStaticFiles();                // built SPA assets in wwwroot: public, served before auth
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Vite hashes /assets/* file names: cache for a year; index.html must always be revalidated.
+        ctx.Context.Response.Headers.CacheControl = ctx.Context.Request.Path.StartsWithSegments("/assets")
+            ? "public,max-age=31536000,immutable"
+            : "no-cache";
+    },
+});                // built SPA assets in wwwroot: public, served before auth
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

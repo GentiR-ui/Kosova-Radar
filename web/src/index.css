@@ -22,6 +22,7 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    overflow-wrap: anywhere; /* long unbroken source text must not widen the page */
   }
   h1,
   h2,

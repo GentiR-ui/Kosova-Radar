@@ -44,6 +44,9 @@ public sealed class LoginThrottle
     {
         lock (_gate)
         {
+            // Per-IP first: a blocked client must not create per-email/per-pair entries (unbounded cache growth).
+            var ip = clientIp ?? "unknown";
+            if (Current(_perIp, ip, _time.GetUtcNow()).Attempts > _perIp.MaxFailures) return false;
             var counters = Counters(clientIp, email);
             if (counters.Any(c => c.Counter.Attempts > c.Window.MaxFailures)) return false;
             foreach (var c in counters) c.Counter.Attempts++;

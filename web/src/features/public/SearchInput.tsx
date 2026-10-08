@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { selectClass } from './Field'
 
 /** Search box that keeps the typed text locally and commits it (to the URL) after a short pause. */
@@ -12,9 +12,19 @@ export default function SearchInput({
   onCommit: (value: string) => void
 }) {
   const [text, setText] = useState(value)
+  const committed = useRef(value)
+  // The URL changed from outside (link, Back): show it instead of re-applying the stale text.
+  useEffect(() => {
+    if (value === committed.current) return
+    committed.current = value
+    setText(value)
+  }, [value])
   useEffect(() => {
     if (text === value) return
-    const timer = setTimeout(() => onCommit(text), 300)
+    const timer = setTimeout(() => {
+      committed.current = text
+      onCommit(text)
+    }, 300)
     return () => clearTimeout(timer)
   }, [text, value, onCommit])
   return (
