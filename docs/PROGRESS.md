@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-08 · T045 done
+- Built: `KapodalimParser` (replaces the stub): listings = grid `article` cards plus featured cards linking `/event/{slug}`, de-duplicated by path (grid card wins); start date from the poster `time[datetime]`, clock time / `HH:MM–HH:MM` / day range ("9–10 TETOR", across months and years) from the text after its `br`; "ORARI TBA" → start null (text to the AI); range end = last day 23:59; city from the card (all-caps badge title-cased), venue from the poster, entry line → `priceText` unless "TBA"/"publikua"; category map per design §6 on word prefixes. Fixture `Fixtures/Html/kapodalim-ks-2026-10-08.html` captured once with the bot User-Agent (HTTP 200; third-party Mapbox token redacted). Design §6 notes the as-built date rule.
+- Result on the saved page: 11 listings, 0 failures (the site renders 9 grid + 2 featured cards; the other of its "78" events load on demand, so the "≥ 20" bar of T044 does not apply). 
+- Tests: 26 contract/hand-made tests. NOT done: Development "Merr tani" against the DB (no Docker in this session); T091 QA runs it live.
+- Verify: quick PASS. Review: reviewer, 4 MEDIUM (venue taken from "venue · city" paragraph, token in fixture, undocumented date rule, weak test): all fixed; LOW fixed (slash in category, ICU-free culture, missing assertions/tests). Left (LOW): known date with unknown time yields no start, so such listings bypass the horizon and `Expired` checks; `?date=` stays in the URL so multi-day series create one candidate per day.
+- Next: T046.
+
 ## 2026-10-08 · T044 done
 - Built: `PrishtinaEventsParser` (cards = links `/events/{slug}-{date}-{hex}`; date from the URL, time/venue/category from the card paragraphs around the `h3`, Europe/Pristina offset, city Prishtinë, category map per design §6); fixture `Fixtures/Html/prishtina-events-2026-10-08.html` captured once with the bot User-Agent (HTTP 200, one request). `ReferenceResolver.Resolve` now keeps a parser-mapped `CategorySlug` that exists for the kind (before, it was overwritten from `CategoryText`, so the map had no effect end to end; found in review).
 - Result on the saved page: 78 listings, 0 failures; 43 with time (start set), 35 without (start null, text to the AI).
