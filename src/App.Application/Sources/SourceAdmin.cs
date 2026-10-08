@@ -37,12 +37,14 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
 
     public async Task<SourceDetailDto?> GetAsync(Guid id, CancellationToken ct)
     {
-        var source = await db.Sources.AsNoTracking().SingleOrDefaultAsync(s => s.Id == id, ct);
-        if (source is null) return null;
+        // Runs first: a run's result and the source's bookkeeping commit together, so a finished run seen here is
+        // always reflected in the source read next (the other order could show a finished run with lastFetchedAt null).
         var runs = await db.JobExecutions.AsNoTracking()
             .Where(j => j.SourceId == id && j.JobName == JobName.SourceFetch)
             .OrderByDescending(j => j.StartedAt).ThenByDescending(j => j.Id)
             .Take(10).ToListAsync(ct);
+        var source = await db.Sources.AsNoTracking().SingleOrDefaultAsync(s => s.Id == id, ct);
+        if (source is null) return null;
         return SourceDetailDto.From(source, runs.Select(RunDto.From).ToList());
     }
 

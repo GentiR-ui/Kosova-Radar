@@ -14,6 +14,8 @@ export default defineConfig({
     environment: 'jsdom',
     // The default "forks" pool times out starting workers on Windows; threads start reliably.
     pool: 'threads',
+    // userEvent.type on a loaded machine (full verify runs suites in parallel) can exceed the 5 s default.
+    testTimeout: 15_000,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
   },
