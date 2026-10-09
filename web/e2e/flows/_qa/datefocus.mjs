@@ -1,0 +1,16 @@
+import { chromium } from '@playwright/test'
+import fs from 'node:fs'
+const data = JSON.parse(fs.readFileSync('test-results/qa/tour-data.json', 'utf8'))
+const browser = await chromium.launch()
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 }, baseURL: 'http://localhost:5173' })).newPage()
+await page.request.post('/api/auth/login', { data: { email: 'admin@kosovaradar.local', password: 'Radar-admin-dev-2026' } })
+await page.goto(`/admin/items/${data.pendingCand}`)
+await page.getByLabel('Kategoria').focus()
+await page.keyboard.press('Tab')
+await page.getByLabel('Fillon më').scrollIntoViewIfNeeded()
+await page.getByLabel('Fillon më').screenshot({ path: 'test-results/qa/focus-datetime.png' })
+await page.goto('/events')
+await page.getByLabel('Kategoria').focus()
+await page.keyboard.press('Tab')
+await page.locator('main').screenshot({ path: 'test-results/qa/focus-date-events.png' })
+await browser.close()

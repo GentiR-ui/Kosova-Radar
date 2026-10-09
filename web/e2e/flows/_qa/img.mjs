@@ -1,0 +1,15 @@
+import { chromium } from '@playwright/test'
+const browser = await chromium.launch()
+const page = await (await browser.newContext({ baseURL: 'http://localhost:5173' })).newPage()
+const msgs = []
+page.on('console', (m) => msgs.push(m.type() + ': ' + m.text()))
+page.on('requestfailed', (r) => msgs.push('failed: ' + r.url().slice(0, 90) + ' ' + r.failure()?.errorText))
+page.on('response', (r) => { if (r.url().includes('supabase')) msgs.push('resp ' + r.status() + ' ' + r.headers()['content-type']) })
+await page.goto('/events/fd74d06c-ac38-4f6d-bae0-35e90ef9bfbf')
+await page.waitForLoadState('networkidle')
+console.log(await page.evaluate(() => [...document.images].map((i) => ({ src: i.src.slice(0, 80), w: i.naturalWidth, complete: i.complete }))))
+console.log(msgs)
+await page.goto('/events?search=Book%20Club')
+await page.waitForLoadState('networkidle')
+console.log(await page.evaluate(() => [...document.images].map((i) => ({ src: i.src.slice(0, 80), w: i.naturalWidth }))))
+await browser.close()

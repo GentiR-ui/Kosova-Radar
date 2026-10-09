@@ -65,7 +65,7 @@
 
 ### Sources and fetching
 
-- **REQ-010** WHEN an Admin creates a source with a name, a type (`Fixture`, `JsonFeed`, `Rss`, `Html`), a poll interval in range, the type's location (`fixturePayload` for `Fixture`, an absolute http(s) `baseUrl` otherwise) and, for `Html`, a known site adapter (`prishtinaEvents` or `kapodalim`) THE SYSTEM SHALL save it and return it with health `never` if it is active.
+- **REQ-010** WHEN an Admin creates a source with a name, a type (`Fixture`, `JsonFeed`, `Rss`, `Html`), a poll interval in range, the type's location (`fixturePayload` for `Fixture`, an absolute http(s) `baseUrl` otherwise) and, for `Html`, a known site adapter (`prishtinaEvents` or `kapodalim`) THE SYSTEM SHALL save it (with `autoPublish` false unless the request sets it) and return it with health `never` if it is active.
 - **REQ-011** IF a source is created or updated with a missing name, an unknown type, a poll interval outside the allowed range of its type (design.md §5), a missing/invalid location for its type, or an `Html` source without a known site adapter THEN THE SYSTEM SHALL respond 400 naming each invalid field.
 - **REQ-012** WHILE a source is active THE SYSTEM SHALL fetch it automatically whenever it has never been fetched or its last fetch is at least its poll interval old, without any manual trigger.
 - **REQ-013** WHILE a source is inactive THE SYSTEM SHALL NOT fetch it automatically and SHALL report its health as `disabled`.
@@ -78,16 +78,21 @@
 - **REQ-020** IF a source's URL resolves to a loopback, private, link-local or otherwise non-public network address THEN THE SYSTEM SHALL NOT send the request and SHALL fail the run with error code `BlockedAddress`.
 - **REQ-021** WHERE a source is of type `Fixture` THE SYSTEM SHALL mark every candidate and published item from it as synthetic (`isSynthetic: true`).
 - **REQ-022** WHERE a source is of type `Html` THE SYSTEM SHALL create one candidate per event listed on the fetched page, using only that listing's cleaned text (no navigation, footer, scripts, styles or other listings) as source evidence, the absolute event page URL as its URL, and null for every field the listing does not show. [manual] (verified by the saved-fixture contract tests of each site adapter, design.md §6, and a live "Merr tani" in release QA)
+- **REQ-023** WHERE a source has auto-publish enabled, WHEN a new candidate from it gets validation `Valid` (and, for deals, qualifies under REQ-044) THE SYSTEM SHALL publish it immediately exactly as an approval would (candidate status `Published`, public item with its source link), and SHALL leave its candidates with validation `NeedsReview` or `Rejected` unpublished.
+- **REQ-024** WHERE a source has auto-publish enabled, WHEN an item it published is fetched again with changed content and the resulting candidate's only review issue is `ChangedSinceApproval` THE SYSTEM SHALL apply the change to the same public item automatically.
+- **REQ-025** WHEN an event item states a start date but no start time THE SYSTEM SHALL NOT add `MissingStartsAt`, SHALL keep the time unknown (never invented or displayed; `startTimeKnown: false` on the public item) and SHALL keep the published event active until the end of that day in Europe/Pristina.
+- **REQ-026** WHERE a source has auto-publish enabled or is of type `Html`, WHEN a fetched event item starts on a Europe/Pristina date more than `Ingestion__EventHorizonDays` (default 3) days after the fetch date THE SYSTEM SHALL skip it (no candidate; counted only in `received`), so that a later fetch takes it once it is within that window.
+- **REQ-044** WHERE a source has auto-publish enabled THE SYSTEM SHALL publish a `Valid` deal candidate automatically only when it is a daily deal (its `validUntil` is at most 24 hours after its `validFrom`, or after the fetch when `validFrom` is absent) and its `discountPercent` is at least `AutoPublish__MinDealDiscountPercent` (default 35), and SHALL leave every other valid deal `Pending`.
 
 ### Normalization and validation
 
 - **REQ-027** IF a deal candidate has neither a new price nor a price text THEN THE SYSTEM SHALL add issue `MissingPrice` and set validation `NeedsReview`.
-- **REQ-028** WHEN validation of a candidate completes THE SYSTEM SHALL set its status to `Pending` (awaiting a person) unless the validation is `Rejected`, in which case it SHALL set status `Rejected` without a reviewer.
+- **REQ-028** WHEN validation of a candidate completes THE SYSTEM SHALL set its status to `Pending` (awaiting a person) unless the validation is `Rejected`, in which case it SHALL set status `Rejected` without a reviewer, or the candidate is published automatically under REQ-023/REQ-024.
 - **REQ-029** IF an event's `endsAt` is before its `startsAt` or a deal's `validUntil` is before its `validFrom` THEN THE SYSTEM SHALL set validation `NeedsReview` with issue `InvalidDateRange`.
 - **REQ-030** WHEN a fetched item is normalized THE SYSTEM SHALL keep every field the source does not provide as null (no default price, time, city, venue or image is ever invented) and SHALL store the original item text as source evidence.
 - **REQ-031** IF a candidate has no title or its URL is not an absolute http(s) URL THEN THE SYSTEM SHALL set its validation to `Rejected` with issue `MissingTitle` or `InvalidUrl`.
 - **REQ-032** IF an event candidate has already ended (its effective end, design.md §4, is in the past) or a deal candidate's `validUntil` is in the past THEN THE SYSTEM SHALL set its validation to `Rejected` with issue `Expired`.
-- **REQ-033** IF an event candidate has no start time THEN THE SYSTEM SHALL set its validation to `NeedsReview` with issue `MissingStartsAt`.
+- **REQ-033** IF an event candidate has neither a start time nor a start date THEN THE SYSTEM SHALL set its validation to `NeedsReview` with issue `MissingStartsAt`.
 - **REQ-034** IF an event candidate has no city, or any candidate's stated city does not match a Kosovo municipality or one of its known aliases (design.md §4), THEN THE SYSTEM SHALL set its validation to `NeedsReview` with issue `UnknownCity` and SHALL leave its resolved city (`citySlug`) null.
 - **REQ-035** IF a deal candidate has a negative price or an old price that is not greater than its new price THEN THE SYSTEM SHALL add issue `PriceInconsistent` and set validation `NeedsReview`.
 - **REQ-036** WHEN a deal has both prices and the old price is greater than the new price THE SYSTEM SHALL set `discountPercent` = round((old − new) / old × 100), midpoint away from zero.
@@ -105,7 +110,7 @@
 ### Duplicates and changes
 
 - **REQ-050** IF a new candidate matches, under the duplicate rules of design.md §4 (same kind, same city, for events the same Europe/Pristina start date, normalized title similarity ≥ 0.8), a published item (any source) or a pending candidate from a different source THEN THE SYSTEM SHALL add issue `PossibleDuplicate`, reference it in `duplicateOf`, and set validation `NeedsReview`.
-- **REQ-051** WHEN a source item that was already published is fetched again with changed content THE SYSTEM SHALL create a candidate linked to the published item (`matchedItemId`) with issue `ChangedSinceApproval`, and SHALL leave the public item unchanged until that candidate is approved.
+- **REQ-051** WHEN a source item that was already published is fetched again with changed content THE SYSTEM SHALL create a candidate linked to the published item (`matchedItemId`) with issue `ChangedSinceApproval`, and SHALL leave the public item unchanged until that candidate is approved (unless REQ-024 applies).
 - **REQ-052** WHEN a source item that was already published is fetched again with unchanged content THE SYSTEM SHALL update the published item's `lastVerifiedAt` to the fetch time.
 - **REQ-053** WHEN a still-pending candidate's source item is fetched again with changed content THE SYSTEM SHALL update that candidate in place (no second candidate) and re-run validation.
 

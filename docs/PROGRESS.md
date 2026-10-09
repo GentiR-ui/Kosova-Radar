@@ -10,6 +10,14 @@
 - Next: T011.
 -->
 
+## 2026-10-10 · Spec amendment v3 (human)
+- Client decisions: publish events of the real sources automatically (no approval), keep the date/expiry checks, remove the test events from the local site, Claude picks the fetch frequency (180 min, brief §7 "every 1–3 hours").
+- Changed: REQ-010, 028, 033, 051 amended; new REQ-023/024 (auto-publish per source) and REQ-025 (date-only events); `tests/App.AcceptanceTests/AutoPublishTests.cs`; design.md §2, §4, §5, §6, §7; ADR-039..041.
+- Local run: `scripts/dev.sh` now uses its own database `kosovaradar_local` (tests keep `app`), no synthetic fixtures, both real sources seeded active with auto-publish.
+- Only current content (ADR-042): events at most 3 days ahead (REQ-026), deals auto-published only when daily and ≥ 35 % off (REQ-044).
+- Final release phase dropped by the client (ADR-043): T091 removed; per-task reviews stay. The loop ends after T050.
+- New tasks: T049 (auto-publish), T050 (date-only events). Next: T049.
+
 ## 2026-10-09 · B-001 closed (human)
 - `bash scripts/ai-smoke.sh`: `GeminiAiProviderTests.Live_smoke_test_against_the_real_API` PASSED against the real Gemini API (key from `.env`). Entry removed from BLOCKERS.md.
 

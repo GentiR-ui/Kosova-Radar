@@ -264,3 +264,33 @@
 - Decision: the manual fetch endpoint runs with `ApplicationStopping` instead of the request token; the response contract (200 with the run summary, 409 when busy) is unchanged. RUNBOOK asks for a proxy read timeout of at least 300 s.
 - Consequences: a client that gives up still gets the result in the source's run history; only shutdown interrupts a run (recorded as `Interrupted`).
 
+
+## ADR-039 — Auto-publish per source (supersedes ADR-005 for sources that enable it)
+- Date: 2026-10-10 · Status: accepted · Task: T049
+- Context: the client wants the events of Prishtina.com and Ka' Po Dalim published without manual approval (2026-10-10), as in brief §6, while keeping a check on dates and expiry.
+- Decision: `Source.AutoPublish` (default false). After validation and the duplicate check, a new candidate with validation `Valid` from such a source is approved by the system through the same code path as a person (Venue, ItemSource, `lastVerifiedAt`, audit `candidate.autoPublish` with user "system"). A changed published item whose candidate's only review issue is `ChangedSinceApproval` is applied the same way. Everything else (`UnknownCity`, `PossibleDuplicate`, `AiUnavailable`, `Expired`, …) stays in the review queue. Expiry is unchanged: `ExpirationJob` every 5 minutes plus time filtering on every public query. Sources without the flag behave exactly as before (all v1/v2 acceptance tests).
+- Consequences: wrong data from a source can appear publicly without review; mitigations are the validation rules, the review queue for anything doubtful, and "Tërhiq" on the published list. Confidence thresholds (brief §6) are not used: validation outcome is the gate.
+
+## ADR-040 — Date-only events
+- Date: 2026-10-10 · Status: accepted · Task: T050
+- Context: 35 of 78 Prishtina.com listings and Ka' Po Dalim "ORARI TBA" listings show a date but no time; with `MissingStartsAt` they could never be auto-published, and inventing a time is forbidden (REQ-030).
+- Decision: feed field / candidate field `startDate`; such events are valid, published at local 00:00 with `StartTimeKnown = false`, shown with the date only, and active until the end of that local day (REQ-025).
+- Consequences: one new event column + DTO field; the "today" lists include date-only events of today for the whole day.
+
+## ADR-041 — Local run uses its own database
+- Date: 2026-10-10 · Status: accepted · Task: spec amendment v3
+- Context: the E2E suites start the API in Development against the database `app`, so the localhost site the client looks at filled up with test and synthetic events.
+- Decision: `scripts/dev.sh` uses the database `kosovaradar_local` (created by the migrations on first start), turns synthetic fixtures off and seeds the two real sources active with auto-publish. Tests keep using `app`.
+- Consequences: the local site shows only data from the real sources; deleting the volume or the database resets it.
+
+## ADR-042 — Only current content is published automatically (3-day event window, featured deals)
+- Date: 2026-10-10 · Status: accepted · Task: T049
+- Context: the client wants Kosova Radar to differ from Prishtina.com: quick information about what happens soon, not a full calendar; deals only when they are daily and a big discount (≥ 35 %), which is what users care about (client, 2026-10-10).
+- Decision: `Ingestion__EventHorizonDays` = 3 (replaces the 30-day `Ingestion__HtmlHorizonDays` of ADR-035) for `Html` and auto-publish sources: events starting on a local date more than 3 days after the fetch date are skipped and picked up by a later fetch (every 3 h) once inside the window; ongoing events (started, not ended) are kept. Auto-publish of deals requires a daily deal (`validUntil` ≤ 24 h after `validFrom`/fetch) and `discountPercent` ≥ `AutoPublish__MinDealDiscountPercent` (35); other valid deals stay `Pending` for a person. Sources without auto-publish keep the v1 behaviour.
+- Consequences: the public lists show at most ~3 days ahead from these sources; with a 3-hour poll an event appears 3 days (± 3 h) before it starts and disappears when it ends (ExpirationJob every 5 min).
+
+## ADR-043 — No final release phase
+- Date: 2026-10-10 · Status: accepted · Task: —
+- Context: the release skill (whole-codebase review, hardening pass, exploratory QA with Opus) used most of the client's usage limit; T090 (hardening) and two release review rounds are already done.
+- Decision: the client dropped T091 and the final release phase. Every task keeps its own checks (acceptance/unit/integration tests, `verify --quick`, `reviewer`, `security-reviewer` for 🔒 tasks).
+- Consequences: no final whole-app QA pass or RELEASE.md refresh; run `./scripts/verify.sh` (full) before a real deployment.

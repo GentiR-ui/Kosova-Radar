@@ -53,6 +53,9 @@ Scheduler tick ─► due active sources ─► run (JobExecution)          manu
   AI step: whenever `text` is non-empty and a provider is enabled (REQ-040..043)
   Validation → issues → Valid | NeedsReview | Rejected → status Pending | Rejected     (REQ-028..039)
   Duplicate check (§4)                                                                  (REQ-050)
+  Horizon (Html and auto-publish sources): events starting > EventHorizonDays local days ahead are skipped before lookup (REQ-026)
+  Auto-publish (source.AutoPublish): new candidate `Valid` (deals: daily and discount ≥ 35 %, REQ-044) → approve as the system;
+    ChangedSinceApproval as the only review issue → approve onto the same item       (REQ-023/024, ADR-039)
 Counters: received = items in the payload; created = new candidates (incl. auto-rejected and ChangedSinceApproval);
           updated = candidates updated in place; unchanged = as above; failed = per-item failures.
 ```
@@ -77,8 +80,10 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 | `Ai__Provider` | `None` (`Gemini` when `Ai__ApiKey` set; explicit `Gemini`/`Anthropic` without a key stops startup) | `Fake` (environment variables `Ai__Provider=Gemini` + `Ai__ApiKey` override it for local trials, `scripts/dev.sh`) | `Fake` |
 | `Ai__Model` | per provider: `gemini-3.5-flash-lite` (Gemini), `claude-haiku-4-5-20251001` (Anthropic) | same | — |
 | `Ai__MinIntervalMs` | 0 (minimum spacing between two AI calls, process-wide; set ~4000 on the Gemini free tier) | 0 | 0 |
-| `Ingestion__HtmlHorizonDays` | 30 (HTML listings starting later are skipped, §6) | 30 | 30 |
-| `Seed__KnownSources` | true (creates the inactive Prishtina.com and Ka' Po Dalim sources, §6) | true | false |
+| `Ingestion__EventHorizonDays` (replaces `Ingestion__HtmlHorizonDays`) | 3 (events of `Html` and auto-publish sources starting on a local date more than N days after the fetch date are skipped, REQ-026) | 3 | 3 |
+| `AutoPublish__MinDealDiscountPercent` | 35 (REQ-044) | 35 | 35 |
+| `Seed__KnownSources` | true (creates the Prishtina.com and Ka' Po Dalim sources, §6) | true | false |
+| `Seed__KnownSourcesActive` / `Seed__KnownSourcesAutoPublish` | false / false (values given to newly seeded sources; `scripts/dev.sh` sets both true) | false / false | false / false |
 | `Ai__DailyCallLimit` | 500 | 100000 | 100000 |
 | `Ai__ApiKey` / `Ai__TimeoutSeconds` | — / 15 | — / 15 | — / 15 |
 | `RateLimit__PublicPerMinute` | 300 | 0 (disabled) | 0 (disabled) |
@@ -127,9 +132,9 @@ When disabled, the header is ignored and `/api/_test/**` responds 404. The sched
 | City | Id, Slug, Name, Aliases[] | seeded: 38 Kosovo municipalities (below); unique Slug |
 | Category | Id, Slug, Name, Kind (`Event`/`Deal`) | seeded (below); unique (Slug, Kind) |
 | Venue | Id, Name, NormalizedName, CityId | found-or-created on publish by (NormalizedName, CityId) |
-| Source | Id, Name, Type (`Fixture`/`JsonFeed`/`Rss`/`Html`), BaseUrl?, Adapter? (`prishtinaEvents`/`kapodalim`; `Html` only, else null), FixturePayload?, DefaultKind (`Event`/`Deal`, for Rss), IsActive, IsUnreliable, PollIntervalMinutes, LastFetchedAt?, LastSuccessAt?, LastErrorAt?, LastError?, ConsecutiveFailures, CreatedAt | |
+| Source | Id, Name, Type (`Fixture`/`JsonFeed`/`Rss`/`Html`), BaseUrl?, Adapter? (`prishtinaEvents`/`kapodalim`; `Html` only, else null), FixturePayload?, DefaultKind (`Event`/`Deal`, for Rss), IsActive, IsUnreliable, AutoPublish (default false), PollIntervalMinutes, LastFetchedAt?, LastSuccessAt?, LastErrorAt?, LastError?, ConsecutiveFailures, CreatedAt | |
 | Candidate | Id, Kind, SourceId, ExternalId?, SourceUrl (as fetched, immutable), Fingerprint, ContentHash, Fields (jsonb `CandidateFields`; `fields.url` is the editable URL used on publish), Evidence (text ≤ 64 KB), Status (`Pending`/`Rejected`/`Published`/`Merged`), Validation (`Valid`/`NeedsReview`/`Rejected`), Issues (jsonb), SuggestedCategoryId?, DuplicateOfKind?, DuplicateOfId?, DuplicateOfIsCandidate?, MatchedItemId?, PublishedItemId?, RejectionReason?, RejectedByUserId?, IsSynthetic, Ai* (Model, RequestId, Confidence, ProcessedAt, SuggestedFields[]), FetchedAt, CreatedAt, UpdatedAt | indexes: Fingerprint, (Status, Validation), SourceId |
-| Event | Id, Title, Description?, VenueId?, CityId, CategoryId?, StartsAt, EndsAt?, PriceText?, PriceAmount?, Currency?, ImageUrl?, Status (`Published`/`Expired`/`Withdrawn`), PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: StartsAt, CityId, CategoryId, Status, PrimarySourceId, Fingerprint |
+| Event | Id, Title, Description?, VenueId?, CityId, CategoryId?, StartsAt, StartTimeKnown (false = date only; StartsAt is then local 00:00 of that date, ADR-040), EndsAt?, PriceText?, PriceAmount?, Currency?, ImageUrl?, Status (`Published`/`Expired`/`Withdrawn`), PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: StartsAt, CityId, CategoryId, Status, PrimarySourceId, Fingerprint |
 | Deal | Id, Title, Description?, MerchantName?, CityId?, CategoryId?, OldPrice?, NewPrice?, PriceText?, Currency?, DiscountPercent?, ValidFrom?, ValidUntil?, ImageUrl?, Status, PrimarySourceId, SourceUrl, Fingerprint, IsSynthetic, SearchText, LastVerifiedAt, PublishedAt, CreatedAt, UpdatedAt | indexes: ValidUntil, Status, PrimarySourceId, Fingerprint |
 | ItemSource | Id, ItemKind, ItemId, SourceId, SourceUrl, Fingerprint, CandidateId, AddedAt | all sources of a published item (merge adds rows) |
 | AuditLog | Id (UUIDv7), UserId, UserEmail (snapshot), Action, EntityType, EntityId, Changes (jsonb `{ before, after }`), At (wall clock) | append-only; written in the same `SaveChanges` as the action (ADR-021) |
@@ -140,7 +145,8 @@ Money `decimal(18,2)`, currency ISO code (never assumed). Times `DateTimeOffset`
 
 **Domain rules**
 
-- **Effective end** of an event = `EndsAt` when present and ≥ `StartsAt`, else `StartsAt + 6 h` (internal, never displayed; ADR-010).
+- **Effective end** of an event = `EndsAt` when present and ≥ `StartsAt`, else `StartsAt + 6 h` when the start time is known, else the end of the start date in Europe/Pristina (next local midnight; REQ-025, ADR-040) (internal, never displayed; ADR-010).
+- **Date-only events** (ADR-040): candidate field `startDate` (local `YYYY-MM-DD`) with `startsAt` null. No `MissingStartsAt`; the horizon, `Expired` and duplicate rules use the date (local 00:00; duplicates compare dates as before). On publish `StartsAt` = local 00:00 of `startDate`, `StartTimeKnown = false`; a later known time sets `StartTimeKnown = true`. The UI shows only the date ("gjatë ditës" instead of a time).
 - **Active event**: `Status = Published` and effective end > now. **Active deal**: `Status = Published` and (`ValidUntil` > now, or `ValidUntil` is null and `LastVerifiedAt` > now − 7 days). A published deal that is not active is shown as `expired` on detail.
 - **Freshness**: `fresh` if `LastVerifiedAt` ≥ now − 48 h, else `stale`.
 - **Discount**: `round((old − new) / old × 100)` (midpoint away from zero), only when both prices are present and old > new.
@@ -190,7 +196,7 @@ Times are ISO-8601 UTC (`2026-10-03T18:00:00Z`); `from`/`to` are `yyyy-MM-dd` da
 CityDto       = { slug, name }
 CategoryDto   = { slug, name, kind: "event" | "deal" }
 SourceRefDto  = { name, url }
-EventSummaryDto = { id, title, startsAt, endsAt|null, city: CityDto, venueName|null, category: CategoryDto|null,
+EventSummaryDto = { id, title, startsAt, startTimeKnown, endsAt|null, city: CityDto, venueName|null, category: CategoryDto|null,
                     priceText|null, priceAmount|null, currency|null, imageUrl|null,
                     sourceName, sourceUrl, lastVerifiedAt, freshness: "fresh"|"stale",
                     status: "active"|"expired", isSynthetic }
@@ -233,8 +239,8 @@ SourceRequest = { name (1–120), type: "fixture"|"jsonFeed"|"rss"|"html",
                   fixturePayload|null (string ≤ 1 MB; required for fixture; not validated as JSON on save),
                   defaultKind: "event"|"deal" (default "event"; used by rss),
                   pollIntervalMinutes (fixture: 1–1440; others: 15–1440),
-                  isActive (bool), isUnreliable (bool) }
-SourceDto = { id, name, type, baseUrl|null, adapter|null, defaultKind, isActive, isUnreliable, pollIntervalMinutes,
+                  isActive (bool), isUnreliable (bool), autoPublish (bool, default false) }
+SourceDto = { id, name, type, baseUrl|null, adapter|null, defaultKind, isActive, isUnreliable, autoPublish, pollIntervalMinutes,
               health: "never"|"healthy"|"degraded"|"failing"|"disabled",
               lastFetchedAt|null, lastSuccessAt|null, lastErrorAt|null, lastError|null, consecutiveFailures }
 SourceDetailDto = SourceDto + { fixturePayload|null, recentRuns: RunDto[] }
@@ -322,6 +328,7 @@ UserDto = { id, email, role: "admin"|"reviewer", isActive, createdAt }
     "url": "source page URL", "imageUrl": "https URL",
     "city": "free text", "venue": "free text", "category": "category slug or free text",
     "startsAt": "ISO-8601 with offset", "endsAt": "ISO-8601 with offset",
+    "startDate": "YYYY-MM-DD (events only; used when the time is unknown and startsAt is absent)",
     "priceText": "string", "price": 12.5, "currency": "EUR",   (price: events only)
     "merchant": "string", "oldPrice": 100, "newPrice": 80, "discountPercent": 20,
     "validFrom": "ISO-8601 with offset", "validUntil": "ISO-8601 with offset"
@@ -349,7 +356,7 @@ An iCalendar adapter is deferred (ADR-006). Site-specific HTML parsers are added
 - Evidence = the listing's cleaned text (whitespace collapsed, ≤ 16,000 characters, ADR-039) followed by a line `URL: <url>` — never the whole page.
 - The parser maps what the listing shows, deterministically: title, start date/time (Europe/Pristina local → instant with offset), end, venue, city, category text, price text, image (an `<img>` inside the listing, absolute http(s)) and description when shown. Anything not shown stays null (REQ-030). Event kind only.
 - `text` (AI input) = the evidence text, set only when `startsAt`, the city or the category could not be determined deterministically; otherwise empty so no AI call is made (cost, ADR-035). A site parser may leave out what only names the day's occurrence of a running series (`IHtmlSiteParser.OccurrenceFreeText`; Ka' Po Dalim: poster day, date block, weekday, featured pick position), so the text and the content hash stay the same every day (ADR-042). The AI step itself is unchanged (fill-only-null, REQ-040..043).
-- Listings whose start date is more than `Ingestion__HtmlHorizonDays` days after the fetch are skipped and not counted. Past listings are parsed as usual; validation rejects them as `Expired`.
+- Listings whose start date is more than `Ingestion__EventHorizonDays` (3) local days after the fetch date are skipped and counted only in `received` (REQ-026). Past listings are parsed as usual; validation rejects them as `Expired`.
 - At most 1000 listings per page; the rest is one `TooManyItems` failure (ADR-039).
 - V1 fetches only the configured page: no detail pages, no "load more" requests.
 - A 2xx page on which the parser finds no listing → run fails `MalformedPayload` (the site layout probably changed).
@@ -358,7 +365,7 @@ Site parsers — each with saved HTML fixtures in `tests/App.UnitTests/Fixtures/
 - `prishtinaEvents` — https://prishtina.com/events (robots.txt allows `/`). Server-rendered, grouped by day ("Today", "Tomorrow", weekday headings). Each event card is one link `/events/{slug}-{YYYY-MM-DD}-{6 hex}` showing: title (may end with "+ N more", kept), date ("Fri, 11 Sep"), optional festival label (e.g. "PriFest", ignored), category ("Culture & Arts", "Music", "Clubs", "Food & Drinks", "Tech & Business", "Other"), time ("14:30", optional) and venue. Start date from the URL (year-safe), time from the card; no time → `startsAt` null (`text` set). City = Prishtinë (the site covers Prishtina only). Category: Music → `muzike`; Clubs → `nate`; Food & Drinks → `ushqim`; Tech & Business → `edukim`; Culture & Arts → `teater` when the card text contains film/kino/theat/teat, else `art`; Other → null.
 - `kapodalim` — https://kapodalim.com/ks (robots.txt allows `/`). Server-rendered "N'RADAR" cards linking to `/event/{slug}`: city badge ("PRISHTINË / 2026KPD-…"), date ("22 SHTATOR" or a range "14 SHTATOR … 25 SHTATOR"), time ("18:00", "18:00-21:00", "SEPTEMBER 22 AT 15:00"; "ORARI TBA"/"… TBA" → null), entry line (→ `priceText` unless it says the price is not published, e.g. "Hyrja s'u publikua", "Kostoja nuk është publikuar"), title, venue and city, category tag. Albanian month names (janar … dhjetor); year from the slug's trailing `-YYYY`, else from the event code (`2026KPD-…`), else the next occurrence after the fetch date. Date range → `startsAt` = first day (with the time when given), `endsAt` = last day 23:59 local. City via city matching on the badge/city text. Category: Koncert/Muzikë/Live → `muzike`; Teatër/Film/Kino → `teater`; Art/Ekspozitë → `art`; Sport → `sport`; Familje/Fëmijë → `familje`; Ushqim/Pije/Food → `ushqim`; Party/Natë/DJ/Club → `nate`; Edukim/Konferencë/Workshop/Kurs/Teknologji/Biznes → `edukim`; others (e.g. Komunitet, Lojëra) → null. If the page server-renders only the first N cards behind "Shiko më shumë", V1 takes those N. As built (T045): the start date is the `datetime` attribute of the poster's `time` element (fallback: a `YYYY-MM-DD` in the slug), which makes the slug-year/next-occurrence rules unnecessary; a card without any such date has no start. The grid `article` wins over a featured card for the same event; the saved page renders 11 events (the "78" total loads on demand). Identity and `url` are the canonical `/event/{slug}` without the occurrence query `?date=`; a day range from the date line or, else, the slug (`-7-16-tetor-2026`) sets `startsAt` to its first day and `endsAt` to its last day 23:59, so a running series keeps the same fields every day (ADR-042).
 
-Seeding (`Seed__KnownSources`): at startup, for each known adapter a source is created when no source has its `baseUrl` — "Prishtina.com — Evente" (`html`, `prishtinaEvents`, https://prishtina.com/events) and "Ka' Po Dalim" (`html`, `kapodalim`, https://kapodalim.com/ks) — with `isActive: false`, poll interval 180 and `isUnreliable: false`. An Admin activates them or uses "Merr tani" (sources stay disabled until the operator decides, client brief §16).
+Seeding (`Seed__KnownSources`): at startup, for each known adapter a source is created when no source has its `baseUrl` — "Prishtina.com — Evente" (`html`, `prishtinaEvents`, https://prishtina.com/events) and "Ka' Po Dalim" (`html`, `kapodalim`, https://kapodalim.com/ks) — with `isActive` = `Seed__KnownSourcesActive`, `autoPublish` = `Seed__KnownSourcesAutoPublish` (both false by default), poll interval 180 and `isUnreliable: false`. Existing rows are never changed by seeding. Parsers set `startDate` (not `startsAt`) when a listing shows a date but no time (REQ-025); `text` is then set only when the city or the category is unknown.
 
 
 ### HTTP fetching rules
@@ -407,6 +414,7 @@ Titles, descriptions and evidence are rendered as text (never `dangerouslySetInn
 |---|---|---|---|
 | (all public) | layout | header link "Kosova Radar" (home); nav links "Evente", "Oferta", "Kërko" | — |
 | / | feed | `h1` "Çfarë ka sot në Kosovë"; search input "Kërko" (filters both tabs); tablist with tabs "Sot", "Evente", "Oferta"; the selected tab panel lists cards | 100, 104, 108 |
+| (cards and detail) | events with `startTimeKnown: false` | show the date and "gjatë ditës" instead of a time (ADR-040) | 025 |
 | /events | event list | `h1` "Evente"; selects "Qyteti" (option "Të gjitha qytetet" + city names), "Kategoria"; date inputs "Nga data", "Deri më"; search input "Kërko në evente"; event cards | 101, 102, 104, 107, 108 |
 | /events/:id | event detail | `h1` title; date/time text; city and venue; price or "Çmimi nuk dihet" when unknown; link "Burimi: {sourceName}" (external, `rel="noopener noreferrer"`, new tab); freshness text; banner "Ky event ka përfunduar" when expired; badge "Të dhëna testuese" when synthetic | 101, 103, 107 |
 | /deals | deal list | `h1` "Oferta"; selects "Qyteti", "Kategoria"; search input "Kërko në oferta"; deal cards | 101, 104, 106, 107, 108 |
@@ -428,7 +436,7 @@ Images: lazy-loaded, explicit width/height, `referrerpolicy="no-referrer"`; no i
 | /admin/items/:id | candidate review | `h1` candidate title or "(pa titull)"; region "Evidenca nga burimi" (evidence text + link "Hap burimin"); region "Fushat e normalizuara" (side by side ≥ 1024 px, stacked below) with inputs "Titulli", "Përshkrimi", "Lidhja e burimit", "Qyteti", "Vendi", "Kategoria", "Fillon më", "Përfundon më", "Çmimi (tekst)", "Çmimi", "Monedha", and for deals "Tregtari", "Çmimi i vjetër", "Çmimi i ri", "Vlen nga", "Vlen deri"; list "Problemet e validimit"; buttons "Ruaj ndryshimet", "Aprovo", "Refuzo", "Bashko"; reject dialog with textarea "Arsyeja" and button "Konfirmo refuzimin"; merge dialog with the suggested duplicate and button "Bashko me këtë"; after approve status message "U publikua" and link "Shiko faqen publike" | 110–112 |
 | /admin/published | published items | `h1` "Të publikuarat"; filters "Lloji", "Statusi"; rows with link "Ndrysho" (to the edit page, ADR-032) and buttons "Skado", "Tërhiq"; each opens a confirmation dialog (role `dialog`) with buttons "Po, skado" / "Po, tërhiq" and "Anulo" (ADR-037) | 069–071 |
 | /admin/published/:kind/:id | edit published item | same field labels as candidate review; button "Ruaj ndryshimet" | 069 |
-| /admin/sources | sources | `h1` "Burimet"; button "Shto burim" opens form with "Emri", "Lloji", "URL", "Të dhënat testuese (JSON)", "Lloji i paracaktuar", "Intervali (minuta)", select "Adapteri" (options "Prishtina.com — evente", "Ka' Po Dalim"; shown only when "Lloji" is "Faqe HTML" (value `html`)); checkboxes "Aktiv" (default unchecked), "I pabesueshëm"; "Intervali (minuta)" defaults to 60; button "Ruaj burimin"; table rows: name, health badge ("Pa u marrë ende", "Në rregull", "Me probleme", "Dështon", "Joaktiv"), last success, last error, buttons "Merr tani" and "Ndrysho"; after "Merr tani" a status message "Marrja përfundoi: {created} të reja, {updated} të përditësuara, {unchanged} pa ndryshim, {failed} të dështuara", "Marrja dështoi: {errorCode}" or (409) "Një marrje është në vazhdim. Provo pas pak." | 113 |
+| /admin/sources | sources | `h1` "Burimet"; button "Shto burim" opens form with "Emri", "Lloji", "URL", "Të dhënat testuese (JSON)", "Lloji i paracaktuar", "Intervali (minuta)", checkbox "Publiko automatikisht" (default unchecked; ADR-039), select "Adapteri" (options "Prishtina.com — evente", "Ka' Po Dalim"; shown only when "Lloji" is "Faqe HTML" (value `html`)); checkboxes "Aktiv" (default unchecked), "I pabesueshëm"; "Intervali (minuta)" defaults to 60; button "Ruaj burimin"; table rows: name, health badge ("Pa u marrë ende", "Në rregull", "Me probleme", "Dështon", "Joaktiv"), last success, last error, buttons "Merr tani" and "Ndrysho"; after "Merr tani" a status message "Marrja përfundoi: {created} të reja, {updated} të përditësuara, {unchanged} pa ndryshim, {failed} të dështuara", "Marrja dështoi: {errorCode}" or (409) "Një marrje është në vazhdim. Provo pas pak." | 113 |
 | /admin/users | users | `h1` "Përdoruesit"; form inputs "Email", "Fjalëkalimi", select "Roli" ("Administrator", "Shqyrtues"); button "Krijo përdoruesin"; rows with button "Çaktivizo", which opens a confirmation dialog with buttons "Po, çaktivizo" and "Anulo" (ADR-037) | 001–004 |
 
 Reviewer role: Admin-only links hidden; direct navigation shows "Nuk keni leje për këtë faqe".
