@@ -3,7 +3,13 @@ import { Link, useSearchParams } from 'react-router'
 import { Field, selectClass } from '../../public/Field'
 import { flat } from '../../public/api'
 import ListShell from '../../public/ListShell'
-import { useBulkApprove, useCandidates, useSourceOptions, type QueueFilters } from './api'
+import {
+  useBulkApprove,
+  useCandidates,
+  useSourceOptions,
+  type CandidateSummaryDto,
+  type QueueFilters,
+} from './api'
 import { r } from './strings'
 
 const q = r.queue
@@ -48,29 +54,33 @@ export default function ReviewQueuePage() {
   const candidates = useCandidates(filters)
   const sources = useSourceOptions()
   const bulk = useBulkApprove()
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  // id → fetchedAt of the row when it was ticked: content refreshed after that is not what the reviewer saw.
+  const [selected, setSelected] = useState<ReadonlyMap<string, string>>(new Map())
   const [result, setResult] = useState<string | null>(null)
 
-  const toggle = (id: string) =>
+  const toggle = (row: CandidateSummaryDto) =>
     setSelected((prev) => {
-      const next = new Set(prev)
-      if (!next.delete(id)) next.add(id)
+      const next = new Map(prev)
+      if (!next.delete(row.id)) next.set(row.id, row.fetchedAt)
       return next
     })
 
   const approveSelected = () => {
-    const ids = [...selected]
+    // Only rows still shown as pending and valid: a refetch may have changed or hidden a ticked row.
+    const rows = flat(candidates)
+      .filter((c) => selected.has(c.id) && c.status === 'pending' && c.validation === 'valid')
+      .map((c) => ({ id: c.id, fetchedAt: selected.get(c.id)! }))
     setResult(null)
-    bulk.mutate(ids, {
+    bulk.mutate(rows, {
       onSuccess: ({ approved, failed }) => {
-        setSelected(new Set())
+        setSelected(new Map())
         setResult(q.bulkResult(approved, failed))
       },
     })
   }
 
   const set = (key: string, value: string) => {
-    setSelected(new Set()) // a selection must never approve rows the new filter hides
+    setSelected(new Map()) // a selection must never approve rows the new filter hides
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev)
@@ -193,7 +203,7 @@ export default function ReviewQueuePage() {
                         className="size-5"
                         aria-label={q.select(c.title ?? q.untitled)}
                         checked={selected.has(c.id)}
-                        onChange={() => toggle(c.id)}
+                        onChange={() => toggle(c)}
                       />
                     )}
                   </td>

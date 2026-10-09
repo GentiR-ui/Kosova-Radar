@@ -30,6 +30,15 @@ internal sealed class HtmlSourceAdapter(
     /// </summary>
     public static readonly TimeSpan ParseTimeout = TimeSpan.FromSeconds(5);
 
+    /// <summary>More scripts, ads and hidden elements than this is not a listing page (removal is quadratic in their number).</summary>
+    public const int MaxRemovedElements = 20_000;
+
+    /// <summary>
+    /// AngleSharp reads text (<c>TextContent</c>) and clones recursively; a page nested thousands of levels deep would overflow
+    /// the stack, which kills the process. Real listing pages stay far below 100 levels.
+    /// </summary>
+    public const int MaxDepth = 512;
+
     private const string RemovedElements =
         "script, style, noscript, template, nav, header, footer, form, iframe, ins.adsbygoogle, "
         + "[class*='advert' i], [id*='advert' i], [class*='adsbygoogle' i], [aria-label='advertisement' i], "
@@ -72,7 +81,16 @@ internal sealed class HtmlSourceAdapter(
         work.CancelAfter(parseTimeout);
         try
         {
-            foreach (var element in page.QuerySelectorAll(RemovedElements).ToList()) element.Remove();
+            if (IsTooDeep(page, work.Token)) return FeedParseResult.Malformed;
+
+            // Removing many siblings is quadratic in AngleSharp: a real page has a few hundred such elements, not hundreds of thousands.
+            var removed = page.QuerySelectorAll(RemovedElements);
+            if (removed.Length > MaxRemovedElements) return FeedParseResult.Malformed;
+            foreach (var element in removed)
+            {
+                work.Token.ThrowIfCancellationRequested();
+                element.Remove();
+            }
 
             IReadOnlyList<IElement> listings;
             try
@@ -148,7 +166,7 @@ internal sealed class HtmlSourceAdapter(
                 // The AI only fills what the listing did not show (a shown but unmapped category included: the AI may suggest one),
                 // and costs nothing when everything is known (ADR-035).
                 var aiText = fields.StartsAt is null || fields.CityText is null || fields.CategorySlug is null
-                    ? text
+                    ? CleanText(listing, parser.OccurrenceFreeText)
                     : null;
                 // The hash leaves out the evidence: card text also shows display-only parts (the poster day of a running
                 // series) that would make every fetch a change; the fields and the AI text are what the candidate is built from.
@@ -180,12 +198,12 @@ internal sealed class HtmlSourceAdapter(
     /// The visible text of a listing: one space between text nodes, whitespace collapsed, capped. Stops at the cap, so a
     /// listing with megabytes of text costs no more than one with 16,000 characters.
     /// </summary>
-    internal static string CleanText(IElement listing)
+    internal static string CleanText(IElement listing, Func<IElement, string?>? replace = null)
     {
         var sb = new StringBuilder();
-        foreach (var node in listing.Descendants<IText>())
+        foreach (var text in replace is null ? listing.Descendants<IText>().Select(t => t.Data) : Texts(listing, replace))
         {
-            foreach (var c in node.Data)
+            foreach (var c in text)
             {
                 if (char.IsWhiteSpace(c))
                 {
@@ -204,5 +222,49 @@ internal sealed class HtmlSourceAdapter(
         var length = Math.Min(sb.Length, MaxEvidenceChars);
         if (length > 0 && char.IsHighSurrogate(sb[length - 1])) length--;
         return sb.ToString(0, length).TrimEnd();
+    }
+
+    /// <summary>Whether any node is nested deeper than <see cref="MaxDepth"/>; iterative, linear in the page size.</summary>
+    private static bool IsTooDeep(IDocument page, CancellationToken ct)
+    {
+        var stack = new Stack<(INode Node, int Depth)>();
+        stack.Push((page, 0));
+        var visited = 0;
+        while (stack.Count > 0)
+        {
+            var (node, depth) = stack.Pop();
+            if (depth > MaxDepth) return true;
+            if (++visited % 4096 == 0) ct.ThrowIfCancellationRequested();
+            for (var child = node.FirstChild; child is not null; child = child.NextSibling) stack.Push((child, depth + 1));
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The text nodes of a listing in document order, where <paramref name="replace"/> may stand in for an element and its
+    /// subtree. Iterative: a crafted page nests thousands of levels deep, and recursion would overflow the stack.
+    /// </summary>
+    private static IEnumerable<string> Texts(IElement listing, Func<IElement, string?> replace)
+    {
+        var stack = new Stack<INode>();
+        stack.Push(listing);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (node is IText t)
+            {
+                yield return t.Data;
+                continue;
+            }
+
+            if (node is IElement e && !ReferenceEquals(e, listing) && replace(e) is { } replaced)
+            {
+                yield return replaced;
+                continue;
+            }
+
+            for (var child = node.LastChild; child is not null; child = child.PreviousSibling) stack.Push(child);
+        }
     }
 }

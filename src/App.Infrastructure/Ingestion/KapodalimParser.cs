@@ -89,6 +89,29 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
     }
 
     /// <summary>
+    /// A running series shows today's occurrence: the poster day and month, the date block and the weekday before the
+    /// first "·" of the date line ("E premte · 9–10 TETOR · ORARI TBA", featured "Fri, Oct 9 · …"). The descriptor stays.
+    /// </summary>
+    public string? OccurrenceFreeText(IElement element)
+    {
+        if (element.LocalName == "time") return Descriptor(element);
+        if (element.ClassList.Contains("event-date-block")) return "";
+        if ((element.LocalName == "span" && element.ParentElement?.ClassList.Contains("event-meta-line") == true && element.PreviousElementSibling is null)
+            || (element.LocalName == "b" && element.ParentElement?.LocalName == "p"))
+            return OccurrenceDay().Replace(Collapse(element.TextContent), "");
+        // Featured cards: "02 / MITROVICË / VRAPIM" above the title; the position shifts when an earlier pick ends.
+        if (element.NextElementSibling?.LocalName == "h3" && PickPosition().Match(element.TextContent) is { Success: true } pick)
+            return element.TextContent[(pick.Index + pick.Length)..];
+        return null;
+    }
+
+    /// <summary>The text after the poster's line break: the time or the range ("9–10 TETOR · ORARI TBA").</summary>
+    private static string Descriptor(IElement time) =>
+        time.QuerySelector("span") is { } span
+            ? Collapse(string.Concat(span.ChildNodes.SkipWhile(n => n.NodeName != "BR").Skip(1).Select(n => n.TextContent)))
+            : "";
+
+    /// <summary>
     /// No clock time ("ORARI TBA", "PROGRAMI TBA") → no start. A day range ("9–10 TETOR" after the poster date, else the
     /// slug's "-7-16-tetor-2026") sets the start date to its first day and the end to its last day 23:59, so a running
     /// series keeps the same fields while the poster shows each day's occurrence.
@@ -96,19 +119,14 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
     private static (DateTimeOffset? Start, DateTimeOffset? End) ParseWhen(IElement listing, string? path)
     {
         var time = listing.QuerySelector("time");
-        var descriptor = "";
-        if (time?.QuerySelector("span") is { } span)
-        {
-            var afterBreak = span.ChildNodes.SkipWhile(n => n.NodeName != "BR").Skip(1);
-            descriptor = Collapse(string.Concat(afterBreak.Select(n => n.TextContent)));
-        }
+        var descriptor = time is null ? "" : Descriptor(time);
 
         DateOnly? first = null;
         if (time?.GetAttribute("datetime") is { } dt && DateOnly.TryParseExact(dt, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) first = d;
         else if (path is not null && SlugDate().Match(path) is { Success: true } sd
                  && DateOnly.TryParseExact(sd.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d2)) first = d2;
 
-        var range = (first is null ? null : ReadRange(DayRange().Match(NormalizeText(descriptor)), first.Value.Year))
+        var range = (first is null ? null : ReadRange(DayRange().Match(NormalizeText(descriptor)), first.Value))
             ?? (path is null ? null : ReadRange(SlugRange().Match(path), null));
         if (range is { } r) first = r.First;
         if (first is null) return (null, null);
@@ -129,10 +147,10 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
     }
 
     /// <summary>
-    /// "D1[ month1]–D2 month2" with the year of the poster date, or the slug's "-D1[-month1]-D2-month2-YYYY"; a first
-    /// month after the last month is in the previous year (the poster date is then the first day, never the last).
+    /// "D1[ month1]–D2 month2" with the year of the poster date (which lies in the range), or the slug's
+    /// "-D1[-month1]-D2-month2-YYYY"; a first month after the last month is in the year before the last month's.
     /// </summary>
-    private static (DateOnly First, DateOnly Last)? ReadRange(Match m, int? posterYear)
+    private static (DateOnly First, DateOnly Last)? ReadRange(Match m, DateOnly? poster)
     {
         if (!m.Success) return null;
         var lastMonth = Array.IndexOf(Months, m.Groups["m2"].Value) + 1;
@@ -142,8 +160,11 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
         var d1 = int.Parse(m.Groups["d1"].Value, CultureInfo.InvariantCulture);
         var d2 = int.Parse(m.Groups["d2"].Value, CultureInfo.InvariantCulture);
         int firstYear, lastYear;
-        if (posterYear is { } y)
-            (firstYear, lastYear) = (y, lastMonth < firstMonth ? y + 1 : y);
+        if (poster is { Year: var y } p)
+        {
+            // Across New Year the poster day lies in the range: in January it is the last year, not the first.
+            (firstYear, lastYear) = lastMonth >= firstMonth ? (y, y) : p.Month <= lastMonth ? (y - 1, y) : (y, y + 1);
+        }
         else
         {
             lastYear = int.Parse(m.Groups["y"].Value, CultureInfo.InvariantCulture);
@@ -172,7 +193,7 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
             _ when Has(c, "familj", "femij") => "familje",
             _ when Has(c, "ushqim", "pije", "food") => "ushqim",
             _ when Has(c, "party", "nate", "dj", "club") => "nate",
-            _ when Has(c, "edukim", "konferenc", "workshop", "kurs") => "edukim",
+            _ when Has(c, "edukim", "konferenc", "workshop", "kurs", "teknolog", "biznes") => "edukim",
             _ => null,
         };
     }
@@ -207,6 +228,13 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
 
     [GeneratedRegex(@"publikua|\bTBA\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex NotPublished();
+
+    // "E premte · " (grid) or "Fri, Oct 9 · " (featured) at the start of the date line.
+    [GeneratedRegex(@"^\s*(?:E\s+\p{L}+|\p{L}{3},\s*\p{L}{3,9}\.?\s+\d{1,2})\s*·\s*", RegexOptions.CultureInvariant)]
+    private static partial Regex OccurrenceDay();
+
+    [GeneratedRegex(@"^\s*\d+\s*/\s*")]
+    private static partial Regex PickPosition();
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();

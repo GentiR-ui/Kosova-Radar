@@ -119,6 +119,72 @@ public class KapodalimParserTests
         Assert.Equal("Prishtinë - lokacionet TBA", remusica.VenueName);
     }
 
+    [Theory]
+    [InlineData("Teknologji & biznes")] // unmapped before release review round 2: always went to the AI
+    [InlineData("Komunitet")]
+    public void A_running_series_with_time_TBA_keeps_its_AI_text_and_content_from_day_to_day(string category)
+    {
+        // The page as on two days of the series (markup of the saved KosICT15 card): poster day, date block and weekday change.
+        string Page(string date, string day, string weekday, string featuredDay, string pick) => $"""
+            <html><body><main>
+            <a href="/event/kosict-9-10-tetor-2026?date={date}"><time dateTime="{date}"><b>{day}</b><span>TETOR<br/>9–10 TETOR · ORARI TBA</span></time>
+            <span>01 / FUSHË KOSOVË / {category}</span><h3>KosICT</h3><p><b>{featuredDay} · 9–10 TETOR · ORARI TBA</b><br/>Klan Kosova</p></a>
+            <article><a href="/event/kosict-9-10-tetor-2026?date={date}"><span class="poster-venue">Klan Kosova</span>
+            <time dateTime="{date}"><b>{day}</b><span>TETOR<br/>9–10 TETOR · ORARI TBA</span></time></a>
+            <div class="event-date-block"><strong>{day}</strong><span>TETOR</span></div>
+            <div class="event-card-location">Fushë Kosovë</div>
+            <div class="event-meta-line"><span>{weekday} · 9–10 TETOR · ORARI TBA</span><span>Hyrja s’u publikua</span></div>
+            <h3><a href="/event/kosict-9-10-tetor-2026?date={date}">KosICT</a></h3>
+            <span class="category-chip">{category}</span></article>
+            <a href="/event/fest-9-10-tetor-2026?date={date}"><time dateTime="{date}"><b>{day}</b><span>TETOR<br/>9–10 TETOR · ORARI TBA</span></time>
+            <span>{pick} / PRISHTINË / {category}</span><h3>Fest</h3><p><b>{featuredDay} · 9–10 TETOR · ORARI TBA</b><br/>Sheshi</p></a>
+            </main></body></html>
+            """;
+
+        var day1 = Parse(Page("2026-10-09", "09", "E premte", "Fri, Oct 9", "02")).Items;
+        var day2 = Parse(Page("2026-10-10", "10", "E shtunë", "Sat, Oct 10", "01")).Items;
+        var (first, second) = (day1[0], day2[0]); // the grid card wins over the featured card of the same event
+
+        Assert.Equal("https://kapodalim.com/event/kosict-9-10-tetor-2026", first.Fields.Url);
+        Assert.NotNull(first.Text);
+        Assert.Contains("9–10 TETOR · ORARI TBA", first.Text);
+        Assert.DoesNotContain("E premte", first.Text);
+        Assert.Contains("E premte", first.Evidence); // the evidence still shows the card as it was
+        Assert.Equal(first.Text, second.Text);
+        Assert.Equal(first.ContentHash, second.ContentHash);
+
+        var featured = day1[1]; // featured only: "Fri, Oct 9 · …"
+        Assert.DoesNotContain("Oct 9", featured.Text);
+        Assert.Equal(featured.ContentHash, day2[1].ContentHash);
+    }
+
+    [Fact]
+    public void Deeply_nested_titles_and_pick_labels_are_a_malformed_payload_not_a_crash()
+    {
+        var inTitle = $"<html><body><article><a href=\"/event/x\"><h3>{HtmlSourceAdapterTests.Nested("i", 20_000)}T</h3></a></article></body></html>";
+        var labels = $"<html><body><article><a href=\"/event/x\"><h3>T</h3></a>{string.Concat(Enumerable.Repeat("<div><h3>L</h3>", 10_000))}</article></body></html>";
+
+        Assert.Equal("MalformedPayload", HtmlSourceAdapterTests.OnThreadPoolStack(() => Parse(inTitle)).ErrorCode);
+        Assert.Equal("MalformedPayload", HtmlSourceAdapterTests.OnThreadPoolStack(() => Parse(labels)).ErrorCode);
+    }
+
+    [Fact]
+    public void A_range_across_new_year_seen_in_january_starts_in_december()
+    {
+        const string html = """
+            <html><body><main><article>
+            <a href="/event/festa-2026"><h3>Festa</h3></a>
+            <time datetime="2027-01-02"><b>02</b><span>JANAR<br>28 DHJETOR–3 JANAR · 20:00</span></time>
+            <span class="event-card-location">PRISHTINË</span><span class="category-chip">Koncert</span>
+            </article></main></body></html>
+            """;
+
+        var f = Assert.Single(Parse(html).Items).Fields;
+
+        Assert.Equal(new DateTimeOffset(2026, 12, 28, 20, 0, 0, TimeSpan.FromHours(1)), f.StartsAt);
+        Assert.Equal(new DateTimeOffset(2027, 1, 3, 23, 59, 0, TimeSpan.FromHours(1)), f.EndsAt);
+    }
+
     [Fact]
     public void Open_ended_start_text_and_featured_cards_map_category_and_city()
     {
@@ -205,6 +271,7 @@ public class KapodalimParserTests
     [InlineData("DJ Night", "nate")]
     [InlineData("Party", "nate")]
     [InlineData("Workshop", "edukim")]
+    [InlineData("Teknologji & biznes", "edukim")]
     [InlineData("Komunitet", null)]
     [InlineData("Lojëra", null)]
     public void Categories_map_per_the_design(string text, string? slug) => Assert.Equal(slug, KapodalimParser.MapCategory(text));

@@ -10,6 +10,9 @@
 - Next: T011.
 -->
 
+## 2026-10-09 · B-001 closed (human)
+- `bash scripts/ai-smoke.sh`: `GeminiAiProviderTests.Live_smoke_test_against_the_real_API` PASSED against the real Gemini API (key from `.env`). Entry removed from BLOCKERS.md.
+
 ## 2026-10-08 · T048 done
 - Built: bulk approve in the review queue (ADR-038): checkbox "Zgjidh {title}" on pending `Valid` rows, "Aprovo të zgjedhurat" (disabled with no selection), sequential calls to the existing approve endpoint (`useBulkApprove`), `role=status` result message with approved/failed counts. No API change.
 - Tests: component test (2 selected, one 409 reported, non-valid row has no checkbox); Playwright flow `web/e2e/flows/bulk-approve.spec.ts` (keyboard-only, two approved, one 409) written but NOT run (no Docker/browser stack in this session).

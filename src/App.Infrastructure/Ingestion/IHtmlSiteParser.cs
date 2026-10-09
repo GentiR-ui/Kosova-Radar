@@ -23,4 +23,11 @@ public interface IHtmlSiteParser
 
     /// <summary>Maps one listing; anything it does not show stays null. <paramref name="now"/> is the fetch time.</summary>
     HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now);
+
+    /// <summary>
+    /// The AI text of <paramref name="element"/> and everything inside it, or null to read it as usual. A site whose cards
+    /// show the fetch day's occurrence of a running series (poster day, weekday) leaves that out here, so the AI text and
+    /// with it the content hash stay the same from day to day (ADR-042). Must not recurse into the subtree.
+    /// </summary>
+    string? OccurrenceFreeText(IElement element) => null;
 }

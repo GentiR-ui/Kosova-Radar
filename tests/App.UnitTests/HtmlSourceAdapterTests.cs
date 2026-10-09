@@ -198,6 +198,57 @@ public class HtmlSourceAdapterTests
     }
 
     [Fact]
+    public void A_page_with_too_many_elements_to_remove_is_a_malformed_payload_without_removing_them()
+    {
+        var hidden = string.Concat(Enumerable.Repeat("<br hidden>", HtmlSourceAdapter.MaxRemovedElements + 1));
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = Parse(hidden + Card("Koncert", "/e/1"));
+
+        Assert.Equal("MalformedPayload", result.ErrorCode);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"took {watch.Elapsed}");
+    }
+
+    /// <summary>
+    /// Runs <paramref name="parse"/> on a 1.5 MB stack (the Linux thread-pool default). .NET cannot catch a stack overflow:
+    /// a recursive AngleSharp call on a deeply nested page would kill the test host, as it would kill the API.
+    /// </summary>
+    internal static FeedParseResult OnThreadPoolStack(Func<FeedParseResult> parse)
+    {
+        FeedParseResult? result = null;
+        var thread = new Thread(() => result = parse(), 1536 * 1024);
+        thread.Start();
+        thread.Join();
+        return result!;
+    }
+
+    internal static string Nested(string tag, int depth) => string.Concat(Enumerable.Repeat($"<{tag}>", depth));
+
+    [Fact]
+    public void A_page_nested_deeper_than_the_limit_is_a_malformed_payload()
+    {
+        var result = OnThreadPoolStack(() => Parse(Card("Koncert", "/e/1", city: null, extra: Nested("i", 20_000) + "Thellë")));
+
+        Assert.Equal("MalformedPayload", result.ErrorCode);
+    }
+
+    [Fact]
+    public void A_page_nested_below_the_limit_is_read_and_its_text_goes_to_the_AI()
+    {
+        var result = OnThreadPoolStack(() => Parse(Card("Koncert", "/e/1", city: null, extra: Nested("i", HtmlSourceAdapter.MaxDepth - 20) + "Thellë")));
+
+        Assert.Contains("Thellë", Assert.Single(result.Items).Text);
+    }
+
+    [Fact]
+    public void A_page_at_the_removal_cap_is_still_read()
+    {
+        var hidden = string.Concat(Enumerable.Repeat("<br hidden>", HtmlSourceAdapter.MaxRemovedElements - 1));
+
+        Assert.Equal("Koncert", Parse(hidden + Card("Koncert", "/e/1")).Items.Single().Fields.Title);
+    }
+
+    [Fact]
     public void Listings_past_the_cap_are_not_read_and_reported_once()
     {
         var result = Parse(string.Concat(Enumerable.Range(0, HtmlSourceAdapter.MaxListings + 50).Select(i => Card($"E{i}", $"/e/{i}"))));

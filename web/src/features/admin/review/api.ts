@@ -1,5 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../../../lib/api'
+import { api, ApiError } from '../../../lib/api'
 import type { Page } from '../../public/api'
 
 export type CandidateStatus = 'pending' | 'rejected' | 'published' | 'merged'
@@ -124,18 +124,30 @@ export const useApprove = (id: string) =>
   useDecision<undefined, { kind: Kind; itemId: string }>(id, 'approve')
 export const useReject = (id: string) => useDecision<{ reason: string }, CandidateDto>(id, 'reject')
 
+/** A queue row as the reviewer saw it when ticking it (ADR-038). */
+export type BulkRow = Pick<CandidateSummaryDto, 'id' | 'fetchedAt'>
+
 /** Approves candidates one by one through the single-item endpoint (ADR-038); reports how many failed. */
+
 export function useBulkApprove() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async (ids: string[]) => {
+    mutationFn: async (rows: BulkRow[]) => {
       let approved = 0
       let failed = 0
-      for (const id of ids) {
+      for (const row of rows) {
+        const path = `/api/admin/candidates/${encodeURIComponent(row.id)}`
         try {
-          await api(`/api/admin/candidates/${encodeURIComponent(id)}/approve`, { method: 'POST' })
+          // A candidate a run changed since the list was loaded is content nobody has seen: skip it.
+          const now = await api<CandidateDto>(path)
+          if (now.status !== 'pending' || now.validation !== 'valid' || now.fetchedAt !== row.fetchedAt) {
+            failed++
+            continue
+          }
+          await api(`${path}/approve`, { method: 'POST' })
           approved++
-        } catch {
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) throw e // signed out: the MutationCache sends the user to login
           failed++
         }
       }

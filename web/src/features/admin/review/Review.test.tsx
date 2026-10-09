@@ -107,6 +107,8 @@ describe('ReviewQueuePage', () => {
           summary({ id: 'c', title: 'Tre', validation: 'needsReview' }),
         ]),
       ],
+      'GET /api/admin/candidates/a': [200, { ...candidate, id: 'a', validation: 'valid', issues: [] }],
+      'GET /api/admin/candidates/b': [200, { ...candidate, id: 'b', validation: 'valid', issues: [] }],
       'POST /api/admin/candidates/a/approve': [200, { kind: 'event', itemId: 'i1' }],
       'POST /api/admin/candidates/b/approve': [409, { status: 409 }],
     })
@@ -121,6 +123,47 @@ describe('ReviewQueuePage', () => {
     expect(await screen.findByText(/1 u aprovuan, 1 dështuan/)).toBeInTheDocument()
     expect(calls).toContain('POST /api/admin/candidates/a/approve')
     expect(calls).toContain('POST /api/admin/candidates/b/approve')
+  })
+
+  it('skips a selected row that a run changed after the list was loaded', async () => {
+    const calls = stubFetch({
+      'GET /api/admin/candidates/sources': [200, sources],
+      'GET /api/admin/candidates?status=pending&page=1&pageSize=25': [
+        200,
+        page([
+          summary({ id: 'a', title: 'Një', validation: 'valid' }),
+          summary({ id: 'b', title: 'Dy', validation: 'valid' }),
+        ]),
+      ],
+      'GET /api/admin/candidates/a': [200, { ...candidate, id: 'a', validation: 'valid', issues: [] }],
+      'GET /api/admin/candidates/b': [
+        200,
+        { ...candidate, id: 'b', validation: 'valid', issues: [], fetchedAt: '2026-01-02T00:00:00Z' },
+      ],
+      'POST /api/admin/candidates/a/approve': [200, { kind: 'event', itemId: 'i1' }],
+    })
+    renderRoutes(routes, '/admin/review')
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Zgjidh Një' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Zgjidh Dy' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Aprovo të zgjedhurat' }))
+    expect(await screen.findByText(/1 u aprovuan, 1 dështuan/)).toBeInTheDocument()
+    expect(calls).toContain('POST /api/admin/candidates/a/approve')
+    expect(calls).not.toContain('POST /api/admin/candidates/b/approve')
+  })
+
+  it('clears the selection when a filter changes', async () => {
+    const rows = page([summary({ id: 'a', title: 'Një', validation: 'valid' })])
+    stubFetch({
+      'GET /api/admin/candidates/sources': [200, sources],
+      'GET /api/admin/candidates?status=pending&page=1&pageSize=25': [200, rows],
+      'GET /api/admin/candidates?status=pending&kind=event&page=1&pageSize=25': [200, rows],
+    })
+    renderRoutes(routes, '/admin/review')
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Zgjidh Një' }))
+    expect(screen.getByText('1 të zgjedhur')).toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText('Lloji'), 'event')
+    expect(await screen.findByText('0 të zgjedhur')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aprovo të zgjedhurat' })).toBeDisabled()
   })
 })
 

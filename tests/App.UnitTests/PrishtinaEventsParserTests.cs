@@ -20,6 +20,14 @@ public class PrishtinaEventsParserTests
         Saved.Value.Items.Single(i => i.Fields.Url == $"https://prishtina.com/events/{slug}");
 
     [Fact]
+    public void A_card_nested_thousands_of_levels_deep_is_a_malformed_payload_not_a_crash()
+    {
+        var html = $"<html><body><a href=\"/events/x-2026-10-10-abcdef\"><h3>X</h3>{HtmlSourceAdapterTests.Nested("i", 20_000)}y</a></body></html>";
+
+        Assert.Equal("MalformedPayload", HtmlSourceAdapterTests.OnThreadPoolStack(() => Parse(html)).ErrorCode);
+    }
+
+    [Fact]
     public void The_saved_page_yields_all_its_listings_without_failures()
     {
         Assert.Null(Saved.Value.ErrorCode);
