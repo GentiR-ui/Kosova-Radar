@@ -30,7 +30,7 @@ export default function DealsPage() {
 
   return (
     <>
-      <h1 className="text-4xl sm:text-5xl">{p.dealsHeading}</h1>
+      <h1 className="text-3xl sm:text-4xl">{p.dealsHeading}</h1>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Field label={p.city} htmlFor="f-city">
           <select
@@ -67,7 +67,7 @@ export default function DealsPage() {
         </Field>
       </div>
       <div className="mt-6">
-        <ListShell queries={[deals]}>
+        <ListShell queries={[deals]} grid>
           {flat(deals).map((d) => (
             <DealCard key={d.id} deal={d} />
           ))}

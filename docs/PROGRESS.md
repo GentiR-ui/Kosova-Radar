@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-10 · T051 done
+- Built: public UI redesign (frontend only): Inter variable font, new colour/radius/shadow tokens in `index.css`, shared `.btn`, sticky blurred header with radar mark + scroll progress, card grid with image-on-top cards (stretched title link, source link kept clickable), Motion (`motion/react`) scroll reveals and reduced-motion guards, `ListShell grid` prop (search and admin lists stay full-width), 44px touch targets, skeleton loading, `scroll-padding-top`.
+- Tests: web unit green (IntersectionObserver stub in test setup, new ListShell layout test); production build passes. Playwright suites not run in this session (need DB/servers).
+- Verify: quick PASS. Review: reviewer 4 MEDIUM (search layout, mobile header wrap, reduced-motion skeleton, card affordance) fixed; LOW fixed: scroll padding, theme-color, page-level fade removed, empty image block removed.
+- Left (LOW): Motion not lazily loaded (bundle 151 kB gzip), no discount badge, global tokens also restyle admin (visual check pending), prettier-only reformat in format.ts/Public.test.tsx.
+- Next: none (all tasks done).
+
 ## 2026-10-10 · T050 done
 - Built: date-only events (ADR-040): `CandidateFields.StartDate` (+ `EventStart()`), `startDate` in the Radar feed (1900-2200, malformed = per-item failure), candidate/published-item edit requests and DTOs; `Event.StartTimeKnown` + migration `DateOnlyEvents` (default true); effective end = end of the local day (`ContentRules.EffectiveEnd`, SQL twins `ActiveItems`/`ExpirationRunner`); horizon, `Expired`, duplicates and auto-publish rules use the date; `startTimeKnown` in event DTOs, SEO JSON-LD `startDate` as a date; both HTML parsers emit `startDate` when there is no time; AI time must fall on the source date (else `ConflictingData`); UI shows the date and "gjatë ditës", review/published forms carry the date.
 - Tests: unit (effective end incl. DST, validator, parsers, feed parser, AI merger), integration (SQL/domain/expiration twin for date-only), Playwright `web/e2e/flows/date-only-event.spec.ts` (green), web component test; acceptance 353 green (REQ-025, REQ-033 included). `HtmlSourceTests` end-to-end now asserts `received` (items beyond the horizon are only counted there).

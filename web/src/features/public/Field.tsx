@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
-export const selectClass = 'w-full rounded-sm border border-line bg-surface px-3 py-2.5'
+export const selectClass =
+  'min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2.5 shadow-sm transition-colors hover:border-muted'
 
 export function Field({
   label,

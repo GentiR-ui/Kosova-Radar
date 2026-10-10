@@ -20,7 +20,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <h1 className="text-4xl sm:text-5xl">{p.searchHeading}</h1>
+      <h1 className="text-3xl sm:text-4xl">{p.searchHeading}</h1>
       <form onSubmit={submit} role="search" className="mt-8 flex items-end gap-3">
         <div className="flex-1">
           <Field label={p.search} htmlFor="f-q">
@@ -33,10 +33,7 @@ export default function SearchPage() {
             />
           </Field>
         </div>
-        <button
-          type="submit"
-          className="rounded-sm border border-ink px-5 py-2.5 text-sm hover:bg-ink hover:text-paper"
-        >
+        <button type="submit" className="btn">
           {p.search}
         </button>
       </form>
@@ -47,7 +44,10 @@ export default function SearchPage() {
           <ListShell queries={[results]}>
             <ul>
               {flat(results).map((r) => (
-                <li key={`${r.kind}-${r.id}`} className="border-t border-line py-4 first:border-t-0">
+                <li
+                  key={`${r.kind}-${r.id}`}
+                  className="border-t border-line py-4 first:border-t-0"
+                >
                   <span className="mr-3 text-xs uppercase tracking-wide text-muted">
                     {r.kind === 'event' ? p.kindEvent : p.kindDeal}
                   </span>

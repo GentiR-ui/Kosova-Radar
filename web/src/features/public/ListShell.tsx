@@ -15,11 +15,17 @@ type Q = Pick<
   | 'refetch'
 >
 
-const button =
-  'rounded-sm border border-ink px-5 py-2.5 text-sm hover:bg-ink hover:text-paper disabled:opacity-50'
-
 /** Loading, error (with retry), empty and "show more" states shared by every public list. */
-export default function ListShell({ queries, children }: { queries: Q[]; children: ReactNode }) {
+export default function ListShell({
+  queries,
+  grid = false,
+  children,
+}: {
+  queries: Q[]
+  /** Lay children out as a responsive card grid (public cards); otherwise they render as given. */
+  grid?: boolean
+  children: ReactNode
+}) {
   const failed = queries.some((q) => q.isError)
   const loading = queries.some((q) => q.isPending)
   const empty = queries.every((q) => q.data?.pages.every((pg) => pg.items.length === 0))
@@ -33,7 +39,7 @@ export default function ListShell({ queries, children }: { queries: Q[]; childre
         <button
           type="button"
           onClick={() => queries.filter((q) => q.isError).forEach((q) => void q.refetch())}
-          className={button}
+          className="btn"
         >
           {t.retry}
         </button>
@@ -41,20 +47,30 @@ export default function ListShell({ queries, children }: { queries: Q[]; childre
     )
   if (loading)
     return (
-      <p role="status" className="py-6 text-muted">
-        {t.loading}
-      </p>
+      <div role="status" className="py-6">
+        <p className="text-muted">{t.loading}</p>
+        {grid && (
+          <div aria-hidden="true" className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-64 animate-pulse rounded-card bg-line/60 motion-reduce:animate-none"
+              />
+            ))}
+          </div>
+        )}
+      </div>
     )
   if (empty) return <p className="py-6 text-muted">{p.empty}</p>
   return (
     <>
-      {children}
+      {grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div> : children}
       {more.length > 0 && (
         <button
           type="button"
           disabled={fetching}
           onClick={() => more.forEach((q) => void q.fetchNextPage())}
-          className={`mt-4 ${button}`}
+          className="btn mt-8"
         >
           {p.more}
         </button>

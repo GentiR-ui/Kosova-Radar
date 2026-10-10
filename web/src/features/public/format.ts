@@ -68,7 +68,13 @@ export function fromPristinaInput(value: string): string | null {
   let guess = wall
   for (let i = 0; i < 2; i++) {
     const p = parts(new Date(guess))
-    const shown = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute))
+    const shown = Date.UTC(
+      Number(p.year),
+      Number(p.month) - 1,
+      Number(p.day),
+      Number(p.hour),
+      Number(p.minute),
+    )
     guess += wall - shown
   }
   const out = new Date(guess)

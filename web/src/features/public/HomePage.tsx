@@ -34,7 +34,7 @@ export default function HomePage() {
 
   return (
     <>
-      <h1 className="text-4xl sm:text-5xl">{t.pages.home}</h1>
+      <h1 className="text-3xl sm:text-4xl">{t.pages.home}</h1>
       <div className="mt-8 max-w-md">
         <label htmlFor="home-search" className="mb-1 block text-sm text-muted">
           {p.search}
@@ -64,8 +64,10 @@ export default function HomePage() {
               update('tab', nextTab.id)
               document.getElementById(`tab-${nextTab.id}`)?.focus()
             }}
-            className={`-mb-px border-b-2 py-3 text-sm ${
-              tab === x.id ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
+            className={`-mb-px min-h-11 border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+              tab === x.id
+                ? 'border-accent text-accent'
+                : 'border-transparent text-muted hover:text-ink'
             }`}
           >
             {x.label}
@@ -87,7 +89,7 @@ function Feed({ tab, search }: { tab: TabId; search: string }) {
   const active = tab === 'today' ? [events, deals] : tab === 'events' ? [events] : [deals]
 
   return (
-    <ListShell queries={active}>
+    <ListShell queries={active} grid>
       {tab !== 'deals' && flat(events).map((e) => <EventCard key={e.id} event={e} />)}
       {tab !== 'events' && flat(deals).map((d) => <DealCard key={d.id} deal={d} />)}
     </ListShell>

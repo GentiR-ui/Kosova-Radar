@@ -32,7 +32,7 @@ export default function EventsPage() {
 
   return (
     <>
-      <h1 className="text-4xl sm:text-5xl">{p.eventsHeading}</h1>
+      <h1 className="text-3xl sm:text-4xl">{p.eventsHeading}</h1>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field label={p.city} htmlFor="f-city">
           <select
@@ -87,7 +87,7 @@ export default function EventsPage() {
         </Field>
       </div>
       <div className="mt-6">
-        <ListShell queries={[events]}>
+        <ListShell queries={[events]} grid>
           {flat(events).map((e) => (
             <EventCard key={e.id} event={e} />
           ))}

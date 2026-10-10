@@ -37,11 +37,7 @@ function DetailShell<T>({
     return (
       <div role="alert" className="space-y-3 py-6">
         <p>{t.error}</p>
-        <button
-          type="button"
-          onClick={() => void query.refetch()}
-          className="rounded-sm border border-ink px-5 py-2.5 text-sm hover:bg-ink hover:text-paper"
-        >
+        <button type="button" onClick={() => void query.refetch()} className="btn">
           {t.retry}
         </button>
       </div>

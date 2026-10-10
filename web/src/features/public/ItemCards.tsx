@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { DealSummaryDto, EventSummaryDto } from './api'
@@ -6,7 +7,7 @@ import { p } from './strings'
 
 export function SyntheticBadge() {
   return (
-    <span className="inline-block rounded-full border border-warn px-2 py-0.5 text-xs text-warn">
+    <span className="inline-block w-fit rounded-full border border-warn px-2 py-0.5 text-xs text-warn">
       {p.synthetic}
     </span>
   )
@@ -31,14 +32,14 @@ export function SourceLink({ name, url }: { name: string; url: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline underline-offset-4 hover:text-ink"
+      className="relative z-10 underline underline-offset-4 hover:text-ink"
     >
       {label}
     </a>
   )
 }
 
-const imageBox = 'h-24 w-28 shrink-0 rounded-sm bg-line sm:h-28 sm:w-40'
+const imageBox = 'aspect-[16/9] w-full bg-line'
 
 function Thumb({ url }: { url: string | null }) {
   const href = url ? safeHref(url) : undefined
@@ -46,15 +47,13 @@ function Thumb({ url }: { url: string | null }) {
     <img
       src={href}
       alt=""
-      width={160}
-      height={112}
+      width={640}
+      height={360}
       loading="lazy"
       referrerPolicy="no-referrer"
       className={`${imageBox} object-cover`}
     />
-  ) : (
-    <div aria-hidden="true" className={imageBox} />
-  )
+  ) : null
 }
 
 function Card({
@@ -72,20 +71,32 @@ function Card({
   children: ReactNode
   footer: ReactNode
 }) {
+  const reduce = useReducedMotion()
   return (
-    <article className="flex gap-4 border-t border-line py-5 first:border-t-0">
+    <motion.article
+      initial={reduce ? false : { opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '0px 0px -40px 0px' }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      className="relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card transition-[box-shadow,translate] duration-200 hover:-translate-y-0.5 hover:shadow-lift"
+    >
       <Thumb url={imageUrl} />
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <h2 className="text-xl leading-snug">
-          <Link to={to} className="underline-offset-4 hover:underline">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
+        <h2 className="text-lg leading-snug">
+          <Link
+            to={to}
+            className="underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:text-accent hover:underline"
+          >
             {title}
           </Link>
         </h2>
         {synthetic && <SyntheticBadge />}
         <div className="space-y-0.5 text-sm text-muted">{children}</div>
-        <p className="flex flex-wrap gap-x-3 text-xs text-muted">{footer}</p>
+        <p className="mt-auto flex flex-wrap gap-x-3 border-t border-line pt-3 text-xs text-muted">
+          {footer}
+        </p>
       </div>
-    </article>
+    </motion.article>
   )
 }
 

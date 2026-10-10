@@ -281,8 +281,22 @@ describe('search page', () => {
       'GET /api/search?q=abc&page=1&pageSize=20': [
         200,
         page([
-          { kind: 'event', id: 'e1', title: 'Koncert abc', date: null, cityName: 'Prishtinë', sourceName: 'S' },
-          { kind: 'deal', id: 'd1', title: 'Zbritje abc', date: null, cityName: null, sourceName: 'S' },
+          {
+            kind: 'event',
+            id: 'e1',
+            title: 'Koncert abc',
+            date: null,
+            cityName: 'Prishtinë',
+            sourceName: 'S',
+          },
+          {
+            kind: 'deal',
+            id: 'd1',
+            title: 'Zbritje abc',
+            date: null,
+            cityName: null,
+            sourceName: 'S',
+          },
         ]),
       ],
     })
