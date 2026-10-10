@@ -32,6 +32,7 @@ export default function SourceForm({ initial, pending, error, onSubmit, onCancel
   const [interval, setInterval] = useState(String(initial?.pollIntervalMinutes ?? 60))
   const [isActive, setIsActive] = useState(initial?.isActive ?? false)
   const [isUnreliable, setIsUnreliable] = useState(initial?.isUnreliable ?? false)
+  const [autoPublish, setAutoPublish] = useState(initial?.autoPublish ?? false)
 
   const bad = fieldErrors(error)
   const invalid = (field: string) => (bad.has(field) ? true : undefined)
@@ -49,6 +50,7 @@ export default function SourceForm({ initial, pending, error, onSubmit, onCancel
       pollIntervalMinutes: Number(interval),
       isActive,
       isUnreliable,
+      autoPublish,
     })
   }
 
@@ -184,6 +186,14 @@ export default function SourceForm({ initial, pending, error, onSubmit, onCancel
           onChange={(e) => setIsUnreliable(e.target.checked)}
         />
         {s.fields.unreliable}
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={autoPublish}
+          onChange={(e) => setAutoPublish(e.target.checked)}
+        />
+        {s.fields.autoPublish}
       </label>
       {message && (
         <p role="alert" className="text-sm text-danger sm:col-span-2">

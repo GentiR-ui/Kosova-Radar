@@ -62,10 +62,16 @@ public static class DependencyInjection
         services.AddScoped<BootstrapAdmin>();
         services.AddScoped<UserAdmin>();
         var ingestion = config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions();
-        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0 || ingestion.HtmlHorizonDays < 1)
+        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0 || ingestion.EventHorizonDays is < 1 or > 30)
             throw new InvalidOperationException(
-                "Ingestion__HttpTimeoutSeconds and Ingestion__HtmlHorizonDays must be at least 1, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
+                "Ingestion__HttpTimeoutSeconds must be at least 1, Ingestion__EventHorizonDays between 1 and 30, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
         services.AddSingleton(ingestion);
+        var autoPublish = config.GetSection(AutoPublishOptions.Section).Get<AutoPublishOptions>() ?? new AutoPublishOptions();
+        if (autoPublish.MinDealDiscountPercent is < 1 or > 100 || autoPublish.MaxPerRun < 0)
+            throw new InvalidOperationException(
+                "AutoPublish__MinDealDiscountPercent must be between 1 and 100 and AutoPublish__MaxPerRun at least 0.");
+        services.AddSingleton(autoPublish);
+        services.AddScoped<AutoPublisher>();
         services.AddAi(config);
         services.AddScoped<SourceAdmin>();
         services.AddScoped<DuplicateDetector>();

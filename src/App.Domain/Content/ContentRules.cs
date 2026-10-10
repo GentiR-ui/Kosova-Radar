@@ -24,6 +24,13 @@ public static class ContentRules
     private static DateTimeOffset Midnight(DateOnly date) =>
         new(TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(TimeOnly.MinValue), Pristina), TimeSpan.Zero);
 
+    /// <summary>
+    /// REQ-026: the start date (Europe/Pristina) is more than <paramref name="days"/> days after the fetch date. Dates, not
+    /// instants: everything today and on the next <paramref name="days"/> days is inside the window.
+    /// </summary>
+    public static bool IsBeyondHorizon(DateTimeOffset startsAt, DateTimeOffset fetchedAt, int days) =>
+        PristinaDate(startsAt) > PristinaDate(fetchedAt).AddDays(days);
+
     /// <summary><c>EndsAt</c> when present and not before <c>StartsAt</c>, else start + 6 h (ADR-010).</summary>
     public static DateTimeOffset EffectiveEnd(DateTimeOffset startsAt, DateTimeOffset? endsAt) =>
         endsAt is { } end && end >= startsAt ? end : startsAt + DefaultEventDuration;

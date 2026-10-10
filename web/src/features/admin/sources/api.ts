@@ -14,6 +14,7 @@ export interface SourceDto {
   defaultKind: 'event' | 'deal'
   isActive: boolean
   isUnreliable: boolean
+  autoPublish: boolean
   pollIntervalMinutes: number
   health: SourceHealth
   lastFetchedAt: string | null
@@ -37,6 +38,7 @@ export interface SourceRequest {
   pollIntervalMinutes: number
   isActive: boolean
   isUnreliable: boolean
+  autoPublish: boolean
 }
 
 export interface RunDto {

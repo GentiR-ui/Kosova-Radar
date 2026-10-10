@@ -36,6 +36,11 @@ services:
       Ai__Model: ${AI_MODEL:-}
       Ai__MinIntervalMs: ${AI_MIN_INTERVAL_MS:-0}
       Ingestion__AllowFixtureSources: "false"
+      Ingestion__EventHorizonDays: ${INGESTION_EVENT_HORIZON_DAYS:-3}
+      AutoPublish__MinDealDiscountPercent: ${AUTO_PUBLISH_MIN_DEAL_DISCOUNT_PERCENT:-35}
+      AutoPublish__MaxPerRun: ${AUTO_PUBLISH_MAX_PER_RUN:-100}
+      Seed__KnownSourcesActive: ${SEED_KNOWN_SOURCES_ACTIVE:-false}
+      Seed__KnownSourcesAutoPublish: ${SEED_KNOWN_SOURCES_AUTO_PUBLISH:-false}
     ports:
       - "127.0.0.1:8080:8080"
     healthcheck:

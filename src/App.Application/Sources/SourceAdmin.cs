@@ -25,6 +25,7 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
             DefaultKind = s.DefaultKind,
             IsActive = s.IsActive,
             IsUnreliable = s.IsUnreliable,
+            AutoPublish = s.AutoPublish,
             PollIntervalMinutes = s.PollIntervalMinutes,
             LastFetchedAt = s.LastFetchedAt,
             LastSuccessAt = s.LastSuccessAt,
@@ -87,5 +88,6 @@ public sealed class SourceAdmin(IAppDbContext db, IAuditWriter audit, IClock clo
         source.PollIntervalMinutes = v.PollIntervalMinutes;
         source.IsActive = v.IsActive;
         source.IsUnreliable = v.IsUnreliable;
+        source.AutoPublish = v.AutoPublish;
     }
 }

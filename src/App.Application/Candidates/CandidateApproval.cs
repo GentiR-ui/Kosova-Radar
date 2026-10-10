@@ -19,6 +19,29 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
         if (c is null) return new(ApprovalStatus.NotFound);
         if (!CandidateDecisions.IsOpen(c)) return new(ApprovalStatus.Conflict);
 
+        var staged = await StageAsync(c, bySystem: false, ct);
+        if (staged.Status != ApprovalStatus.Done) return staged;
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Decided concurrently (xmin), or a parallel approval created the same venue first: the reviewer retries.
+            return new(ApprovalStatus.Conflict);
+        }
+        return staged;
+    }
+
+    /// <summary>
+    /// The same publishing path for the system (auto-publish, ADR-039): the item, its source link and the audit entry join
+    /// the caller's unit of work, which saves them together with the rest of the ingestion run. Nothing is changed when the
+    /// result is not <see cref="ApprovalStatus.Done"/>, so the candidate then simply stays pending.
+    /// </summary>
+    public Task<ApprovalResult> StageAutoPublishAsync(Candidate c, CancellationToken ct) => StageAsync(c, bySystem: true, ct);
+
+    private async Task<ApprovalResult> StageAsync(Candidate c, bool bySystem, CancellationToken ct)
+    {
         var f = c.Fields;
         var errors = ItemFields.MissingFields(c.Kind, f);
         // Ingested fields were never run through the edit rules: lengths, currency and price ranges must fit the columns.
@@ -91,18 +114,13 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
         c.Status = CandidateStatus.Published;
         c.PublishedItemId = itemId;
         c.UpdatedAt = now;
-        audit.Record(AuditActions.CandidateApprove, AuditEntityTypes.Candidate, c.Id, before,
-            new { status = c.Status, publishedItemId = itemId, kind = c.Kind });
-
-        try
-        {
-            await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException)
-        {
-            // Decided concurrently (xmin), or a parallel approval created the same venue first: the reviewer retries.
-            return new(ApprovalStatus.Conflict);
-        }
+        if (bySystem)
+            // What a person can check or undo afterwards: which source, which item (the matched one for a change).
+            audit.RecordAsSystem(AuditActions.CandidateAutoPublish, AuditEntityTypes.Candidate, c.Id, before,
+                new { status = c.Status, publishedItemId = itemId, kind = c.Kind, sourceId = c.SourceId, matchedItemId = c.MatchedItemId });
+        else
+            audit.Record(AuditActions.CandidateApprove, AuditEntityTypes.Candidate, c.Id, before,
+                new { status = c.Status, publishedItemId = itemId, kind = c.Kind });
         return new(ApprovalStatus.Done, c.Kind, itemId);
     }
 

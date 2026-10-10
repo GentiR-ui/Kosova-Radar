@@ -21,7 +21,7 @@ public sealed record RunResult(RunStatus Status, RunDto? Run = null);
 /// One ingestion run of one source (design.md §2): fetch, parse, look each item up by fingerprint, store candidates,
 /// record the run and the source's health. Candidates, run and source bookkeeping are saved together at the end, so a
 /// failed run leaves no half-processed feed behind.
-/// All five lookup rows, the AI step (T026), validation (T017) and the duplicate check (T028) are implemented.
+/// All five lookup rows, the AI step (T026), validation (T017), the duplicate check (T028) and auto-publish (T049) are implemented.
 /// </summary>
 public sealed class IngestionService(
     IAppDbContext db,
@@ -30,6 +30,7 @@ public sealed class IngestionService(
     IAuditWriter audit,
     AiEnricher ai,
     DuplicateDetector duplicates,
+    AutoPublisher autoPublisher,
     IEnumerable<ISourceAdapter> adapters,
     SourceRunLock locks,
     ILogger<IngestionService> log)
@@ -101,7 +102,9 @@ public sealed class IngestionService(
         {
             // Not a fetch failure but a bug or an outage of the database: do not leave the run "Running" until the next restart.
             log.LogError(e, "Ingestion run crashed");
-            await TryMarkCrashedAsync(source.Id, run.Id, countAsFailure: e is not OperationCanceledException);
+            // A reviewer or the expiration job changing a staged item while the run was busy is a race, not a source failure;
+            // the next run starts again from the same feed (ADR-039).
+            await TryMarkCrashedAsync(source.Id, run.Id, countAsFailure: e is not (OperationCanceledException or DbUpdateConcurrencyException));
             throw;
         }
 
@@ -163,13 +166,20 @@ public sealed class IngestionService(
         var resolver = await ReferenceResolver.LoadAsync(db, ct);
         var pending = await duplicates.LoadPendingAsync(ct);
         var verified = new List<PublishedLink>();
+        var publishedInRun = new List<PublishedRef>();
+        var auto = new AutoPublishRun();
         await ai.BeginRunAsync(ct);
         var now = clock.UtcNow;
 
         foreach (var item in items)
         {
+            // REQ-026: counted in `received` only; a later fetch takes the event once it is inside the window.
+            if (autoPublisher.IsBeyondHorizon(source, item, fetchedAt)) continue;
+
             known.TryGetValue(item.Fingerprint, out var existing);
             existing ??= [];
+            // A person said no to this listing before: a changed version of it is reviewed again, never published by the system.
+            var personRejected = existing.Any(c => c.Status == CandidateStatus.Rejected && c.RejectedByUserId is not null);
 
             // Row 1: a pending or auto-rejected candidate is the one to compare with (also for a repeat inside one feed).
             var open = existing
@@ -222,7 +232,7 @@ public sealed class IngestionService(
             var id = open?.Id ?? Guid.NewGuid();
             var (validation, enrichment) = await EnrichAndValidateAsync(
                 id, item, resolver, fetchedAt, source.IsUnreliable, retryAi ? open!.Fields : null, ct);
-            var match = await duplicates.ApplyAsync(validation, item.Kind, id, source.Id, matchedItemId, pending, ct);
+            var match = await duplicates.ApplyAsync(validation, item.Kind, id, source.Id, matchedItemId, pending, ct, publishedInRun);
             validation = match.Validation;
             var fields = validation.Fields;
 
@@ -237,6 +247,7 @@ public sealed class IngestionService(
                 open.FetchedAt = fetchedAt;
                 open.UpdatedAt = now;
                 if (retryAi) run.Unchanged++; else run.Updated++;
+                await AutoPublishAsync(source, open, personRejected, published, publishedInRun, auto, ct);
             }
             else
             {
@@ -261,12 +272,15 @@ public sealed class IngestionService(
                 db.Candidates.Add(candidate);
                 known[item.Fingerprint] = [.. existing, candidate];
                 run.Created++;
+                await AutoPublishAsync(source, candidate, personRejected, published, publishedInRun, auto, ct);
             }
         }
 
         // A targeted update (not the tracked entity): a reviewer editing the item meanwhile must not fail the whole run.
-        var eventIds = verified.Where(v => v.Kind == ItemKind.Event).Select(v => v.Id).Distinct().ToList();
-        var dealIds = verified.Where(v => v.Kind == ItemKind.Deal).Select(v => v.Id).Distinct().ToList();
+        // Items staged by auto-publish are tracked and get their LastVerifiedAt from the approval; touching their row first
+        // would change xmin and fail the run's save with a concurrency error.
+        var eventIds = verified.Where(v => v.Kind == ItemKind.Event && !auto.Staged.Contains(v.Id)).Select(v => v.Id).Distinct().ToList();
+        var dealIds = verified.Where(v => v.Kind == ItemKind.Deal && !auto.Staged.Contains(v.Id)).Select(v => v.Id).Distinct().ToList();
         if (eventIds.Count > 0)
             await db.Events.Where(e => eventIds.Contains(e.Id) && e.Status != ItemStatus.Withdrawn)
                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.LastVerifiedAt, fetchedAt), ct);
@@ -275,24 +289,61 @@ public sealed class IngestionService(
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastVerifiedAt, fetchedAt), ct);
     }
 
+    /// <summary>
+    /// Auto-publish (REQ-023, 024, 044): approves the candidate as the system when its source allows it and the rules say so.
+    /// The new item joins <paramref name="published"/> and <paramref name="publishedInRun"/>, so a repeat of the same listing in
+    /// this feed is an unchanged item and a similar one is flagged as a duplicate, as after a person's approval.
+    /// </summary>
+    private async Task AutoPublishAsync(
+        Source source, Candidate candidate, bool personRejected, Dictionary<string, PublishedLink> published,
+        List<PublishedRef> publishedInRun, AutoPublishRun auto, CancellationToken ct)
+    {
+        if (personRejected || !source.AutoPublish) return;
+        if (auto.Staged.Count >= autoPublisher.MaxPerRun)
+        {
+            if (!auto.LimitLogged)
+                log.LogWarning("Auto-publish limit of {Limit} items per run reached; the rest stays pending", autoPublisher.MaxPerRun);
+            auto.LimitLogged = true;
+            return;
+        }
+
+        // A change is applied automatically only to an item this source published itself: an item that was merged
+        // into someone else's is not the source's to rewrite (a merge says "same item", not "may edit").
+        if (candidate.MatchedItemId is { } matchedId
+            && !(published.TryGetValue(candidate.Fingerprint, out var link) && link.Id == matchedId && link.PrimarySourceId == source.Id))
+            return;
+
+        if (await autoPublisher.TryPublishAsync(source, candidate, ct) is not { } itemId) return;
+        auto.Staged.Add(itemId);
+        published[candidate.Fingerprint] = new(candidate.Kind, itemId, ItemStatus.Published, source.Id);
+        publishedInRun.Add(new(itemId, candidate.Kind, candidate.Fields));
+    }
+
     /// <summary>A published, expired or withdrawn item reachable by fingerprint through its <c>ItemSource</c> rows.</summary>
-    private sealed record PublishedLink(ItemKind Kind, Guid Id, ItemStatus Status);
+    private sealed record PublishedLink(ItemKind Kind, Guid Id, ItemStatus Status, Guid PrimarySourceId);
+
+    /// <summary>What auto-publish did in one run: the items staged (counted against the limit) and whether the limit was logged.</summary>
+    private sealed class AutoPublishRun
+    {
+        public HashSet<Guid> Staged { get; } = [];
+        public bool LimitLogged { get; set; }
+    }
 
     private async Task<Dictionary<string, PublishedLink>> LoadPublishedAsync(List<string> fingerprints, CancellationToken ct)
     {
         var sources = await db.ItemSources.AsNoTracking().Where(s => fingerprints.Contains(s.Fingerprint)).ToListAsync(ct);
         var eventIds = sources.Where(s => s.ItemKind == ItemKind.Event).Select(s => s.ItemId).Distinct().ToList();
         var dealIds = sources.Where(s => s.ItemKind == ItemKind.Deal).Select(s => s.ItemId).Distinct().ToList();
-        var events = await db.Events.AsNoTracking().Where(e => eventIds.Contains(e.Id)).Select(e => new { e.Id, e.Status }).ToDictionaryAsync(e => e.Id, ct);
-        var deals = await db.Deals.AsNoTracking().Where(d => dealIds.Contains(d.Id)).Select(d => new { d.Id, d.Status }).ToDictionaryAsync(d => d.Id, ct);
+        var events = await db.Events.AsNoTracking().Where(e => eventIds.Contains(e.Id)).Select(e => new { e.Id, e.Status, e.PrimarySourceId }).ToDictionaryAsync(e => e.Id, ct);
+        var deals = await db.Deals.AsNoTracking().Where(d => dealIds.Contains(d.Id)).Select(d => new { d.Id, d.Status, d.PrimarySourceId }).ToDictionaryAsync(d => d.Id, ct);
 
         var result = new Dictionary<string, PublishedLink>();
         foreach (var s in sources.OrderBy(s => s.AddedAt))
         {
             if (s.ItemKind == ItemKind.Event && events.TryGetValue(s.ItemId, out var e))
-                result[s.Fingerprint] = new(ItemKind.Event, e.Id, e.Status);
+                result[s.Fingerprint] = new(ItemKind.Event, e.Id, e.Status, e.PrimarySourceId);
             else if (s.ItemKind == ItemKind.Deal && deals.TryGetValue(s.ItemId, out var d))
-                result[s.Fingerprint] = new(ItemKind.Deal, d.Id, d.Status);
+                result[s.Fingerprint] = new(ItemKind.Deal, d.Id, d.Status, d.PrimarySourceId);
         }
         return result;
     }

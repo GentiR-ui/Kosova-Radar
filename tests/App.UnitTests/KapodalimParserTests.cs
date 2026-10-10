@@ -292,7 +292,8 @@ public class KapodalimParserTests
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var result = Parse(html);
 
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"took {watch.Elapsed}");
+        // The quadratic version needed 125 s; the bound leaves room for a loaded machine (the unit suite runs in parallel).
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(30), $"took {watch.Elapsed}");
         Assert.Single(result.Items);
     }
 

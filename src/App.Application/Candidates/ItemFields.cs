@@ -69,6 +69,9 @@ internal static class ItemFields
     {
         var normalized = TextNormalizer.Fold(name);
         if (normalized.Length == 0) return null;
+        // A venue added earlier in the same unit of work (an ingestion run that auto-publishes) is not in the database yet.
+        var pending = db.Venues.Local.FirstOrDefault(v => v.CityId == cityId && v.NormalizedName == normalized);
+        if (pending is not null) return pending.Id;
         var existing = await db.Venues.Where(v => v.CityId == cityId && v.NormalizedName == normalized).Select(v => (Guid?)v.Id).FirstOrDefaultAsync(ct);
         if (existing is not null) return existing;
         var venue = new Venue { Name = name!.Trim(), NormalizedName = normalized, CityId = cityId };

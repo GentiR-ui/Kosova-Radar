@@ -6,7 +6,7 @@ namespace App.Application.Sources;
 /// <summary>A request that passed <see cref="SourceValidator"/>, with defaults applied.</summary>
 public sealed record ValidSource(
     string Name, SourceType Type, string? Adapter, string? BaseUrl, string? FixturePayload, ItemKind DefaultKind,
-    int PollIntervalMinutes, bool IsActive, bool IsUnreliable);
+    int PollIntervalMinutes, bool IsActive, bool IsUnreliable, bool AutoPublish);
 
 /// <summary>Per-type rules of <see cref="SourceRequest"/> (REQ-010, REQ-011, design.md §5).</summary>
 public static class SourceValidator
@@ -64,7 +64,7 @@ public static class SourceValidator
         }
 
         if (errors.Count > 0) return (null, errors);
-        return (new ValidSource(name!, type!.Value, adapter, baseUrl, payload, kind, req.PollIntervalMinutes!.Value, req.IsActive, req.IsUnreliable), errors);
+        return (new ValidSource(name!, type!.Value, adapter, baseUrl, payload, kind, req.PollIntervalMinutes!.Value, req.IsActive, req.IsUnreliable, req.AutoPublish), errors);
     }
 
     private static SourceType? ParseType(string? value) => ParseName<SourceType>(value);

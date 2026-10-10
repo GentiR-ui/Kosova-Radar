@@ -20,6 +20,7 @@ export const s = {
     interval: 'Intervali (minuta)',
     active: 'Aktiv',
     unreliable: 'I pabesueshëm',
+    autoPublish: 'Publiko automatikisht',
   },
   types: { fixture: 'Fixture (të dhëna testuese)', jsonFeed: 'JSON feed', rss: 'RSS', html: 'Faqe HTML' },
   adapters: { prishtinaEvents: 'Prishtina.com — evente', kapodalim: "Ka' Po Dalim" },

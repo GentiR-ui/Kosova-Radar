@@ -13,6 +13,7 @@ const source = {
   defaultKind: 'event',
   isActive: false,
   isUnreliable: false,
+  autoPublish: false,
   pollIntervalMinutes: 60,
   health: 'disabled',
   lastFetchedAt: null,
@@ -87,7 +88,27 @@ describe('SourcesPage', () => {
       pollIntervalMinutes: 60,
       isActive: false,
       isUnreliable: false,
+      autoPublish: false,
     })
+  })
+
+  it('sends autoPublish when "Publiko automatikisht" is ticked', async () => {
+    stubFetch({
+      'GET /api/admin/sources': [200, []],
+      'POST /api/admin/sources': [201, { ...source, autoPublish: true }],
+    })
+    const spy = vi.spyOn(globalThis, 'fetch')
+    renderRoutes(routes, '/admin/sources')
+    await screen.findByText('Nuk ka burime.')
+    await userEvent.click(screen.getByRole('button', { name: 'Shto burim' }))
+    expect(screen.getByLabelText('Publiko automatikisht')).not.toBeChecked()
+    await userEvent.type(screen.getByLabelText('Emri'), 'Auto')
+    await userEvent.type(screen.getByLabelText('URL'), 'https://example.com/feed.json')
+    await userEvent.click(screen.getByLabelText('Publiko automatikisht'))
+    await userEvent.click(screen.getByRole('button', { name: 'Ruaj burimin' }))
+    expect(await screen.findByText('Burimi u ruajt.')).toBeInTheDocument()
+    const post = spy.mock.calls.find(([, init]) => init?.method === 'POST')
+    expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({ autoPublish: true })
   })
 
   it('adds an HTML source with the chosen adapter and hides the adapter for other types', async () => {

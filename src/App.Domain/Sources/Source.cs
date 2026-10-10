@@ -49,6 +49,10 @@ public sealed class Source
 
     public bool IsActive { get; set; }
     public bool IsUnreliable { get; set; }
+
+    /// <summary>REQ-023/024: new <c>Valid</c> candidates and changes whose only review issue is <c>ChangedSinceApproval</c> are published without a person (ADR-039).</summary>
+    public bool AutoPublish { get; set; }
+
     public int PollIntervalMinutes { get; set; }
     public DateTimeOffset? LastFetchedAt { get; set; }
     public DateTimeOffset? LastSuccessAt { get; set; }

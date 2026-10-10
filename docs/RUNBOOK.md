@@ -39,9 +39,23 @@ Sources are configured in the admin UI (`/admin/sources`): type, URL, interval (
 Fixture sources are disabled in Production (`Ingestion__AllowFixtureSources=false`); synthetic fixture seeding is off. Only add sources
 the client has confirmed in writing (ADR-006); the crawler honours robots.txt and a per-host delay.
 HTML sources (type "Faqe HTML", ADR-035) need an adapter ("Prishtina.com — evente" or "Ka' Po Dalim"). With `Seed__KnownSources=true` (default) both are
-created at start-up, inactive, when no source has their URL; they stay disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
+created at start-up when no source has their URL, inactive and without auto-publish unless `Seed__KnownSourcesActive` / `Seed__KnownSourcesAutoPublish`
+are true (existing rows are never changed); an inactive source stays disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
 responsible for the sites' terms of use. A run that finds no listing fails with `MalformedPayload`: the site layout probably changed and its parser needs an update.
-Listings starting later than `Ingestion__HtmlHorizonDays` (30) are skipped.
+
+Auto-publish (ADR-039): a source with "Publiko automatikisht" publishes its new `Valid` candidates, and changes whose only review issue is
+`ChangedSinceApproval`, without a person; the audit log shows them as `candidate.autoPublish` by the user `system`. Everything doubtful
+(`UnknownCity`, `PossibleDuplicate`, `AiUnavailable`, …) stays in the review queue; "Tërhiq" on the published list withdraws a wrong item. The upgrade
+renames `Ingestion__HtmlHorizonDays` (30) to `Ingestion__EventHorizonDays` (3): events of HTML and auto-publish sources starting on a local date
+more than 3 days after the fetch date are skipped (counted in `received` only) and taken by a later fetch. Auto-published deals must be daily and at least
+`AutoPublish__MinDealDiscountPercent` (35) off; other valid deals wait for a person (ADR-042).
+
+Auto-publish is conservative by design: it does not backfill (candidates that are already pending stay pending until their content changes), it never
+overrides a person's rejection, applies a change only to an item the same source published, requires the item link to be on the source's own host,
+leaves candidates whose date, city or prices came from the AI to a person, and stops after `AutoPublish__MaxPerRun` (100) items per run (a warning is
+logged). A person's edit of a published item is overwritten when the source changes it again (use "Tërhiq" to stop that).
+In `docker-compose.prod.yml` the settings are `INGESTION_EVENT_HORIZON_DAYS`, `AUTO_PUBLISH_MIN_DEAL_DISCOUNT_PERCENT`, `AUTO_PUBLISH_MAX_PER_RUN`,
+`SEED_KNOWN_SOURCES_ACTIVE` and `SEED_KNOWN_SOURCES_AUTO_PUBLISH` (the `.env.example` names are the application's own).
 
 ## Bootstrap-admin rotation
 Bootstrap only acts on an empty user table. To rotate: create a new Admin in `/admin/users`, sign in as it, deactivate the old one.

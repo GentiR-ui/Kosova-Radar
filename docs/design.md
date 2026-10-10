@@ -310,7 +310,7 @@ Approve: category = `fields.categorySlug ?? suggestedCategory.slug`. Required â€
 ```
 AuditEntryDto = { id, userId, userEmail, action, entityType, entityId, at,
                   changes: { before: object|null, after: object|null } }   // camelCase, never passwords
-  actions: candidate.approve, candidate.reject, candidate.edit, candidate.merge, item.edit, item.expire,
+  actions: candidate.approve, candidate.autoPublish (user "system", ADR-039), candidate.reject, candidate.edit, candidate.merge, item.edit, item.expire,
            item.withdraw, source.create, source.update, source.fetch (manual only), user.create, user.deactivate
   entityType: "candidate" | "event" | "deal" | "source" | "user"
 UserDto = { id, email, role: "admin"|"reviewer", isActive, createdAt }

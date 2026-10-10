@@ -8,6 +8,9 @@ namespace App.Application.Ingestion;
 /// <summary>A pending candidate that a new candidate may duplicate.</summary>
 public sealed record PendingRef(Guid Id, Guid SourceId, ItemKind Kind, CandidateFields Fields);
 
+/// <summary>An item published earlier in the same run: not in the database yet, but a later listing may duplicate it.</summary>
+public sealed record PublishedRef(Guid Id, ItemKind Kind, CandidateFields Fields);
+
 /// <summary>The best match of the duplicate rules (design.md §4).</summary>
 public sealed record DuplicateMatch(ItemKind Kind, Guid Id, bool IsCandidate);
 
@@ -25,7 +28,7 @@ public sealed class DuplicateDetector(IAppDbContext db)
 
     public async Task<DuplicateMatch?> FindAsync(
         ItemKind kind, CandidateFields f, Guid candidateId, Guid sourceId, Guid? matchedItemId,
-        IReadOnlyList<PendingRef> pending, CancellationToken ct)
+        IReadOnlyList<PendingRef> pending, CancellationToken ct, IReadOnlyList<PublishedRef>? publishedInRun = null)
     {
         if (string.IsNullOrWhiteSpace(f.Title)) return null;
         if (kind == ItemKind.Event && (f.CitySlug is null || f.StartsAt is null)) return null;
@@ -59,6 +62,15 @@ public sealed class DuplicateDetector(IAppDbContext db)
             foreach (var d in deals) Consider(ItemKind.Deal, d.Id, false, d.Title);
         }
 
+        foreach (var p in publishedInRun?.Where(p => p.Kind == kind && p.Id != matchedItemId).OrderBy(p => p.Id) ?? Enumerable.Empty<PublishedRef>())
+        {
+            if (p.Fields.CitySlug != f.CitySlug) continue;
+            if (kind == ItemKind.Event
+                && (p.Fields.StartsAt is not { } start || ContentRules.PristinaDate(start) != ContentRules.PristinaDate(f.StartsAt!.Value)))
+                continue;
+            Consider(kind, p.Id, false, p.Fields.Title);
+        }
+
         foreach (var p in pending.Where(p => p.Kind == kind && p.SourceId != sourceId && p.Id != candidateId).OrderBy(p => p.Id))
         {
             if (p.Fields.CitySlug != f.CitySlug) continue;
@@ -76,14 +88,14 @@ public sealed class DuplicateDetector(IAppDbContext db)
     /// </summary>
     public async Task<(ValidationResult Validation, DuplicateMatch? Duplicate)> ApplyAsync(
         ValidationResult validation, ItemKind kind, Guid candidateId, Guid sourceId, Guid? matchedItemId,
-        IReadOnlyList<PendingRef> pending, CancellationToken ct)
+        IReadOnlyList<PendingRef> pending, CancellationToken ct, IReadOnlyList<PublishedRef>? publishedInRun = null)
     {
         if (matchedItemId is not null)
             validation = validation.WithIssues([new(IssueCodes.ChangedSinceApproval, IssueSeverity.Review, null,
                 "The source changed this item after it was published; approving applies the changes to the published item.")]);
         if (validation.Outcome == ValidationOutcome.Rejected) return (validation, null);
 
-        var match = await FindAsync(kind, validation.Fields, candidateId, sourceId, matchedItemId, pending, ct);
+        var match = await FindAsync(kind, validation.Fields, candidateId, sourceId, matchedItemId, pending, ct, publishedInRun);
         if (match is not null)
             validation = validation.WithIssues([new(IssueCodes.PossibleDuplicate, IssueSeverity.Review, null,
                 "Another item or pending candidate looks like the same item.")]);

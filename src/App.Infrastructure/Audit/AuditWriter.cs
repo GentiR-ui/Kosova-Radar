@@ -11,6 +11,14 @@ internal sealed class AuditWriter(AppDbContext db, ICurrentUser user, TimeProvid
     public void Record(string action, string entityType, Guid entityId, object? before = null, object? after = null)
     {
         var (userId, email) = user.Require();
+        Add(userId, email, action, entityType, entityId, before, after);
+    }
+
+    public void RecordAsSystem(string action, string entityType, Guid entityId, object? before = null, object? after = null) =>
+        Add(IAuditWriter.SystemActor, IAuditWriter.SystemEmail, action, entityType, entityId, before, after);
+
+    private void Add(Guid userId, string email, string action, string entityType, Guid entityId, object? before, object? after)
+    {
         db.AuditLogs.Add(new AuditLog
         {
             UserId = userId,

@@ -135,7 +135,7 @@ public class SchedulerTests(AppFactory app)
                 if (type != typeof(IngestionService)) return real.ServiceProvider.GetService(type);
                 var sp = real.ServiceProvider;
                 return new IngestionService(sp.GetRequiredService<IAppDbContext>(), sp.GetRequiredService<IClock>(), TimeProvider.System,
-                    sp.GetRequiredService<IAuditWriter>(), sp.GetRequiredService<AiEnricher>(), sp.GetRequiredService<DuplicateDetector>(), [new SelectiveAdapter()], sp.GetRequiredService<SourceRunLock>(),
+                    sp.GetRequiredService<IAuditWriter>(), sp.GetRequiredService<AiEnricher>(), sp.GetRequiredService<DuplicateDetector>(), sp.GetRequiredService<AutoPublisher>(), [new SelectiveAdapter()], sp.GetRequiredService<SourceRunLock>(),
                     NullLogger<IngestionService>.Instance);
             }
 

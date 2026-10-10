@@ -114,15 +114,16 @@ public class HtmlSourceAdapterTests
     }
 
     [Fact]
-    public void Listings_beyond_the_horizon_are_skipped_and_not_counted_but_past_ones_are_kept()
+    public void Listings_beyond_the_horizon_are_skipped_but_counted_as_received_and_past_ones_are_kept()
     {
+        // The horizon is a local date: all of the last day (23:30 Pristina) is inside, the next day (00:30) is not.
         var result = Parse(
             Card("Sot", "/e/1", "2026-10-08T20:00:00+02:00")
             + Card("Dje", "/e/2", "2026-10-01T20:00:00+02:00")
-            + Card("Brenda", "/e/3", "2026-11-07T11:00:00+00:00")
-            + Card("Larg", "/e/4", "2026-11-07T12:00:01+00:00"));
+            + Card("Brenda", "/e/3", "2026-11-07T23:30:00+01:00")
+            + Card("Larg", "/e/4", "2026-11-08T00:30:00+01:00"));
 
-        Assert.Equal(3, result.Received);
+        Assert.Equal(4, result.Received);
         Assert.Equal(["Sot", "Dje", "Brenda"], result.Items.Select(i => i.Fields.Title));
     }
 
@@ -132,7 +133,7 @@ public class HtmlSourceAdapterTests
         var result = Parse(Card("A", "/e/1", "2026-10-12T19:00:00+02:00") + Card("B", "/e/2", "2026-10-20T19:00:00+02:00"), horizonDays: 7);
 
         Assert.Equal(["A"], result.Items.Select(i => i.Fields.Title));
-        Assert.Equal(1, result.Received);
+        Assert.Equal(2, result.Received);
     }
 
     [Fact]

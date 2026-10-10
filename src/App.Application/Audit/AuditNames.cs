@@ -7,6 +7,7 @@ public static class AuditActions
     public const string CandidateReject = "candidate.reject";
     public const string CandidateEdit = "candidate.edit";
     public const string CandidateMerge = "candidate.merge";
+    public const string CandidateAutoPublish = "candidate.autoPublish";
     public const string ItemEdit = "item.edit";
     public const string ItemExpire = "item.expire";
     public const string ItemWithdraw = "item.withdraw";

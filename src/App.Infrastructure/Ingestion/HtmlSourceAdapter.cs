@@ -52,7 +52,7 @@ internal sealed class HtmlSourceAdapter(
         var parser = parsers.FirstOrDefault(p => p.Key == source.Adapter);
         if (parser is null || !Uri.TryCreate(source.BaseUrl, UriKind.Absolute, out var pageUrl))
             return Task.FromResult(FeedParseResult.Malformed);
-        return ParseAsync(source.Id, parser, pageUrl, fetched.Content, clock.UtcNow, options.HtmlHorizonDays, ParseTimeout, ct);
+        return ParseAsync(source.Id, parser, pageUrl, fetched.Content, clock.UtcNow, options.EventHorizonDays, ParseTimeout, ct);
     }
 
     internal static async Task<FeedParseResult> ParseAsync(
@@ -130,7 +130,12 @@ internal sealed class HtmlSourceAdapter(
                     continue;
                 }
 
-                if (mapped.Fields.StartsAt is { } start && start > now.AddDays(horizonDays)) continue; // beyond the horizon: skipped, not counted
+                if (mapped.Fields.StartsAt is { } start && ContentRules.IsBeyondHorizon(start, now, horizonDays))
+                {
+                    received++; // beyond the horizon: no candidate, counted only in `received` (REQ-026)
+                    continue;
+                }
+
                 if (mapped.Href is null)
                 {
                     failures.Add(new ItemFailure(received++, "MissingIdentity"));

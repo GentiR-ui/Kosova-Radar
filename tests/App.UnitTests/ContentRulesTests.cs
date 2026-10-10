@@ -33,6 +33,17 @@ public class ContentRulesTests
         Assert.False(ContentRules.IsActiveEvent(ItemStatus.Expired, Now, null, Now.AddHours(-1)));
     }
 
+    [Theory]
+    [InlineData("2026-10-04T12:00:00Z", false)] // the fetch moment itself
+    [InlineData("2026-10-07T21:59:59Z", false)] // 23:59:59 local on 7 Oct: the last second inside the window
+    [InlineData("2026-10-07T22:00:00Z", true)] // 00:00 local on 8 Oct: the first moment beyond it
+    [InlineData("2026-10-01T10:00:00Z", false)] // the past is never beyond the horizon
+    public void The_horizon_is_counted_in_local_days_after_the_fetch_date(string startsAt, bool beyond)
+    {
+        // Fetched on 4 Oct (14:00 local) with a 3-day horizon: 4, 5, 6 and 7 Oct are inside.
+        Assert.Equal(beyond, ContentRules.IsBeyondHorizon(DateTimeOffset.Parse(startsAt), Now, 3));
+    }
+
     [Fact]
     public void Freshness_is_inclusive_at_exactly_48_hours()
     {

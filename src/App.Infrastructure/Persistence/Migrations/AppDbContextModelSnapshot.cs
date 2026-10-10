@@ -678,6 +678,9 @@ namespace App.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<bool>("AutoPublish")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("BaseUrl")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
