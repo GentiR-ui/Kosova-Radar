@@ -194,6 +194,7 @@ public sealed class PublishedItems(IAppDbContext db, IAuditWriter audit, IClock 
         e.Title,
         e.Description,
         e.StartsAt,
+        e.StartTimeKnown,
         e.EndsAt,
         e.CityId,
         e.VenueId,

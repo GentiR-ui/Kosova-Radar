@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { DealSummaryDto, EventSummaryDto } from './api'
-import { formatDate, formatDateTime, formatMoney, safeHref } from './format'
+import { formatDate, formatEventStart, formatMoney, safeHref } from './format'
 import { p } from './strings'
 
 export function SyntheticBadge() {
@@ -103,7 +103,7 @@ export function EventCard({ event }: { event: EventSummaryDto }) {
         </>
       }
     >
-      <p className="text-ink">{formatDateTime(event.startsAt)}</p>
+      <p className="text-ink">{formatEventStart(event.startsAt, event.startTimeKnown)}</p>
       <p>{[event.city.name, event.venueName].filter(Boolean).join(' · ')}</p>
     </Card>
   )

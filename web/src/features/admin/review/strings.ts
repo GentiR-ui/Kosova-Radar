@@ -55,6 +55,7 @@ export const r = {
     venue: 'Vendi',
     category: 'Kategoria',
     startsAt: 'Fillon më',
+    startDate: 'Data (ora e panjohur)',
     endsAt: 'Përfundon më',
     priceText: 'Çmimi (tekst)',
     priceAmount: 'Çmimi',

@@ -49,6 +49,29 @@ public class AiPipelineTests
     }
 
     [Fact]
+    public void An_ai_time_on_the_source_date_replaces_the_date_only_state()
+    {
+        var source = new CandidateFields { CitySlug = "prizren", StartDate = new DateOnly(2026, 10, 20) };
+        var r = Merge(ItemKind.Event, source, new AiExtractedFields { StartsAt = Start });
+
+        Assert.Equal(Start, r.Fields.StartsAt);
+        Assert.Null(r.Fields.StartDate);
+        Assert.Contains("startsAt", r.Suggested);
+        Assert.Empty(r.Conflicts);
+    }
+
+    [Fact]
+    public void An_ai_time_on_another_date_than_the_source_is_a_conflict_and_the_date_stays()
+    {
+        var source = new CandidateFields { CitySlug = "prizren", StartDate = new DateOnly(2026, 10, 18) };
+        var r = Merge(ItemKind.Event, source, new AiExtractedFields { StartsAt = Start });
+
+        Assert.Null(r.Fields.StartsAt);
+        Assert.Equal(new DateOnly(2026, 10, 18), r.Fields.StartDate);
+        Assert.Equal("startDate", Assert.Single(r.Conflicts).Field);
+    }
+
+    [Fact]
     public void A_city_the_ai_names_but_nobody_knows_is_text_without_a_slug()
     {
         var r = Merge(ItemKind.Event, new CandidateFields(), new AiExtractedFields { City = "Atlantis" });

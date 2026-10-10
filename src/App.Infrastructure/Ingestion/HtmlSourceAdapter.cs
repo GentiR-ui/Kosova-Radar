@@ -130,7 +130,7 @@ internal sealed class HtmlSourceAdapter(
                     continue;
                 }
 
-                if (mapped.Fields.StartsAt is { } start && ContentRules.IsBeyondHorizon(start, now, horizonDays))
+                if (mapped.Fields.EventStart() is { } start && ContentRules.IsBeyondHorizon(start, now, horizonDays))
                 {
                     received++; // beyond the horizon: no candidate, counted only in `received` (REQ-026)
                     continue;
@@ -170,7 +170,7 @@ internal sealed class HtmlSourceAdapter(
                 var fingerprint = ItemIdentity.Fingerprint(sourceId, url, url)!;
                 // The AI only fills what the listing did not show (a shown but unmapped category included: the AI may suggest one),
                 // and costs nothing when everything is known (ADR-035).
-                var aiText = fields.StartsAt is null || fields.CityText is null || fields.CategorySlug is null
+                var aiText = fields.EventStart() is null || fields.CityText is null || fields.CategorySlug is null
                     ? CleanText(listing, parser.OccurrenceFreeText)
                     : null;
                 // The hash leaves out the evidence: card text also shows display-only parts (the poster day of a running

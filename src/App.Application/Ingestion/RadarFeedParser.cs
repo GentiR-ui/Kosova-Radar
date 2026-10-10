@@ -81,6 +81,7 @@ public static partial class RadarFeedParser
             var newPrice = ReadDecimal(item, "newPrice");
             var discount = ReadInt(item, "discountPercent");
             var startsAt = ReadDate(item, "startsAt");
+            var startDate = ReadDay(item, "startDate");
             var endsAt = ReadDate(item, "endsAt");
             var validFrom = ReadDate(item, "validFrom");
             var validUntil = ReadDate(item, "validUntil");
@@ -99,6 +100,7 @@ public static partial class RadarFeedParser
                 Currency = ReadString(item, "currency"),
                 VenueName = isEvent ? venue : null,
                 StartsAt = isEvent ? startsAt : null,
+                StartDate = isEvent && startsAt is null ? startDate : null,
                 EndsAt = isEvent ? endsAt : null,
                 PriceAmount = isEvent ? price : null,
                 MerchantName = isEvent ? null : merchant,
@@ -189,6 +191,16 @@ public static partial class RadarFeedParser
         if (s is null) return null;
         if (!IsoWithOffset().IsMatch(s)
             || !DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
+            throw new FieldException(name);
+        return d;
+    }
+
+    private static DateOnly? ReadDay(JsonElement item, string name)
+    {
+        var s = ReadString(item, name);
+        if (s is null) return null;
+        if (!DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            || d.Year is < 1900 or > 2200)
             throw new FieldException(name);
         return d;
     }

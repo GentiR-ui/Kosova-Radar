@@ -140,5 +140,5 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
 
     private static CandidateFieldsRequest ToRequest(CandidateFields f) =>
         new(f.Title, f.Description, f.Url, f.ImageUrl, f.CitySlug, f.VenueName, f.CategorySlug, f.StartsAt, f.EndsAt, f.PriceText,
-            f.PriceAmount, f.Currency, f.MerchantName, f.OldPrice, f.NewPrice, f.StatedDiscountPercent, f.ValidFrom, f.ValidUntil);
+            f.PriceAmount, f.Currency, f.MerchantName, f.OldPrice, f.NewPrice, f.StatedDiscountPercent, f.ValidFrom, f.ValidUntil, f.StartDate);
 }

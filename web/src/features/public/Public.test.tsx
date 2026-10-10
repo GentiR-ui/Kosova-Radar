@@ -15,6 +15,7 @@ const event: EventSummaryDto = {
   id: 'e1',
   title: 'Koncert xyz',
   startsAt: '2026-07-01T18:00:00Z',
+  startTimeKnown: true,
   endsAt: null,
   city: { slug: 'prizren', name: 'Prizren' },
   venueName: 'Sheshi',
@@ -67,6 +68,14 @@ describe('cards', () => {
     expect(screen.getByText('Verifikuar së fundmi')).toBeInTheDocument()
     const link = screen.getByRole('link', { name: 'Burimi: Burimi A' })
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('shows only the date and "gjatë ditës" for an event whose time is unknown', () => {
+    // Local midnight of 2 Jul in Pristina (CEST) = 1 Jul 22:00 UTC.
+    const dateOnly = { ...event, startsAt: '2026-07-01T22:00:00Z', startTimeKnown: false }
+    renderRoutes([{ path: '/', element: <EventCard event={dateOnly} /> }], '/')
+    expect(screen.getByText('02.07.2026 · gjatë ditës')).toBeInTheDocument()
+    expect(screen.queryByText(/00:00/)).not.toBeInTheDocument()
   })
 
   it('shows both deal prices, the discount, stale text, and never links a non-http source', () => {

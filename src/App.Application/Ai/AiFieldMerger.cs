@@ -50,11 +50,23 @@ public static class AiFieldMerger
             Conflict("citySlug");
         }
 
+        // A time suggested for a date-only event must fall on the source's date (the source wins); then it replaces the date.
+        var aiStartsAt = ai.StartsAt;
+        if (kind == ItemKind.Event && f.StartsAt is null && f.StartDate is { } startDate && aiStartsAt is { } suggestedStart)
+        {
+            if (ContentRules.PristinaDate(suggestedStart) != startDate)
+            {
+                Conflict("startDate");
+                aiStartsAt = null;
+            }
+            else f = f with { StartDate = null };
+        }
+
         var before = conflicts.Count;
         f = kind == ItemKind.Event
             ? f with
             {
-                StartsAt = FillOrCompare(f.StartsAt, ai.StartsAt, "startsAt"),
+                StartsAt = FillOrCompare(f.StartsAt, aiStartsAt, "startsAt"),
                 EndsAt = FillOrCompare(f.EndsAt, ai.EndsAt, "endsAt"),
                 VenueName = FillText(f.VenueName, ai.Venue, "venueName"),
                 PriceText = FillText(f.PriceText, ai.PriceText, "priceText"),

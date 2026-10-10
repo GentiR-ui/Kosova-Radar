@@ -11,7 +11,7 @@ namespace App.Application.Public;
 public sealed record SourceRefDto(string Name, string Url);
 
 public sealed record EventDetailDto(
-    Guid Id, string Title, DateTimeOffset StartsAt, DateTimeOffset? EndsAt, CityDto City, string? VenueName, CategoryDto? Category,
+    Guid Id, string Title, DateTimeOffset StartsAt, bool StartTimeKnown, DateTimeOffset? EndsAt, CityDto City, string? VenueName, CategoryDto? Category,
     string? PriceText, decimal? PriceAmount, string? Currency, string? ImageUrl, string SourceName, string SourceUrl,
     DateTimeOffset LastVerifiedAt, string Freshness, string Status, bool IsSynthetic,
     string? Description, IReadOnlyList<SourceRefDto> Sources,
@@ -35,7 +35,7 @@ public sealed class PublicItemQueries(IAppDbContext db, IClock clock)
         var city = await db.Cities.AsNoTracking().Where(c => c.Id == e.CityId).Select(c => new CityDto(c.Slug, c.Name)).SingleAsync(ct);
         var venue = e.VenueId is { } v ? await db.Venues.AsNoTracking().Where(x => x.Id == v).Select(x => x.Name).SingleOrDefaultAsync(ct) : null;
         var (sourceName, sources) = await SourcesAsync(ItemKind.Event, e.Id, e.PrimarySourceId, e.SourceUrl, ct);
-        return new(e.Id, e.Title, e.StartsAt, e.EndsAt, city, venue, await CategoryAsync(e.CategoryId, ct), e.PriceText, e.PriceAmount,
+        return new(e.Id, e.Title, e.StartsAt, e.StartTimeKnown, e.EndsAt, city, venue, await CategoryAsync(e.CategoryId, ct), e.PriceText, e.PriceAmount,
             e.Currency, e.ImageUrl, sourceName, e.SourceUrl, e.LastVerifiedAt, Freshness(e.LastVerifiedAt, now),
             e.IsActive(now) ? "active" : "expired", e.IsSynthetic, e.Description, sources,
             admin ? PublishedItems.AdminStatus(e.Status) : null);

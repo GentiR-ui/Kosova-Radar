@@ -4,7 +4,7 @@ import { ApiError } from '../../lib/api'
 import { t } from '../../lib/strings'
 import { PageTitle } from './PublicLayout'
 import { useDeal, useEvent, type DealDetailDto, type EventDetailDto } from './api'
-import { formatDate, formatDateTime, safeHref } from './format'
+import { formatDate, formatEventStart, safeHref } from './format'
 import { DealPrice, Freshness, SourceLink, SyntheticBadge } from './ItemCards'
 import { p } from './strings'
 
@@ -137,7 +137,7 @@ export function EventDetailPage() {
             synthetic={e.isSynthetic}
             ended={e.status === 'expired' ? p.eventEnded : null}
           />
-          <p className="mt-6 text-lg">{formatDateTime(e.startsAt)}</p>
+          <p className="mt-6 text-lg">{formatEventStart(e.startsAt, e.startTimeKnown)}</p>
           <p className="text-muted">{[e.city.name, e.venueName].filter(Boolean).join(' · ')}</p>
           {e.priceText && <p className="mt-1 text-muted">{e.priceText}</p>}
           <Hero url={e.imageUrl} />

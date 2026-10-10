@@ -94,6 +94,31 @@ public class PublicEventListTests(AppFactory app)
     }
 
     [Fact]
+    public async Task Date_only_events_are_active_through_their_local_day_in_sql_domain_and_expiration_job()
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var token = "dat" + Guid.NewGuid().ToString("N")[..8];
+        var events = await SeedAsync(db, token,
+            (new(2026, 10, 2, 22, 0, 0, TimeSpan.Zero), null, ItemStatus.Published),  // 0: 3 Oct local midnight, day over
+            (new(2026, 10, 3, 22, 0, 0, TimeSpan.Zero), null, ItemStatus.Published),  // 1: 4 Oct, today at 14:00 local: active
+            (new(2026, 10, 4, 22, 0, 0, TimeSpan.Zero), null, ItemStatus.Published),  // 2: 5 Oct: active
+            (new(2026, 10, 2, 22, 0, 0, TimeSpan.Zero), new(2026, 10, 4, 13, 0, 0, TimeSpan.Zero), ItemStatus.Published)); // 3: explicit end wins
+        foreach (var e in events) e.StartTimeKnown = false;
+        await db.SaveChangesAsync();
+
+        var sqlIds = await db.Events.Where(e => e.Fingerprint.StartsWith(token)).Where(ActiveItems.Event(Now)).Select(e => e.Id).ToListAsync();
+        Assert.Equal(events.Where(e => e.IsActive(Now)).Select(e => e.Id).Order(), sqlIds.Order());
+        Assert.Equal([1, 2, 3], events.Select((e, i) => (e, i)).Where(x => x.e.IsActive(Now)).Select(x => x.i));
+
+        await new ExpirationRunner(db).RunAsync(Now, default);
+        await using var read = app.Services.CreateAsyncScope();
+        var status = await read.ServiceProvider.GetRequiredService<AppDbContext>().Events.AsNoTracking()
+            .Where(e => e.Fingerprint.StartsWith(token)).OrderBy(e => e.Title).Select(e => e.Status).ToListAsync();
+        Assert.Equal([ItemStatus.Expired, ItemStatus.Published, ItemStatus.Published, ItemStatus.Published], status);
+    }
+
+    [Fact]
     public async Task Expiration_runner_expires_only_published_events_and_deals_past_their_end()
     {
         await using var scope = app.Services.CreateAsyncScope();

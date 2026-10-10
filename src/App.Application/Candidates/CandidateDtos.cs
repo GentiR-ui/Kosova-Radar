@@ -14,12 +14,13 @@ public sealed record CandidateFieldsDto(
     string? Title, string? Description, string? Url, string? ImageUrl, string? CityText, string? CitySlug,
     string? VenueName, string? CategoryText, string? CategorySlug, DateTimeOffset? StartsAt, DateTimeOffset? EndsAt,
     string? PriceText, decimal? PriceAmount, string? Currency, string? MerchantName, decimal? OldPrice, decimal? NewPrice,
-    int? StatedDiscountPercent, int? DiscountPercent, DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil)
+    int? StatedDiscountPercent, int? DiscountPercent, DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil,
+    DateOnly? StartDate = null)
 {
     public static CandidateFieldsDto From(CandidateFields f) =>
         new(f.Title, f.Description, f.Url, f.ImageUrl, f.CityText, f.CitySlug, f.VenueName, f.CategoryText, f.CategorySlug,
             f.StartsAt, f.EndsAt, f.PriceText, f.PriceAmount, f.Currency, f.MerchantName, f.OldPrice, f.NewPrice,
-            f.StatedDiscountPercent, ContentRules.DiscountPercent(f.OldPrice, f.NewPrice), f.ValidFrom, f.ValidUntil);
+            f.StatedDiscountPercent, ContentRules.DiscountPercent(f.OldPrice, f.NewPrice), f.ValidFrom, f.ValidUntil, f.StartDate);
 }
 
 public sealed record CandidateSummaryDto(

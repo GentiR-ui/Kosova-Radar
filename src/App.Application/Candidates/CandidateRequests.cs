@@ -9,7 +9,7 @@ public sealed record CandidateFieldsRequest(
     string? Title, string? Description, string? Url, string? ImageUrl, string? CitySlug, string? VenueName,
     string? CategorySlug, DateTimeOffset? StartsAt, DateTimeOffset? EndsAt, string? PriceText, decimal? PriceAmount,
     string? Currency, string? MerchantName, decimal? OldPrice, decimal? NewPrice, int? StatedDiscountPercent,
-    DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil);
+    DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil, DateOnly? StartDate = null);
 
 public sealed record RejectRequest(string? Reason);
 
@@ -52,6 +52,9 @@ public static partial class CandidateRequestValidator
         var currency = req.Currency?.Trim();
         if (string.IsNullOrEmpty(currency)) currency = null;
         else if (!CurrencyPattern().IsMatch(currency)) errors["currency"] = ["Currency must be three upper-case letters."];
+
+        if (req.StartDate is { Year: < 1900 or > 2200 })
+            errors["startDate"] = ["The date must be between 1900 and 2200."];
 
         Price(req.PriceAmount, "priceAmount", errors);
         Price(req.OldPrice, "oldPrice", errors);
@@ -101,6 +104,7 @@ public static partial class CandidateRequestValidator
             Currency = r.Currency,
             VenueName = isEvent ? r.VenueName : null,
             StartsAt = isEvent ? r.StartsAt : null,
+            StartDate = isEvent && r.StartsAt is null ? r.StartDate : null,
             EndsAt = isEvent ? r.EndsAt : null,
             MerchantName = isEvent ? null : r.MerchantName,
             OldPrice = isEvent ? null : r.OldPrice,

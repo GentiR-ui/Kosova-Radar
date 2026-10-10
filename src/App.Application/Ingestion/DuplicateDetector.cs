@@ -31,7 +31,7 @@ public sealed class DuplicateDetector(IAppDbContext db)
         IReadOnlyList<PendingRef> pending, CancellationToken ct, IReadOnlyList<PublishedRef>? publishedInRun = null)
     {
         if (string.IsNullOrWhiteSpace(f.Title)) return null;
-        if (kind == ItemKind.Event && (f.CitySlug is null || f.StartsAt is null)) return null;
+        if (kind == ItemKind.Event && (f.CitySlug is null || f.EventStart() is null)) return null;
 
         DuplicateMatch? best = null;
         var bestScore = 0.0;
@@ -44,7 +44,7 @@ public sealed class DuplicateDetector(IAppDbContext db)
 
         if (kind == ItemKind.Event)
         {
-            var (from, to) = ContentRules.PristinaDay(ContentRules.PristinaDate(f.StartsAt!.Value));
+            var (from, to) = ContentRules.PristinaDay(ContentRules.PristinaDate(f.EventStart()!.Value));
             var events = await db.Events.AsNoTracking()
                 .Where(e => e.Status == ItemStatus.Published && e.Id != matchedItemId && e.StartsAt >= from && e.StartsAt < to
                             && db.Cities.Any(c => c.Id == e.CityId && c.Slug == f.CitySlug))
@@ -66,7 +66,7 @@ public sealed class DuplicateDetector(IAppDbContext db)
         {
             if (p.Fields.CitySlug != f.CitySlug) continue;
             if (kind == ItemKind.Event
-                && (p.Fields.StartsAt is not { } start || ContentRules.PristinaDate(start) != ContentRules.PristinaDate(f.StartsAt!.Value)))
+                && (p.Fields.EventStart() is not { } start || ContentRules.PristinaDate(start) != ContentRules.PristinaDate(f.EventStart()!.Value)))
                 continue;
             Consider(kind, p.Id, false, p.Fields.Title);
         }
@@ -75,7 +75,7 @@ public sealed class DuplicateDetector(IAppDbContext db)
         {
             if (p.Fields.CitySlug != f.CitySlug) continue;
             if (kind == ItemKind.Event
-                && (p.Fields.StartsAt is not { } start || ContentRules.PristinaDate(start) != ContentRules.PristinaDate(f.StartsAt!.Value)))
+                && (p.Fields.EventStart() is not { } start || ContentRules.PristinaDate(start) != ContentRules.PristinaDate(f.EventStart()!.Value)))
                 continue;
             Consider(kind, p.Id, true, p.Fields.Title);
         }

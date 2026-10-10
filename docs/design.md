@@ -267,7 +267,8 @@ Run error codes: `Unreachable`, `Timeout`, `HttpStatus` (non-2xx), `MalformedPay
 IssueDto = { code, severity: "rejected"|"review"|"info", field|null, message }
 CandidateFields = { title|null, description|null, url|null, imageUrl|null, cityText|null, citySlug|null,
                     venueName|null, categoryText|null, categorySlug|null,
-                    startsAt|null, endsAt|null, priceText|null, priceAmount|null, currency|null,
+                    startsAt|null, startDate|null /* "YYYY-MM-DD", only while startsAt is null (ADR-040), 1900-2200 */,
+                    endsAt|null, priceText|null, priceAmount|null, currency|null,
                     merchantName|null, oldPrice|null, newPrice|null, statedDiscountPercent|null,
                     discountPercent|null /* computed, read-only */, validFrom|null, validUntil|null }
 CandidateSummaryDto = { id, kind, title|null, status, validation, issues: IssueDto[], sourceId, sourceName,
@@ -283,7 +284,7 @@ CandidateFieldsRequest = CandidateFields without discountPercent/cityText/catego
 ```
 
 Merge: item `lastVerifiedAt` = max(item.lastVerifiedAt, candidate.fetchedAt).
-Approve: category = `fields.categorySlug ?? suggestedCategory.slug`. Required — 400 keys: `title`, `url` (all kinds); `citySlug`, `startsAt` (events); `newPrice` when a deal has neither `newPrice` nor `priceText`. Validation `Rejected` → 400 on `validation`.
+Approve: category = `fields.categorySlug ?? suggestedCategory.slug`. Required — 400 keys: `title`, `url` (all kinds); `citySlug`, `startsAt` (events; a `startDate` satisfies it); `newPrice` when a deal has neither `newPrice` nor `priceText`. Validation `Rejected` → 400 on `validation`.
 
 ### Admin — published items (policy `Reviewer`)
 
@@ -355,7 +356,7 @@ An iCalendar adapter is deferred (ADR-006). Site-specific HTML parsers are added
 - `externalId` = `url` = the absolute event page URL (relative links resolved against the page URL). A listing without a link → per-item failure.
 - Evidence = the listing's cleaned text (whitespace collapsed, ≤ 16,000 characters, ADR-039) followed by a line `URL: <url>` — never the whole page.
 - The parser maps what the listing shows, deterministically: title, start date/time (Europe/Pristina local → instant with offset), end, venue, city, category text, price text, image (an `<img>` inside the listing, absolute http(s)) and description when shown. Anything not shown stays null (REQ-030). Event kind only.
-- `text` (AI input) = the evidence text, set only when `startsAt`, the city or the category could not be determined deterministically; otherwise empty so no AI call is made (cost, ADR-035). A site parser may leave out what only names the day's occurrence of a running series (`IHtmlSiteParser.OccurrenceFreeText`; Ka' Po Dalim: poster day, date block, weekday, featured pick position), so the text and the content hash stay the same every day (ADR-042). The AI step itself is unchanged (fill-only-null, REQ-040..043).
+- `text` (AI input) = the evidence text, set only when the start (`startsAt` or `startDate`), the city or the category could not be determined deterministically; otherwise empty so no AI call is made (cost, ADR-035). A site parser may leave out what only names the day's occurrence of a running series (`IHtmlSiteParser.OccurrenceFreeText`; Ka' Po Dalim: poster day, date block, weekday, featured pick position), so the text and the content hash stay the same every day (ADR-042). The AI step itself is unchanged (fill-only-null, REQ-040..043).
 - Listings whose start date is more than `Ingestion__EventHorizonDays` (3) local days after the fetch date are skipped and counted only in `received` (REQ-026). Past listings are parsed as usual; validation rejects them as `Expired`.
 - At most 1000 listings per page; the rest is one `TooManyItems` failure (ADR-039).
 - V1 fetches only the configured page: no detail pages, no "load more" requests.

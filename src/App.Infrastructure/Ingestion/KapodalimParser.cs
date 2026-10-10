@@ -72,12 +72,13 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
             venue = posterVenue;
         }
 
-        var (startsAt, endsAt) = ParseWhen(listing, path);
+        var (startsAt, startDate, endsAt) = ParseWhen(listing, path);
         var image = listing.QuerySelector("img")?.GetAttribute("src");
         return new HtmlListing(href, new CandidateFields
         {
             Title = title,
             StartsAt = startsAt,
+            StartDate = startDate,
             EndsAt = endsAt,
             CityText = city is null ? null : CityCase(city),
             VenueName = venue,
@@ -112,11 +113,11 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
             : "";
 
     /// <summary>
-    /// No clock time ("ORARI TBA", "PROGRAMI TBA") → no start. A day range ("9–10 TETOR" after the poster date, else the
+    /// No clock time ("ORARI TBA", "PROGRAMI TBA") → no start time, only the start date (ADR-040). A day range ("9–10 TETOR" after the poster date, else the
     /// slug's "-7-16-tetor-2026") sets the start date to its first day and the end to its last day 23:59, so a running
     /// series keeps the same fields while the poster shows each day's occurrence.
     /// </summary>
-    private static (DateTimeOffset? Start, DateTimeOffset? End) ParseWhen(IElement listing, string? path)
+    private static (DateTimeOffset? Start, DateOnly? Date, DateTimeOffset? End) ParseWhen(IElement listing, string? path)
     {
         var time = listing.QuerySelector("time");
         var descriptor = time is null ? "" : Descriptor(time);
@@ -129,7 +130,7 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
         var range = (first is null ? null : ReadRange(DayRange().Match(NormalizeText(descriptor)), first.Value))
             ?? (path is null ? null : ReadRange(SlugRange().Match(path), null));
         if (range is { } r) first = r.First;
-        if (first is null) return (null, null);
+        if (first is null) return (null, null, null);
 
         DateTimeOffset? starts = null, ends = null;
         if (ClockRange().Match(descriptor) is { Success: true } c)
@@ -143,7 +144,7 @@ internal sealed partial class KapodalimParser : IHtmlSiteParser
         }
 
         if (range is { } days) ends = Local(days.Last.ToDateTime(new TimeOnly(23, 59)));
-        return (starts, ends);
+        return (starts, starts is null ? first : null, ends);
     }
 
     /// <summary>

@@ -84,6 +84,7 @@ export function FieldsForm({
       ) : (
         <>
           {field('startsAt', r.fields.startsAt, 'datetime-local')}
+          {field('startDate', r.fields.startDate, 'date')}
           {field('endsAt', r.fields.endsAt, 'datetime-local')}
         </>
       )}
@@ -104,6 +105,7 @@ export function initial(f: CandidateFields): Record<string, string> {
     categorySlug: text(f.categorySlug),
     merchantName: text(f.merchantName),
     startsAt: toPristinaInput(f.startsAt),
+    startDate: text(f.startDate ?? null),
     endsAt: toPristinaInput(f.endsAt),
     validFrom: toPristinaInput(f.validFrom),
     validUntil: toPristinaInput(f.validUntil),
@@ -130,7 +132,7 @@ export function toRequest(f: CandidateFields, v: Values): FieldsRequest {
     const value = v[key] ?? ''
     if (value !== base[key]) out[key] = convert(value)
   }
-  for (const k of ['title', 'description', 'url', 'citySlug', 'venueName', 'categorySlug', 'merchantName', 'priceText', 'currency'] as const)
+  for (const k of ['title', 'description', 'url', 'citySlug', 'venueName', 'categorySlug', 'merchantName', 'priceText', 'currency', 'startDate'] as const)
     set(k, trimOrNull)
   for (const k of ['startsAt', 'endsAt', 'validFrom', 'validUntil'] as const) set(k, fromPristinaInput)
   for (const k of ['priceAmount', 'oldPrice', 'newPrice'] as const) set(k, num)

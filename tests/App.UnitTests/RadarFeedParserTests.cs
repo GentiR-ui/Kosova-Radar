@@ -28,6 +28,26 @@ public class RadarFeedParserTests
     }
 
     [Fact]
+    public void A_start_date_is_read_for_an_event_without_startsAt_and_ignored_next_to_one()
+    {
+        var dateOnly = One("{\"kind\":\"event\",\"externalId\":\"a\",\"startDate\":\"2026-10-05\"}").Items.Single();
+        Assert.Equal(new DateOnly(2026, 10, 5), dateOnly.Fields.StartDate);
+        Assert.Null(dateOnly.Fields.StartsAt);
+
+        var both = One("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"2026-10-05T20:00:00+02:00\",\"startDate\":\"2026-10-05\"}").Items.Single();
+        Assert.Null(both.Fields.StartDate);
+        Assert.NotNull(both.Fields.StartsAt);
+    }
+
+    [Fact]
+    public void Content_hash_of_an_item_without_a_start_date_does_not_carry_the_field()
+    {
+        var item = One("{\"kind\":\"event\",\"externalId\":\"a\",\"title\":\"T\"}").Items.Single();
+        var json = System.Text.Json.JsonSerializer.Serialize(item.Fields);
+        Assert.DoesNotContain("StartDate", json);
+    }
+
+    [Fact]
     public void Empty_items_array_is_a_valid_empty_feed()
     {
         var result = Parse("{\"items\":[]}");
@@ -52,6 +72,8 @@ public class RadarFeedParserTests
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"city\":\"x\\ud800y\"}", "InvalidField:city")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\\u0000\"}", "InvalidField:externalId")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"tomorrow\"}", "InvalidField:startsAt")]
+    [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startDate\":\"05.10.2026\"}", "InvalidField:startDate")]
+    [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startDate\":\"9999-12-31\"}", "InvalidField:startDate")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"2026-10-04T20:00:00\"}", "InvalidField:startsAt")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"10:30Z\"}", "InvalidField:startsAt")]
     [InlineData("{\"kind\":\"event\",\"externalId\":\"a\",\"startsAt\":\"5/10/2026 10:00 +02:00\"}", "InvalidField:startsAt")]

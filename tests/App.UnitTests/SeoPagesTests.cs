@@ -11,7 +11,7 @@ public class SeoPagesTests
     private const string Nasty = "</title></script><script>alert(1)</script>";
 
     private static EventDetailDto Event(string title, string? description = null, string? image = null, bool synthetic = false) =>
-        new(Guid.NewGuid(), title, new DateTimeOffset(2026, 10, 20, 18, 0, 0, TimeSpan.Zero), null, new CityDto("prizren", "Prizren"),
+        new(Guid.NewGuid(), title, new DateTimeOffset(2026, 10, 20, 18, 0, 0, TimeSpan.Zero), true, null, new CityDto("prizren", "Prizren"),
             null, null, null, null, null, image, "Burimi", "https://src.example/e", DateTimeOffset.UtcNow, "fresh", "active", synthetic,
             description, []);
 

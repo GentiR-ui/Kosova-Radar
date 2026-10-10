@@ -35,7 +35,7 @@ public sealed class AutoPublisher(
 
     /// <summary>REQ-026: an event of an auto-publish source that starts after the horizon waits for a later fetch.</summary>
     public bool IsBeyondHorizon(Source source, NormalizedCandidate item, DateTimeOffset fetchedAt) =>
-        source.AutoPublish && item.Kind == ItemKind.Event && item.Fields.StartsAt is { } start
+        source.AutoPublish && item.Kind == ItemKind.Event && item.Fields.EventStart() is { } start
         && ContentRules.IsBeyondHorizon(start, fetchedAt, ingestion.EventHorizonDays);
 
     /// <summary>The id of the item the candidate was published as, or null when it stays for a person.</summary>

@@ -24,6 +24,8 @@ interface ItemBase {
 }
 export interface EventSummaryDto extends ItemBase {
   startsAt: string
+  /** False when only the date is known (`startsAt` is then local midnight of that date). */
+  startTimeKnown: boolean
   endsAt: string | null
   city: CityDto
   venueName: string | null

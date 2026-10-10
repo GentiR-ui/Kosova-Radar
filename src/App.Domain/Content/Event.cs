@@ -9,6 +9,10 @@ public sealed class Event
     public Guid CityId { get; set; }
     public Guid? CategoryId { get; set; }
     public DateTimeOffset StartsAt { get; set; }
+
+    /// <summary>False = only the date is known; <see cref="StartsAt"/> is local 00:00 of that date (ADR-040).</summary>
+    public bool StartTimeKnown { get; set; } = true;
+
     public DateTimeOffset? EndsAt { get; set; }
     public string? PriceText { get; set; }
     public decimal? PriceAmount { get; set; }
@@ -29,6 +33,6 @@ public sealed class Event
     public DateTimeOffset UpdatedAt { get; set; }
     public uint Version { get; set; }
 
-    public DateTimeOffset EffectiveEnd => ContentRules.EffectiveEnd(StartsAt, EndsAt);
-    public bool IsActive(DateTimeOffset now) => ContentRules.IsActiveEvent(Status, StartsAt, EndsAt, now);
+    public DateTimeOffset EffectiveEnd => ContentRules.EffectiveEnd(StartsAt, EndsAt, StartTimeKnown);
+    public bool IsActive(DateTimeOffset now) => ContentRules.IsActiveEvent(Status, StartsAt, EndsAt, now, StartTimeKnown);
 }

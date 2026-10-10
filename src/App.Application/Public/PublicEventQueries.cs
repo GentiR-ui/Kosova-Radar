@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace App.Application.Public;
 
 public sealed record EventSummaryDto(
-    Guid Id, string Title, DateTimeOffset StartsAt, DateTimeOffset? EndsAt, CityDto City, string? VenueName, CategoryDto? Category,
+    Guid Id, string Title, DateTimeOffset StartsAt, bool StartTimeKnown, DateTimeOffset? EndsAt, CityDto City, string? VenueName, CategoryDto? Category,
     string? PriceText, decimal? PriceAmount, string? Currency, string? ImageUrl, string SourceName, string SourceUrl,
     DateTimeOffset LastVerifiedAt, string Freshness, string Status, bool IsSynthetic);
 
@@ -104,7 +104,7 @@ public sealed class PublicEventQueries(IAppDbContext db, IClock clock)
         var venues = await db.Venues.AsNoTracking().Where(v => venueIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, v => v.Name, ct);
         var sources = await db.Sources.AsNoTracking().Where(s => sourceIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
         return events.Select(e => new EventSummaryDto(
-            e.Id, e.Title, e.StartsAt, e.EndsAt, cities[e.CityId], e.VenueId is { } v ? venues.GetValueOrDefault(v) : null,
+            e.Id, e.Title, e.StartsAt, e.StartTimeKnown, e.EndsAt, cities[e.CityId], e.VenueId is { } v ? venues.GetValueOrDefault(v) : null,
             e.CategoryId is { } c ? categories.GetValueOrDefault(c) : null, e.PriceText, e.PriceAmount, e.Currency, e.ImageUrl,
             sources[e.PrimarySourceId], e.SourceUrl, e.LastVerifiedAt,
             ContentRules.IsFresh(e.LastVerifiedAt, now) ? "fresh" : "stale", e.IsActive(now) ? "active" : "expired", e.IsSynthetic)).ToList();

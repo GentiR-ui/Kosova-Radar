@@ -15,7 +15,8 @@ internal static class ItemFields
         e.VenueId = venueId;
         e.CityId = cityId;
         e.CategoryId = categoryId;
-        e.StartsAt = f.StartsAt!.Value.ToUniversalTime();
+        e.StartsAt = f.EventStart()!.Value.ToUniversalTime();
+        e.StartTimeKnown = f.StartsAt is not null;
         e.EndsAt = f.EndsAt?.ToUniversalTime();
         e.PriceText = f.PriceText;
         e.PriceAmount = f.PriceAmount;
@@ -56,7 +57,7 @@ internal static class ItemFields
         if (kind == Domain.Reference.ItemKind.Event)
         {
             Require(!string.IsNullOrWhiteSpace(f.CitySlug), "citySlug", "A known city is required.");
-            Require(f.StartsAt is not null, "startsAt", "Start time is required.");
+            Require(f.EventStart() is not null, "startsAt", "Start time or date is required.");
         }
         else
         {

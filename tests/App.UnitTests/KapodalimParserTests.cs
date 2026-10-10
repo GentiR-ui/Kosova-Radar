@@ -95,13 +95,14 @@ public class KapodalimParserTests
     public void An_unpublished_entry_line_is_not_a_price(string slug) => Assert.Null(Item(slug).Fields.PriceText);
 
     [Fact]
-    public void Time_TBA_leaves_the_start_null_and_the_text_goes_to_the_AI()
+    public void Time_TBA_leaves_the_start_time_null_and_needs_no_AI_text_when_city_and_category_are_known()
     {
         var item = Item("ylber-osmani-sunshine-prishtine-2026-10-08");
 
         Assert.Null(item.Fields.StartsAt);
+        Assert.Equal(new DateOnly(2026, 10, 8), item.Fields.StartDate); // the date is known, the time is not (ADR-040)
         Assert.Equal("muzike", item.Fields.CategorySlug); // Muzikë live
-        Assert.NotNull(item.Text);
+        Assert.Null(item.Text); // date, city and category are known: nothing for the AI to fill
     }
 
     [Fact]
@@ -109,6 +110,7 @@ public class KapodalimParserTests
     {
         var kos = Item("kosict15-klan-kosova-9-10-tetor-2026").Fields;
         Assert.Null(kos.StartsAt); // ORARI TBA
+        Assert.Equal(new DateOnly(2026, 10, 9), kos.StartDate);
         Assert.Equal(new DateTimeOffset(2026, 10, 10, 23, 59, 0, TimeSpan.FromHours(2)), kos.EndsAt);
         Assert.Equal("Fushë Kosovë", kos.CityText);
         Assert.Equal("Klan Kosova - Fushë Kosovë", kos.VenueName);
@@ -122,7 +124,7 @@ public class KapodalimParserTests
     [Theory]
     [InlineData("Teknologji & biznes")] // unmapped before release review round 2: always went to the AI
     [InlineData("Komunitet")]
-    public void A_running_series_with_time_TBA_keeps_its_AI_text_and_content_from_day_to_day(string category)
+    public void A_running_series_with_time_TBA_keeps_its_content_from_day_to_day(string category)
     {
         // The page as on two days of the series (markup of the saved KosICT15 card): poster day, date block and weekday change.
         string Page(string date, string day, string weekday, string featuredDay, string pick) => $"""
@@ -146,15 +148,17 @@ public class KapodalimParserTests
         var (first, second) = (day1[0], day2[0]); // the grid card wins over the featured card of the same event
 
         Assert.Equal("https://kapodalim.com/event/kosict-9-10-tetor-2026", first.Fields.Url);
-        Assert.NotNull(first.Text);
-        Assert.Contains("9–10 TETOR · ORARI TBA", first.Text);
-        Assert.DoesNotContain("E premte", first.Text);
+        if (first.Text is not null) // only when the category is unknown (the AI may suggest one)
+        {
+            Assert.Contains("9–10 TETOR · ORARI TBA", first.Text);
+            Assert.DoesNotContain("E premte", first.Text);
+        }
         Assert.Contains("E premte", first.Evidence); // the evidence still shows the card as it was
         Assert.Equal(first.Text, second.Text);
         Assert.Equal(first.ContentHash, second.ContentHash);
 
         var featured = day1[1]; // featured only: "Fri, Oct 9 · …"
-        Assert.DoesNotContain("Oct 9", featured.Text);
+        if (featured.Text is not null) Assert.DoesNotContain("Oct 9", featured.Text);
         Assert.Equal(featured.ContentHash, day2[1].ContentHash);
     }
 

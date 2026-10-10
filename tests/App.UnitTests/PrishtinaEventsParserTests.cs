@@ -60,13 +60,13 @@ public class PrishtinaEventsParserTests
     }
 
     [Fact]
-    public void A_card_without_time_has_no_start_and_its_venue_is_kept_and_the_text_goes_to_the_AI()
+    public void A_card_without_time_has_only_the_date_and_its_venue_is_kept()
     {
         var item = Item("prishtina-mall-street-fest-2026-10-09-694553");
 
         Assert.Null(item.Fields.StartsAt);
+        Assert.Equal(new DateOnly(2026, 10, 9), item.Fields.StartDate); // the date is in the URL (ADR-040)
         Assert.Equal("Prishtina Mall", item.Fields.VenueName);
-        Assert.NotNull(item.Text);
     }
 
     [Fact]

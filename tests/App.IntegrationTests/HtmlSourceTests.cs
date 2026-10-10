@@ -204,7 +204,9 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         Assert.Equal("succeeded", run.GetProperty("status").GetString());
         Assert.Equal(0, run.GetProperty("failed").GetInt32());
         var created = run.GetProperty("created").GetInt32();
-        Assert.True(created >= 10, $"created {created}");
+        // Items beyond the event horizon are counted in `received` only (REQ-026), so the page size is asserted on that.
+        var received = run.GetProperty("received").GetInt32();
+        Assert.True(received >= 10 && created >= 5, $"received {received}, created {created}");
 
         await using (var scope = app.Services.CreateAsyncScope())
         {

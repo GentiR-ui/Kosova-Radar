@@ -78,7 +78,7 @@ public static class CandidateValidator
 
     private static void ValidateEvent(CandidateFields f, DateTimeOffset now, List<Issue> issues)
     {
-        if (f.StartsAt is not { } start)
+        if (f.EventStart() is not { } start)
         {
             issues.Add(new(IssueCodes.MissingStartsAt, IssueSeverity.Review, "startsAt", "The event has no start time."));
             return;
@@ -86,7 +86,7 @@ public static class CandidateValidator
 
         if (f.EndsAt is { } end && end < start)
             issues.Add(new(IssueCodes.InvalidDateRange, IssueSeverity.Review, "endsAt", "The event ends before it starts."));
-        if (ContentRules.EffectiveEnd(start, f.EndsAt) <= now)
+        if (ContentRules.EffectiveEnd(start, f.EndsAt, f.StartsAt is not null) <= now)
             issues.Add(new(IssueCodes.Expired, IssueSeverity.Rejected, "startsAt", "The event has already ended."));
     }
 

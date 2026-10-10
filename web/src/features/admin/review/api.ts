@@ -37,6 +37,7 @@ export interface CandidateFields {
   categoryText: string | null
   categorySlug: string | null
   startsAt: string | null
+  startDate?: string | null
   endsAt: string | null
   priceText: string | null
   priceAmount: number | null

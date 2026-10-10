@@ -24,6 +24,11 @@ export function formatDateTime(iso: string): string {
   return `${p.day}.${p.month}.${p.year}, ${p.hour}:${p.minute}`
 }
 
+/** The start of an event: date and time, or the date and "gjatë ditës" when only the date is known. */
+export function formatEventStart(iso: string, timeKnown: boolean): string {
+  return timeKnown ? formatDateTime(iso) : `${formatDate(iso)} · gjatë ditës`
+}
+
 /** "dd.MM.yyyy" in Pristina time. */
 export function formatDate(iso: string): string {
   const p = parts(new Date(iso))

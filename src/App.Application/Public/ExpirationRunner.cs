@@ -11,9 +11,11 @@ public sealed class ExpirationRunner(IAppDbContext db)
     {
         var started = DateTimeOffset.UtcNow;
         var noEndCutoff = now - ContentRules.DefaultEventDuration;
+        var todayStart = ContentRules.PristinaDay(ContentRules.PristinaDate(now)).Start;
         var events = await db.Events
             .Where(e => e.Status == ItemStatus.Published
-                && (e.EndsAt != null && e.EndsAt >= e.StartsAt ? e.EndsAt <= now : e.StartsAt <= noEndCutoff))
+                && (e.EndsAt != null && e.EndsAt >= e.StartsAt ? e.EndsAt <= now
+                    : e.StartTimeKnown ? e.StartsAt <= noEndCutoff : e.StartsAt < todayStart))
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.Status, ItemStatus.Expired).SetProperty(e => e.UpdatedAt, now), ct);
         var deals = await db.Deals
             .Where(d => d.Status == ItemStatus.Published && d.ValidUntil != null && d.ValidUntil <= now)

@@ -31,12 +31,18 @@ public static class ContentRules
     public static bool IsBeyondHorizon(DateTimeOffset startsAt, DateTimeOffset fetchedAt, int days) =>
         PristinaDate(startsAt) > PristinaDate(fetchedAt).AddDays(days);
 
-    /// <summary><c>EndsAt</c> when present and not before <c>StartsAt</c>, else start + 6 h (ADR-010).</summary>
-    public static DateTimeOffset EffectiveEnd(DateTimeOffset startsAt, DateTimeOffset? endsAt) =>
-        endsAt is { } end && end >= startsAt ? end : startsAt + DefaultEventDuration;
+    /// <summary>
+    /// <c>EndsAt</c> when present and not before <c>StartsAt</c>, else start + 6 h (ADR-010); a date-only event
+    /// (<paramref name="startTimeKnown"/> false) lasts until the end of its local day (ADR-040).
+    /// </summary>
+    public static DateTimeOffset EffectiveEnd(DateTimeOffset startsAt, DateTimeOffset? endsAt, bool startTimeKnown = true) =>
+        endsAt is { } end && end >= startsAt ? end
+        : startTimeKnown ? startsAt + DefaultEventDuration
+        : PristinaDay(PristinaDate(startsAt)).End;
 
-    public static bool IsActiveEvent(ItemStatus status, DateTimeOffset startsAt, DateTimeOffset? endsAt, DateTimeOffset now) =>
-        status == ItemStatus.Published && EffectiveEnd(startsAt, endsAt) > now;
+    public static bool IsActiveEvent(ItemStatus status, DateTimeOffset startsAt, DateTimeOffset? endsAt, DateTimeOffset now,
+        bool startTimeKnown = true) =>
+        status == ItemStatus.Published && EffectiveEnd(startsAt, endsAt, startTimeKnown) > now;
 
     public static bool IsActiveDeal(ItemStatus status, DateTimeOffset? validUntil, DateTimeOffset lastVerifiedAt, DateTimeOffset now) =>
         status == ItemStatus.Published

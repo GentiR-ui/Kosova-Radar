@@ -91,6 +91,25 @@ public class CandidateValidatorTests
     }
 
     [Fact]
+    public void Event_with_a_date_but_no_time_is_valid()
+    {
+        var date = ContentRules.PristinaDate(Now).AddDays(2);
+        var r = CandidateValidator.Validate(ItemKind.Event, GoodEvent() with { StartsAt = null, StartDate = date }, Now, false);
+        Assert.Empty(Codes(r));
+        Assert.Equal(ValidationOutcome.Valid, r.Outcome);
+    }
+
+    [Fact]
+    public void Event_date_of_today_is_not_expired_but_yesterday_is()
+    {
+        var today = ContentRules.PristinaDate(Now);
+        var ok = CandidateValidator.Validate(ItemKind.Event, GoodEvent() with { StartsAt = null, StartDate = today }, Now, false);
+        Assert.Empty(Codes(ok));
+        var past = CandidateValidator.Validate(ItemKind.Event, GoodEvent() with { StartsAt = null, StartDate = today.AddDays(-1) }, Now, false);
+        Assert.Equal([IssueCodes.Expired], Codes(past));
+    }
+
+    [Fact]
     public void Event_date_range_end_before_start_is_invalid_but_equal_is_fine()
     {
         var start = Now.AddDays(1);

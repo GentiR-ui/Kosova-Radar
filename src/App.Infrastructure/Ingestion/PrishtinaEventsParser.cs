@@ -42,6 +42,7 @@ internal sealed partial class PrishtinaEventsParser : IHtmlSiteParser
         }
 
         DateTimeOffset? startsAt = null;
+        DateOnly? startDate = null;
         var m = EventPath().Match(href);
         if (m.Success && DateOnly.TryParseExact(m.Groups["date"].Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
@@ -49,6 +50,7 @@ internal sealed partial class PrishtinaEventsParser : IHtmlSiteParser
                 ? date.ToDateTime(t)
                 : (DateTime?)null;
             if (local is { } l) startsAt = new DateTimeOffset(l, Pristina.GetUtcOffset(l));
+            else startDate = date;
         }
 
         var image = listing.QuerySelector("img")?.GetAttribute("src");
@@ -56,6 +58,7 @@ internal sealed partial class PrishtinaEventsParser : IHtmlSiteParser
         {
             Title = title,
             StartsAt = startsAt,
+            StartDate = startDate,
             CityText = "Prishtinë",
             VenueName = venue,
             CategoryText = category,

@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 import type { DealDetailDto, EventDetailDto, Page } from '../../public/api'
+import { pristinaToday } from '../../public/format'
 import type { CandidateFields, FieldsRequest, Kind } from '../review/api'
 
 export type AdminStatus = 'published' | 'expired' | 'withdrawn'
@@ -99,7 +100,8 @@ export function fieldsOf(item: PublishedDetail): CandidateFields {
     venueName: event?.venueName ?? null,
     categoryText: null,
     categorySlug: item.category?.slug ?? null,
-    startsAt: event?.startsAt ?? null,
+    startsAt: event && event.startTimeKnown !== false ? event.startsAt : null,
+    startDate: event && event.startTimeKnown === false ? pristinaToday(new Date(event.startsAt)) : null,
     endsAt: event?.endsAt ?? null,
     priceText: item.priceText,
     priceAmount: event?.priceAmount ?? null,

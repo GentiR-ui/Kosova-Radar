@@ -23,6 +23,25 @@ public class ContentRulesTests
         Assert.Equal(Now.AddHours(6), ContentRules.EffectiveEnd(Now, end));
     }
 
+    [Theory]
+    [InlineData("2026-10-09T22:00:00Z", "2026-10-10T22:00:00Z")] // 00:00 local on 10 Oct (CEST) -> 00:00 local on 11 Oct
+    [InlineData("2026-10-24T22:00:00Z", "2026-10-25T23:00:00Z")] // the day DST ends is 25 h long
+    public void Date_only_event_ends_at_the_end_of_its_local_day(string start, string end)
+    {
+        var s = DateTimeOffset.Parse(start, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(DateTimeOffset.Parse(end, System.Globalization.CultureInfo.InvariantCulture), ContentRules.EffectiveEnd(s, null, false));
+    }
+
+    [Fact]
+    public void Date_only_event_prefers_a_valid_EndsAt_and_stays_active_through_its_day()
+    {
+        var midnight = new DateTimeOffset(2026, 10, 9, 22, 0, 0, TimeSpan.Zero); // 00:00 local on 10 Oct
+        Assert.Equal(midnight.AddHours(30), ContentRules.EffectiveEnd(midnight, midnight.AddHours(30), false));
+        Assert.True(ContentRules.IsActiveEvent(ItemStatus.Published, midnight, null, midnight.AddHours(23), false));
+        Assert.False(ContentRules.IsActiveEvent(ItemStatus.Published, midnight, null, midnight.AddHours(24), false));
+        Assert.False(ContentRules.IsActiveEvent(ItemStatus.Published, midnight, null, midnight.AddHours(7), true)); // a timed one ends after 6 h
+    }
+
     [Fact]
     public void Event_is_active_until_effective_end_exclusive()
     {

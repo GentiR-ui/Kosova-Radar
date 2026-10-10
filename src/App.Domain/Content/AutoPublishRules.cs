@@ -51,9 +51,9 @@ public static class AutoPublishRules
 
     /// <summary>Starts inside the horizon (REQ-026) and does not run longer than <see cref="MaxEventSpan"/>.</summary>
     private static bool IsCurrentEvent(CandidateFields f, DateTimeOffset fetchedAt, int horizonDays) =>
-        f.StartsAt is not { } start
+        f.EventStart() is not { } start
         || (!ContentRules.IsBeyondHorizon(start, fetchedAt, horizonDays)
-            && ContentRules.EffectiveEnd(start, f.EndsAt) <= start + MaxEventSpan);
+            && ContentRules.EffectiveEnd(start, f.EndsAt, f.StartsAt is not null) <= start + MaxEventSpan);
 
     private static bool HasNoOtherBlockingIssue(Candidate c)
     {

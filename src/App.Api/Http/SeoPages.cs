@@ -24,13 +24,13 @@ public static partial class SeoPages
 
     public static string EventPage(string shell, EventDetailDto e, string baseUrl)
     {
-        var description = Truncate(e.Description) ?? Join(Format(e.StartsAt), e.City.Name);
+        var description = Truncate(e.Description) ?? Join(Format(e.StartsAt, e.StartTimeKnown), e.City.Name);
         var json = new Dictionary<string, object?>
         {
             ["@context"] = "https://schema.org",
             ["@type"] = "Event",
             ["name"] = e.Title,
-            ["startDate"] = e.StartsAt.ToString("O", CultureInfo.InvariantCulture),
+            ["startDate"] = e.StartTimeKnown ? e.StartsAt.ToString("O", CultureInfo.InvariantCulture) : Format(e.StartsAt, "yyyy-MM-dd"),
             ["location"] = new Dictionary<string, object?>
             {
                 ["@type"] = "Place",
@@ -102,5 +102,8 @@ public static partial class SeoPages
     private static string? Join(string? a, string? b) => a is null ? b : b is null ? a : $"{a} · {b}";
 
     private static string Format(DateTimeOffset instant, bool time = true) =>
-        TimeZoneInfo.ConvertTime(instant, Pristina).ToString(time ? "dd.MM.yyyy, HH:mm" : "dd.MM.yyyy", CultureInfo.InvariantCulture);
+        Format(instant, time ? "dd.MM.yyyy, HH:mm" : "dd.MM.yyyy");
+
+    private static string Format(DateTimeOffset instant, string pattern) =>
+        TimeZoneInfo.ConvertTime(instant, Pristina).ToString(pattern, CultureInfo.InvariantCulture);
 }
