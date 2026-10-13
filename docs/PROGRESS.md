@@ -10,6 +10,13 @@
 - Next: T011.
 -->
 
+## 2026-10-13 · T052 done
+- Built: public pages ported from the client's Lovable project "Kosova Pulse" (ADR-044), connected to the real API: `.theme-radar` tokens (graphite/lime/coral) on the public layout only, Manrope font for the whole app (Inter removed), solid sticky header (menu readable while scrolling) with radar mark and scroll progress, intro + "Në fokus sot" (today's first event with a picture), ticker, "Në radarin tënd" with city select, "Sot/Evente/Oferta" tabs styled as the day switcher (+ "Nesër"/"Pasnesër" inside "Evente", `day` URL param), result count, 4-column cards (index row, type badge, tilted discount badge, live countdown via one shared clock, coloured source link), restyled empty/error/loading states, events/deals/search/detail pages, `lucide-react` icons.
+- Tests: new `Countdown.test.tsx` (start/started/ended, deal end, date-only, Pristina midnight in summer/winter); all web unit tests green (75); production build passes; 360 px: no horizontal scroll on home, events tab, events, deals, search, detail, 404 (Playwright check against the local app). Playwright acceptance/flow suites not run in this session.
+- Verify: quick PASS. Review: reviewer not run (the human declined the subagent in this session).
+- Left: bookmarks ("Të ruajturat") and the detail modal of the Lovable design not taken over (ADR-044); main JS chunk 159 kB gzip (> 500 kB minified warning, as before).
+- Next: none.
+
 ## 2026-10-10 · T051 done
 - Built: public UI redesign (frontend only): Inter variable font, new colour/radius/shadow tokens in `index.css`, shared `.btn`, sticky blurred header with radar mark + scroll progress, card grid with image-on-top cards (stretched title link, source link kept clickable), Motion (`motion/react`) scroll reveals and reduced-motion guards, `ListShell grid` prop (search and admin lists stay full-width), 44px touch targets, skeleton loading, `scroll-padding-top`.
 - Tests: web unit green (IntersectionObserver stub in test setup, new ListShell layout test); production build passes. Playwright suites not run in this session (need DB/servers).

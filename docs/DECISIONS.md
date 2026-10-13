@@ -296,3 +296,9 @@
 - Context: the release skill (whole-codebase review, hardening pass, exploratory QA with Opus) used most of the client's usage limit; T090 (hardening) and two release review rounds are already done.
 - Decision: the client dropped T091 and the final release phase. Every task keeps its own checks (acceptance/unit/integration tests, `verify --quick`, `reviewer`, `security-reviewer` for 🔒 tasks).
 - Consequences: no final whole-app QA pass or RELEASE.md refresh; run `./scripts/verify.sh` (full) before a real deployment.
+
+## ADR-044 — Public UI follows the client's Lovable design
+- Date: 2026-10-13 · Status: accepted · Task: T052
+- Context: the client designed the public page in Lovable (project "Kosova Pulse": dark graphite theme, electric lime and coral, Manrope, animated radar mark, "in focus" event, day switcher, cards with live countdowns) and asked to use that design with the real data. The Lovable app uses TanStack Start, shadcn/ui and hard-coded sample items.
+- Decision: port the look and the components into `web/src/features/public` (no Lovable runtime, no shadcn/Radix): tokens redefined under `.theme-radar` on the public layout only (the admin keeps the light theme), `@fontsource-variable/manrope` replaces Inter for the whole app, `lucide-react` for icons, "in focus" = today's first event with a picture, countdowns from `startsAt`/`endsAt` (end of the Pristina day when there is no end) and deal `validUntil`. The home tablist stays "Sot"/"Evente"/"Oferta" (REQ-100) styled as the day switcher, with "Nesër"/"Pasnesër" filters inside "Evente". Not taken over: sample data and pictures, the bookmark list "Të ruajturat" (not in the requirements), the detail modal (detail pages stay for links, SEO and REQ tests).
+- Consequences: the public pages are dark; main bundle +~8 kB gzip (lucide icons, countdown). Design changes made later in Lovable must be ported by hand.

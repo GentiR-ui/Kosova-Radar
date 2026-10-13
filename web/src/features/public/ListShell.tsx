@@ -1,8 +1,11 @@
 import type { UseInfiniteQueryResult } from '@tanstack/react-query'
+import { Radar } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { t } from '../../lib/strings'
 import type { Page } from './api'
 import { p } from './strings'
+
+const gridClass = 'grid gap-[23px] sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-[18px]'
 
 type Q = Pick<
   UseInfiniteQueryResult<{ pages: Page<unknown>[] }, Error>,
@@ -34,8 +37,11 @@ export default function ListShell({
 
   if (failed)
     return (
-      <div role="alert" className="space-y-3 py-6">
-        <p>{t.error}</p>
+      <div
+        role="alert"
+        className="flex flex-col items-start gap-4 rounded-md border border-danger/40 bg-surface p-6"
+      >
+        <p className="font-semibold text-danger">{t.error}</p>
         <button
           type="button"
           onClick={() => queries.filter((q) => q.isError).forEach((q) => void q.refetch())}
@@ -47,33 +53,46 @@ export default function ListShell({
     )
   if (loading)
     return (
-      <div role="status" className="py-6">
-        <p className="text-muted">{t.loading}</p>
+      <div role="status">
+        <p className={grid ? 'sr-only' : 'py-6 text-muted'}>{t.loading}</p>
         {grid && (
-          <div aria-hidden="true" className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-64 animate-pulse rounded-card bg-line/60 motion-reduce:animate-none"
-              />
+          <div aria-hidden="true" className={gridClass}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="overflow-hidden rounded-md border border-line bg-surface">
+                <div className="skeleton h-[168px]" />
+                <div className="space-y-3 p-4">
+                  <div className="skeleton h-8 rounded-sm" />
+                  <div className="skeleton h-4 w-4/5 rounded-sm" />
+                  <div className="skeleton h-3 w-3/5 rounded-sm" />
+                </div>
+              </div>
             ))}
           </div>
         )}
       </div>
     )
-  if (empty) return <p className="py-6 text-muted">{p.empty}</p>
+  if (empty)
+    return (
+      <div className="flex flex-col items-center border-y border-dashed border-line px-5 py-14 text-center">
+        <Radar aria-hidden="true" className="size-9 text-accent" />
+        <p className="mt-4 font-bold">{p.empty}</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted">{p.emptyHint}</p>
+      </div>
+    )
   return (
     <>
-      {grid ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div> : children}
+      {grid ? <div className={gridClass}>{children}</div> : children}
       {more.length > 0 && (
-        <button
-          type="button"
-          disabled={fetching}
-          onClick={() => more.forEach((q) => void q.fetchNextPage())}
-          className="btn mt-8"
-        >
-          {p.more}
-        </button>
+        <div className="mt-10 flex justify-center">
+          <button
+            type="button"
+            disabled={fetching}
+            onClick={() => more.forEach((q) => void q.fetchNextPage())}
+            className="btn btn-primary"
+          >
+            {p.more}
+          </button>
+        </div>
       )}
     </>
   )

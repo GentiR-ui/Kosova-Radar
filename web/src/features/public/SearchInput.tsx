@@ -6,10 +6,14 @@ export default function SearchInput({
   id,
   value,
   onCommit,
+  placeholder,
+  className = selectClass,
 }: {
   id: string
   value: string
   onCommit: (value: string) => void
+  placeholder?: string
+  className?: string
 }) {
   const [text, setText] = useState(value)
   const committed = useRef(value)
@@ -33,7 +37,8 @@ export default function SearchInput({
       type="search"
       value={text}
       onChange={(e) => setText(e.target.value)}
-      className={selectClass}
+      placeholder={placeholder}
+      className={className}
     />
   )
 }

@@ -35,6 +35,19 @@ export function formatDate(iso: string): string {
   return `${p.day}.${p.month}.${p.year}`
 }
 
+/** Day of month and month index (0-11) in Pristina time, for the date badge on event cards. */
+export function dayAndMonth(iso: string): { day: string; month: number } {
+  const p = parts(new Date(iso))
+  return { day: p.day ?? '', month: Number(p.month) - 1 }
+}
+
+/** A "yyyy-MM-dd" date moved by `days` calendar days. */
+export function addDays(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 /** The current Pristina date as "yyyy-MM-dd" (the format of the from/to query parameters). */
 export function pristinaToday(now: Date = new Date()): string {
   const p = parts(now)
@@ -79,4 +92,9 @@ export function fromPristinaInput(value: string): string | null {
   }
   const out = new Date(guess)
   return Number.isNaN(out.getTime()) ? null : out.toISOString()
+}
+
+/** Midnight after the Pristina day of `iso`: the effective end of an event without an end time. */
+export function endOfPristinaDay(iso: string): string | null {
+  return fromPristinaInput(`${addDays(pristinaToday(new Date(iso)), 1)}T00:00`)
 }

@@ -1,21 +1,28 @@
-import { motion, useReducedMotion, useScroll, useSpring } from 'motion/react'
+import { MotionConfig, motion, useMotionValueEvent, useScroll, useSpring } from 'motion/react'
+import { Radar, Search } from 'lucide-react'
+import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { t } from '../../lib/strings'
+import RadarSignal from './RadarSignal'
+import { p } from './strings'
 
 const nav = [
   { to: '/events', label: t.nav.events },
   { to: '/deals', label: t.nav.deals },
-  { to: '/search', label: t.nav.search },
+  { to: '/search', label: t.nav.search, icon: true },
 ]
 
-function RadarMark() {
+const year = new Date().getFullYear()
+
+/** Page width and side gutters shared by every public section. */
+export const container = 'mx-auto w-full max-w-[1120px] px-[18px] sm:px-8'
+
+/** "kosovaradar." word mark. */
+function Brand({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-7 text-accent">
-      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="12" cy="12" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M12 12 19 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="1.7" fill="currentColor" />
-    </svg>
+    <span className={`whitespace-nowrap font-extrabold tracking-tight ${className}`}>
+      kosova<span className="text-accent">radar.</span>
+    </span>
   )
 }
 
@@ -26,55 +33,112 @@ function ScrollProgress() {
     <motion.div
       aria-hidden="true"
       style={{ scaleX }}
-      className="absolute inset-x-0 bottom-0 h-0.5 origin-left bg-accent"
+      className="absolute inset-x-0 -bottom-px h-0.5 origin-left bg-accent"
     />
   )
 }
 
-export default function PublicLayout() {
-  const reduce = useReducedMotion()
+function Header() {
+  const { scrollY } = useScroll()
+  const [scrolled, setScrolled] = useState(false)
+  useMotionValueEvent(scrollY, 'change', (y) => setScrolled(y > 8))
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b border-line bg-surface/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link
-            to="/"
-            className="flex shrink-0 items-center gap-2 whitespace-nowrap text-lg font-semibold tracking-tight"
-          >
-            <RadarMark />
-            {t.brand}
-          </Link>
+    // Solid background: the menu stays readable over any content while scrolling.
+    <header
+      className={`sticky top-0 z-40 border-b border-line bg-paper transition-shadow duration-300 ${
+        scrolled ? 'shadow-[0_10px_30px_rgb(0_0_0/0.45)]' : ''
+      }`}
+    >
+      <div className={`${container} flex h-[68px] items-center justify-between gap-3 sm:h-20`}>
+        <Link to="/" aria-label={t.brand} className="flex min-w-0 items-center gap-2.5 rounded-sm">
+          <RadarSignal className="w-9 sm:w-10" />
+          <Brand className="text-lg max-[379px]:hidden sm:text-[23px]" />
+        </Link>
+        <div className="flex items-center gap-4">
+          <span className="hidden items-center gap-2 text-sm text-muted lg:flex">
+            <span className="live-dot" /> {p.liveTag}
+          </span>
           <nav aria-label={t.nav.label}>
-            <ul className="flex gap-0.5 text-sm font-medium sm:gap-1">
+            <ul className="flex items-center gap-0.5 text-sm font-semibold sm:gap-1">
               {nav.map((n) => (
                 <li key={n.to}>
                   <NavLink
                     to={n.to}
                     className={({ isActive }) =>
-                      `inline-flex min-h-11 items-center rounded-lg px-2 transition-colors sm:px-3 ${
-                        isActive
-                          ? 'bg-accent-soft text-accent'
-                          : 'text-muted hover:bg-paper hover:text-ink'
+                      `relative isolate inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-sm px-2 transition-colors duration-200 sm:px-3.5 ${
+                        isActive ? 'text-accent-ink' : 'text-muted hover:text-ink'
                       }`
                     }
                   >
-                    {n.label}
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.span
+                            layoutId="nav-indicator"
+                            aria-hidden="true"
+                            className="absolute inset-1 -z-10 rounded-sm bg-accent"
+                            transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+                          />
+                        )}
+                        {n.icon && <Search aria-hidden="true" className="size-4" />}
+                        <span className={n.icon ? 'max-sm:sr-only' : ''}>{n.label}</span>
+                      </>
+                    )}
                   </NavLink>
                 </li>
               ))}
             </ul>
           </nav>
         </div>
-        {!reduce && <ScrollProgress />}
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
-        <Outlet />
-      </main>
-    </div>
+      </div>
+      <ScrollProgress />
+    </header>
   )
 }
 
-/** Placeholder for public pages built in later tasks (T033–T035). */
+function Footer() {
+  return (
+    <footer className="mt-16 border-t border-line">
+      <div
+        className={`${container} flex flex-wrap items-center justify-between gap-4 py-6 text-xs text-muted`}
+      >
+        <Link to="/" className="flex items-center gap-2 rounded-sm text-base text-ink">
+          <Radar aria-hidden="true" className="size-5 text-accent" />
+          <Brand />
+        </Link>
+        <p className="max-sm:hidden">{p.footer}</p>
+        <span>
+          © {year} {t.brand}
+        </span>
+      </div>
+    </footer>
+  )
+}
+
+export default function PublicLayout() {
+  return (
+    // reducedMotion="user": transforms are skipped for visitors who prefer reduced motion.
+    <MotionConfig reducedMotion="user">
+      <div className="theme-radar flex min-h-dvh flex-col overflow-x-clip">
+        <Header />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
+    </MotionConfig>
+  )
+}
+
+/** Title-only page (not found). */
 export function PageTitle({ title }: { title: string }) {
-  return <h1 className="text-3xl sm:text-4xl">{title}</h1>
+  return (
+    <div className={`${container} flex flex-col items-center py-24 text-center`}>
+      <RadarSignal className="w-24" />
+      <h1 className="mt-8 text-3xl sm:text-4xl">{title}</h1>
+      <Link to="/" className="btn btn-primary mt-8">
+        {t.brand}
+      </Link>
+    </div>
+  )
 }

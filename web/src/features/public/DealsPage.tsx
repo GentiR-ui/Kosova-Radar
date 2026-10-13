@@ -3,6 +3,8 @@ import { flat, useCategories, useCities, useDeals } from './api'
 import { Field, selectClass } from './Field'
 import { DealCard } from './ItemCards'
 import ListShell from './ListShell'
+import Intro, { Panel } from './Intro'
+import { container } from './PublicLayout'
 import SearchInput from './SearchInput'
 import { p } from './strings'
 
@@ -30,46 +32,54 @@ export default function DealsPage() {
 
   return (
     <>
-      <h1 className="text-3xl sm:text-4xl">{p.dealsHeading}</h1>
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <Field label={p.city} htmlFor="f-city">
-          <select
-            id="f-city"
-            className={selectClass}
-            value={filters.city}
-            onChange={(e) => set('city', e.target.value)}
-          >
-            <option value="">{p.allCities}</option>
-            {cities.data?.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={p.category} htmlFor="f-category">
-          <select
-            id="f-category"
-            className={selectClass}
-            value={filters.category}
-            onChange={(e) => set('category', e.target.value)}
-          >
-            <option value="">{p.allCategories}</option>
-            {categories.data?.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label={p.searchDeals} htmlFor="f-search">
-          <SearchInput id="f-search" value={filters.search} onCommit={(v) => set('search', v)} />
-        </Field>
-      </div>
-      <div className="mt-6">
+      <Intro eyebrow={p.eyebrow} title={p.dealsHeading} lead={p.dealsLead}>
+        <Panel>
+          <h2 className="sr-only">{p.filters}</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label={p.city} htmlFor="f-city">
+              <select
+                id="f-city"
+                className={selectClass}
+                value={filters.city}
+                onChange={(e) => set('city', e.target.value)}
+              >
+                <option value="">{p.allCities}</option>
+                {cities.data?.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label={p.category} htmlFor="f-category">
+              <select
+                id="f-category"
+                className={selectClass}
+                value={filters.category}
+                onChange={(e) => set('category', e.target.value)}
+              >
+                <option value="">{p.allCategories}</option>
+                {categories.data?.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label={p.searchDeals} htmlFor="f-search">
+              <SearchInput
+                id="f-search"
+                value={filters.search}
+                onCommit={(v) => set('search', v)}
+              />
+            </Field>
+          </div>
+        </Panel>
+      </Intro>
+      <div className={`${container} pt-4`}>
         <ListShell queries={[deals]} grid>
-          {flat(deals).map((d) => (
-            <DealCard key={d.id} deal={d} />
+          {flat(deals).map((d, i) => (
+            <DealCard key={d.id} deal={d} index={i} />
           ))}
         </ListShell>
       </div>
