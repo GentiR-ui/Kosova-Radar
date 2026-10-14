@@ -1,6 +1,7 @@
-import { Timer } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { p } from './strings'
+
+export const DAY_MS = 86_400_000
 
 // One shared one-second clock for every countdown on the page.
 let now = Date.now()
@@ -35,52 +36,56 @@ function hms(ms: number): string {
 }
 
 /**
- * Live "starts in" / "ends in" strip on a card. `start` (events) counts down to the start and then shows
- * "started" until `end`; without `start` (deals) it counts down to `end`. `allDay` = only the date is known.
+ * Live "starts in" / "ends in" strip. `start` (events) counts down to the start and then shows
+ * "started" until `end`; without `start` (deals) it counts down to `end`. `allDay` = only the date is
+ * known. With `within`, the strip appears only while a live countdown is below that many milliseconds —
+ * that is how cards show urgency without a clock on every item.
  */
 export default function Countdown({
   start,
   end,
   allDay = false,
+  within,
   tone,
 }: {
   start?: string
   end: string | null
   allDay?: boolean
+  within?: number
   tone: 'event' | 'deal'
 }) {
   const current = useNow()
   const startMs = start ? Date.parse(start) : null
   const endMs = end ? Date.parse(end) : null
   let label: string
-  let digits: string | null = null
+  let remaining: number | null = null
   if (endMs !== null && current >= endMs) label = p.ended
   else if (allDay) label = p.allDay
   else if (startMs !== null && current < startMs) {
     label = p.startsIn
-    digits = hms(startMs - current)
+    remaining = startMs - current
   } else if (startMs !== null) label = p.started
   else if (endMs !== null) {
     label = p.endsIn
-    digits = hms(endMs - current)
+    remaining = endMs - current
   } else label = p.ended
 
-  const colours = tone === 'event' ? 'bg-event-soft text-event' : 'bg-accent-soft text-accent'
+  if (within !== undefined && (remaining === null || remaining > within)) return null
+
   return (
-    <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-sm px-3 py-2 ${colours}`}
+    <span
+      className={`inline-flex items-center gap-2 rounded-full bg-surface/95 px-2.5 py-1.5 text-[11px] font-bold shadow-card backdrop-blur-sm ${
+        tone === 'event' ? 'text-event' : 'text-accent'
+      }`}
     >
-      <span className="flex items-center gap-1.5 text-xs font-semibold">
-        <Timer aria-hidden="true" className="size-3.5" />
-        {label}
-      </span>
-      {/* The ticking digits are not announced every second. */}
-      <span
-        aria-hidden="true"
-        className="min-w-16 text-right font-mono text-sm font-bold tabular-nums"
-      >
-        {digits ?? '—'}
-      </span>
-    </div>
+      <span aria-hidden="true" className="live-dot" />
+      {label}
+      {remaining !== null && (
+        // The ticking digits are not announced every second.
+        <span aria-hidden="true" className="font-mono tabular-nums text-ink">
+          {hms(remaining)}
+        </span>
+      )}
+    </span>
   )
 }

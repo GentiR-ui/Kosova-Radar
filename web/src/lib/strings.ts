@@ -1,7 +1,13 @@
 /** Albanian UI strings for the app shell (ADR-009). Feature-specific strings live next to their feature. */
 export const t = {
   brand: 'Kosova Radar',
-  nav: { label: 'Kryesore', events: 'Evente', deals: 'Oferta', search: 'Kërko' },
+  nav: {
+    label: 'Kryesore',
+    home: 'Ballina',
+    events: 'Eventet',
+    deals: 'Ofertat',
+    search: 'Kërko',
+  },
   pages: { home: 'Çfarë ka sot në Kosovë', search: 'Kërkim' },
   error: 'Diçka shkoi keq.',
   retry: 'Provo sërish',

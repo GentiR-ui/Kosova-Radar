@@ -327,3 +327,23 @@
 - Feasibility: the bot User-Agent gets 200 from `https://gjirafamall.com/`, robots.txt (`User-agent: *`) disallows only admin/cart/checkout/account/`/search?` paths. The home page's "Oferta speciale" and recommended products are skeletons filled by JavaScript, so they are not usable (no headless browser, no private API). `/oferta-speciale` is a server-rendered category page that lists the products; the dated campaign page `/app-deals-august-2026` is server-rendered and paginated too, but a monthly slug would break silently, so it was not chosen.
 - Decision: source URL `https://gjirafamall.com/oferta-speciale`; `GjirafaMallDealsParser` lists only boxes with an old price (the page mixes regular-price products, which are not deals) and has no pagination. A source seeded by T053 on the site root is moved to the new URL by the seeder (a one-off exception to "seeding never touches rows"; that row could only fail).
 - Known limits: the page is small (21 boxes, 10 on sale, 5 ≥ 35 % on the capture day) and its content is a shop-side curation we cannot see the rules of; if the shop empties or renames the category the run fails `MalformedPayload` (or lists nothing), which the source health shows. The slider the shop's home page labels "Oferta speciale" may hold other products that only a JavaScript client can read.
+
+## ADR-046 — Public UI follows the client's design concept (supersedes ADR-044)
+- Date: 2026-10-15 · Status: accepted · Task: T056
+- Context: the client sent three design images (desktop concept, brand logo, phone concept) and asked for that look —
+  white background, the "Kosova Radar · Digital tracking solutions" logo, modern boxes/buttons, more animation — with
+  the phone version matching the concept but on white, without the bottom tab bar and without the profile avatar of
+  the image. The dark Lovable theme of ADR-044 is dropped.
+- Decision: one light theme for the whole app (no `.theme-radar` scope): white surfaces, `--color-brand` #10b981 with
+  teal/mint for gradients and graphics, `--color-accent` #047857 wherever text or a filled button is involved (AA),
+  violet for events, rose/cyan/orange/violet for discount badges by size. The logo is re-drawn as an inline SVG
+  (`Logo.tsx`): transparent, it follows the text colour, and its radar waves, signal blip and footer float animate.
+  Home = hero (eyebrow, h1, lead, search that opens /search, city chips, "Zbulo tani") with today's featured event and
+  the radar overlay beside it, a four-item feature band, then the feed: the required "Sot/Evente/Oferta" tablist
+  (REQ-100) over grouped sections ("Oferta të nxehta", "Evente aktuale") with their own headings and "Shiko të gjitha"
+  links, and a closing CTA banner. Taken from the concept only what the product has: no weather badge, no profile
+  menu, no bottom navigation, no price alerts or scam warnings; the header's city dropdown became the hero's city
+  chips, which drive the existing `city` filter.
+- Consequences: the admin inherits the same light tokens (green instead of blue). Bundle +2 kB gzip (Caveat subset for
+  the hero's handwritten line). Cards keep every fact the acceptance tests require (full Pristina date-time, validity,
+  source link, freshness, discount), so the locked suites are untouched.

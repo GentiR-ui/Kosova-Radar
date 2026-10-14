@@ -1,23 +1,25 @@
 import { motion } from 'motion/react'
-import { ArrowUpRight, CalendarDays, Clock3, MapPin, Store, Tag, Ticket } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, Clock3, MapPin, Store } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { DealSummaryDto, EventSummaryDto } from './api'
-import Countdown from './Countdown'
-import { endOfPristinaDay, formatDate, formatEventStart, formatMoney, safeHref } from './format'
+import type { CategoryDto, DealSummaryDto, EventSummaryDto } from './api'
+import Countdown, { DAY_MS } from './Countdown'
+import {
+  dayAndMonth,
+  endOfPristinaDay,
+  formatDate,
+  formatEventStart,
+  formatMoney,
+  safeHref,
+} from './format'
+import { LogoMark } from './Logo'
 import { spring } from './motion'
-import RadarSignal from './RadarSignal'
 import { p } from './strings'
 
 type Tone = 'event' | 'deal'
-const toneText = { event: 'text-event', deal: 'text-accent' } as const
 
 export function SyntheticBadge() {
-  return (
-    <span className="inline-flex w-fit rounded-sm border border-warn px-2 py-0.5 text-xs font-semibold text-warn">
-      {p.synthetic}
-    </span>
-  )
+  return <span className="chip border border-warn text-warn">{p.synthetic}</span>
 }
 
 export function Freshness({
@@ -31,14 +33,14 @@ export function Freshness({
     <span className="inline-flex items-center gap-1.5">
       <span
         aria-hidden="true"
-        className={`size-1.5 rounded-full ${freshness === 'fresh' ? 'bg-accent' : 'bg-warn'}`}
+        className={`size-1.5 shrink-0 rounded-full ${freshness === 'fresh' ? 'bg-brand' : 'bg-warn'}`}
       />
       {freshness === 'fresh' ? p.fresh : p.stale(formatDate(lastVerifiedAt))}
     </span>
   )
 }
 
-export function SourceLink({ name, url, tone }: { name: string; url: string; tone?: Tone }) {
+export function SourceLink({ name, url }: { name: string; url: string }) {
   const href = safeHref(url)
   const label = p.source(name)
   if (!href) return <span>{label}</span>
@@ -47,17 +49,15 @@ export function SourceLink({ name, url, tone }: { name: string; url: string; ton
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={`relative z-10 inline-flex w-fit items-center gap-1 rounded-sm font-semibold underline-offset-4 hover:underline ${
-        tone ? toneText[tone] : 'text-ink'
-      }`}
+      className="relative z-10 inline-flex w-fit items-center gap-1 rounded font-semibold text-ink underline-offset-4 transition-colors hover:text-accent hover:underline"
     >
       {label}
-      <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
+      <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
     </a>
   )
 }
 
-/** Tilted lime discount label; the only place the percentage is shown on a card or a detail page. */
+/** Discount label; the colour rises with the discount, from violet to rose. */
 export function DiscountBadge({
   percent,
   className = '',
@@ -65,14 +65,47 @@ export function DiscountBadge({
   percent: number
   className?: string
 }) {
+  const tone =
+    percent >= 50
+      ? 'bg-hot'
+      : percent >= 40
+        ? 'bg-accent'
+        : percent >= 30
+          ? 'bg-[#0e7490]'
+          : percent >= 20
+            ? 'bg-[#c2410c]'
+            : 'bg-event'
   return (
     <span
-      className={`inline-block -rotate-[4deg] rounded-[3px] bg-accent px-2.5 py-1 font-extrabold leading-none text-accent-ink shadow-card ${className}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold leading-none text-white shadow-sm ${tone} ${className}`}
     >{`-${percent}%`}</span>
   )
 }
 
-/** Picture of the item, or a radar on graphite when the source has none, so every card has the same shape. */
+/** Category chips get a stable colour from their slug, so the same category always looks the same. */
+const categoryTones = [
+  'bg-event-soft text-event',
+  'bg-accent-soft text-accent',
+  'bg-hot-soft text-hot',
+  'bg-[#e7f2fb] text-[#0e5f8a]',
+  'bg-[#fdf0e3] text-[#9a4a06]',
+]
+
+export function CategoryChip({
+  category,
+  className = '',
+}: {
+  category: CategoryDto
+  className?: string
+}) {
+  const tone =
+    categoryTones[
+      [...category.slug].reduce((n, c) => n + c.charCodeAt(0), 0) % categoryTones.length
+    ]
+  return <span className={`chip ${tone} ${className}`}>{category.name}</span>
+}
+
+/** Picture of the item, or a soft brand panel when the source has none, so every card keeps its shape. */
 export function Media({
   url,
   eager = false,
@@ -87,7 +120,7 @@ export function Media({
 }) {
   const href = url ? safeHref(url) : undefined
   return (
-    <div className={`relative overflow-hidden bg-raised ${className}`}>
+    <div className={`relative overflow-hidden bg-soft ${className}`}>
       {href ? (
         <img
           src={href}
@@ -98,11 +131,11 @@ export function Media({
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
           referrerPolicy="no-referrer"
-          className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          className="size-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-[1.06]"
         />
       ) : (
-        <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_45%,oklch(0.27_0.025_150),oklch(0.18_0.006_170)_70%)]">
-          <RadarSignal className="radar-large w-28" />
+        <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_40%,#e6f7ef,#f3f8f6_70%)]">
+          <LogoMark className="w-16 text-ink/70 transition-transform duration-700 ease-out-expo group-hover:scale-110" />
         </div>
       )}
       {children}
@@ -110,10 +143,27 @@ export function Media({
   )
 }
 
-function Detail({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+/** Calendar-style date badge on an event picture. */
+function DateBadge({ iso }: { iso: string }) {
+  const { day, month } = dayAndMonth(iso)
+  const name = p.months[month] ?? ''
   return (
-    <span className="flex items-start gap-1.5 leading-relaxed">
-      <span aria-hidden="true" className="mt-0.5 shrink-0">
+    <span
+      aria-hidden="true"
+      className="absolute left-3 top-3 flex w-12 flex-col items-center rounded-xl bg-surface/95 py-1.5 shadow-card backdrop-blur-sm"
+    >
+      <span className="text-lg font-extrabold leading-none text-event">{Number(day)}</span>
+      <span className="mt-0.5 text-[10px] font-bold uppercase leading-none text-muted">
+        {name.slice(0, 3)}
+      </span>
+    </span>
+  )
+}
+
+function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="flex items-start gap-1.5 leading-snug">
+      <span aria-hidden="true" className="mt-px shrink-0 [&_svg]:size-3.5">
         {icon}
       </span>
       <span className="min-w-0">{children}</span>
@@ -128,9 +178,7 @@ function Card({
   index,
   synthetic,
   photo,
-  countdown,
-  category,
-  details,
+  children,
   footer,
 }: {
   tone: Tone
@@ -139,83 +187,52 @@ function Card({
   index: number
   synthetic: boolean
   photo: ReactNode
-  countdown: ReactNode
-  category: ReactNode
-  details: ReactNode
+  children: ReactNode
   footer: ReactNode
 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 35, scale: 0.97 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 26 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -40px 0px' }}
-      whileHover={{ y: -7 }}
-      transition={{ ...spring, delay: (index % 4) * 0.055 }}
-      className={`group relative flex h-full flex-col overflow-hidden rounded-md border bg-surface transition-[border-color,box-shadow] duration-200 hover:shadow-card focus-within:shadow-card ${
-        tone === 'event'
-          ? 'border-event/30 hover:border-event focus-within:border-event'
-          : 'border-accent/30 hover:border-accent focus-within:border-accent'
-      }`}
+      transition={{ ...spring, delay: (index % 4) * 0.06 }}
+      className="card group relative flex h-full flex-col overflow-hidden transition-[box-shadow,translate,border-color] duration-300 ease-out-expo hover:-translate-y-1.5 hover:shadow-lift focus-within:-translate-y-1.5 focus-within:shadow-lift"
     >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-muted lg:px-3">
-        <span aria-hidden="true" className={`font-mono text-xs ${toneText[tone]}`}>
-          {String(index + 1).padStart(2, '0')}
-        </span>
-        <span>{tone === 'event' ? p.cardEvent : p.cardDeal}</span>
-        <ArrowUpRight
-          aria-hidden="true"
-          className={`size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${toneText[tone]}`}
-        />
-      </div>
       {photo}
-      <div className="flex min-w-0 flex-1 flex-col p-4 lg:p-3.5">
-        {countdown}
-        <div className="mt-3.5 flex items-center justify-between gap-2 text-[11px] text-muted">
-          {category}
-        </div>
-        <h2 className="mt-1.5 text-lg font-extrabold leading-snug lg:text-[15px]">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <h2 className="line-clamp-2 text-[15px] font-extrabold leading-snug sm:text-base">
           <Link
             to={to}
-            className="rounded-sm after:absolute after:inset-0 after:content-[''] hover:underline hover:underline-offset-4"
+            className="rounded after:absolute after:inset-0 after:content-[''] group-hover:text-accent"
           >
             {title}
           </Link>
         </h2>
+        <div className="mt-2 flex flex-col gap-1.5 text-xs text-muted">{children}</div>
         {synthetic && (
-          <div className="mt-2">
+          <div className="mt-2.5">
             <SyntheticBadge />
           </div>
         )}
-        <div
-          className={`mb-3.5 mt-3.5 flex flex-col gap-1.5 text-xs text-muted [&_svg]:size-3.5 ${
-            tone === 'event' ? '[&_svg]:text-event' : '[&_svg]:text-accent'
-          }`}
-        >
-          {details}
-        </div>
-        <div className="mt-auto flex flex-col gap-1.5 border-t border-line pt-3 text-[11px] text-muted">
-          {footer}
+        <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-3">
+          <p className="flex min-w-0 flex-col gap-1 text-[11px] text-muted">{footer}</p>
+          <span
+            aria-hidden="true"
+            className={`grid size-8 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] duration-300 ease-out-expo group-hover:translate-x-0.5 group-hover:text-white ${
+              tone === 'event'
+                ? 'bg-event-soft text-event group-hover:bg-event'
+                : 'bg-accent-soft text-accent group-hover:bg-accent'
+            }`}
+          >
+            <ArrowUpRight className="size-4" />
+          </span>
         </div>
       </div>
     </motion.article>
   )
 }
 
-function TypeBadge({ tone }: { tone: Tone }) {
-  const Icon = tone === 'event' ? Ticket : Tag
-  return (
-    <span
-      className={`absolute left-2.5 top-2.5 flex items-center gap-1 rounded-[3px] px-2 py-1 text-[11px] font-bold text-accent-ink ${
-        tone === 'event' ? 'bg-event' : 'bg-accent'
-      }`}
-    >
-      <Icon aria-hidden="true" className="size-3" />
-      {tone === 'event' ? p.typeEvent : p.typeDeal}
-    </span>
-  )
-}
-
-const photoSize = 'h-[210px] sm:h-[220px] lg:h-[168px]'
+const photoSize = 'h-[190px] sm:h-[200px] lg:h-[170px]'
 
 export function EventCard({ event, index = 0 }: { event: EventSummaryDto; index?: number }) {
   return (
@@ -227,42 +244,39 @@ export function EventCard({ event, index = 0 }: { event: EventSummaryDto; index?
       synthetic={event.isSynthetic}
       photo={
         <Media url={event.imageUrl} className={photoSize}>
-          <TypeBadge tone="event" />
+          <DateBadge iso={event.startsAt} />
+          {event.category && (
+            <CategoryChip
+              category={event.category}
+              className="absolute bottom-3 right-3 bg-surface/95 shadow-card backdrop-blur-sm"
+            />
+          )}
+          <span className="absolute bottom-3 left-3">
+            <Countdown
+              tone="event"
+              start={event.startsAt}
+              end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
+              allDay={!event.startTimeKnown}
+              within={DAY_MS}
+            />
+          </span>
         </Media>
-      }
-      countdown={
-        <Countdown
-          tone="event"
-          start={event.startsAt}
-          end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
-          allDay={!event.startTimeKnown}
-        />
-      }
-      category={
-        <>
-          <span>{event.category?.name}</span>
-          {event.priceText && <span className="font-bold text-ink">{event.priceText}</span>}
-        </>
-      }
-      details={
-        <>
-          <Detail icon={<Clock3 />}>
-            <span className="font-semibold text-ink">
-              {formatEventStart(event.startsAt, event.startTimeKnown)}
-            </span>
-          </Detail>
-          <Detail icon={<MapPin />}>
-            {[event.venueName, event.city.name].filter(Boolean).join(', ')}
-          </Detail>
-        </>
       }
       footer={
         <>
-          <SourceLink name={event.sourceName} url={event.sourceUrl} tone="event" />
+          <SourceLink name={event.sourceName} url={event.sourceUrl} />
           <Freshness lastVerifiedAt={event.lastVerifiedAt} freshness={event.freshness} />
         </>
       }
-    />
+    >
+      <Meta icon={<Clock3 />}>
+        <span className="font-bold text-ink">
+          {formatEventStart(event.startsAt, event.startTimeKnown)}
+        </span>
+      </Meta>
+      <Meta icon={<MapPin />}>{[event.venueName, event.city.name].filter(Boolean).join(', ')}</Meta>
+      {event.priceText && <Meta icon={<Store />}>{event.priceText}</Meta>}
+    </Card>
   )
 }
 
@@ -278,23 +292,26 @@ export function DealPrice({
     return <span>{deal.priceText ?? p.priceUnknown}</span>
   }
   return (
-    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-      {deal.oldPrice !== null && (
-        <s className="font-normal text-muted">{formatMoney(deal.oldPrice, deal.currency)}</s>
-      )}
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
       {deal.newPrice !== null && (
-        <strong className="font-extrabold text-accent">
+        <strong className="text-lg font-extrabold text-accent">
           {formatMoney(deal.newPrice, deal.currency)}
         </strong>
       )}
+      {deal.oldPrice !== null && (
+        <s className="text-sm font-medium text-muted">
+          {formatMoney(deal.oldPrice, deal.currency)}
+        </s>
+      )}
       {withDiscount && deal.discountPercent !== null && (
-        <DiscountBadge percent={deal.discountPercent} className="text-base" />
+        <DiscountBadge percent={deal.discountPercent} className="text-sm" />
       )}
     </span>
   )
 }
 
 export function DealCard({ deal, index = 0 }: { deal: DealSummaryDto; index?: number }) {
+  const place = [deal.merchantName, deal.city?.name].filter(Boolean).join(' · ')
   return (
     <Card
       tone="deal"
@@ -304,44 +321,40 @@ export function DealCard({ deal, index = 0 }: { deal: DealSummaryDto; index?: nu
       synthetic={deal.isSynthetic}
       photo={
         <Media url={deal.imageUrl} className={photoSize}>
-          <TypeBadge tone="deal" />
           {deal.discountPercent !== null && (
-            <span className="absolute bottom-3 right-3">
-              <DiscountBadge
-                percent={deal.discountPercent}
-                className="text-[29px] max-sm:text-[34px]"
-              />
+            <span className="absolute left-3 top-3">
+              <DiscountBadge percent={deal.discountPercent} className="px-3 py-1.5 text-sm" />
             </span>
           )}
-        </Media>
-      }
-      countdown={deal.validUntil ? <Countdown tone="deal" end={deal.validUntil} /> : null}
-      category={<span>{deal.category?.name}</span>}
-      details={
-        <>
-          <Detail icon={<CalendarDays />}>
-            {deal.validUntil
-              ? p.validUntil(formatDate(deal.validUntil))
-              : deal.isTodaysDeal
-                ? p.todaysDeal
-                : p.validityUnknown}
-          </Detail>
-          {(deal.merchantName || deal.city) && (
-            <Detail icon={<Store />}>
-              {[deal.merchantName, deal.city?.name].filter(Boolean).join(', ')}
-            </Detail>
+          {deal.category && (
+            <CategoryChip
+              category={deal.category}
+              className="absolute bottom-3 right-3 bg-surface/95 shadow-card backdrop-blur-sm"
+            />
           )}
-          <span className="mt-1 text-base text-ink">
-            <DealPrice deal={deal} />
+          <span className="absolute bottom-3 left-3">
+            <Countdown tone="deal" end={deal.validUntil} within={DAY_MS} />
           </span>
-        </>
+        </Media>
       }
       footer={
         <>
-          <SourceLink name={deal.sourceName} url={deal.sourceUrl} tone="deal" />
+          <SourceLink name={deal.sourceName} url={deal.sourceUrl} />
           <Freshness lastVerifiedAt={deal.lastVerifiedAt} freshness={deal.freshness} />
         </>
       }
-    />
+    >
+      {place && <span className="truncate">{place}</span>}
+      <span className="my-0.5">
+        <DealPrice deal={deal} />
+      </span>
+      <Meta icon={<CalendarDays />}>
+        {deal.validUntil
+          ? p.validUntil(formatDate(deal.validUntil))
+          : deal.isTodaysDeal
+            ? p.todaysDeal
+            : p.validityUnknown}
+      </Meta>
+    </Card>
   )
 }

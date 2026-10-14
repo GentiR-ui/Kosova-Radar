@@ -24,52 +24,39 @@ export function Reveal({
   )
 }
 
-/** Page opening: live eyebrow, large h1, lead text, optional right-hand note and content below. */
+/** Opening of a sub-page: live eyebrow, large h1, lead text and an optional panel below. */
 export default function Intro({
   eyebrow,
   title,
   lead,
-  aside,
   children,
 }: {
   eyebrow: string
   title: ReactNode
   lead?: ReactNode
-  aside?: ReactNode
   children?: ReactNode
 }) {
   return (
-    <section className={`${container} pb-6 pt-7 sm:pb-7 sm:pt-9`}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-5">
-        <div className="min-w-0">
-          <Reveal>
-            <p className="eyebrow">
-              <span className="live-dot" /> {eyebrow}
-            </p>
-          </Reveal>
-          <Reveal delay={0.06}>
-            <h1 className="mt-2 text-[38px] leading-[1.15] sm:text-[54px]">{title}</h1>
-          </Reveal>
-          {lead && (
-            <Reveal delay={0.12}>
-              <p className="mt-2.5 max-w-[750px] text-[13px] leading-[1.8] text-muted sm:text-sm">
-                {lead}
-              </p>
-            </Reveal>
-          )}
-        </div>
-        {aside && (
-          <Reveal delay={0.12} className="hidden pb-1 lg:block">
-            {aside}
-          </Reveal>
-        )}
-      </div>
+    <section className={`${container} pb-2 pt-8 sm:pt-12`}>
+      <Reveal>
+        <p className="eyebrow text-accent">
+          <span className="live-dot" /> {eyebrow}
+        </p>
+      </Reveal>
+      <Reveal delay={0.06}>
+        <h1 className="mt-3 text-[38px] leading-[1.06] sm:text-[52px]">{title}</h1>
+      </Reveal>
+      {lead && (
+        <Reveal delay={0.12}>
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">{lead}</p>
+        </Reveal>
+      )}
       {children && <Reveal delay={0.18}>{children}</Reveal>}
     </section>
   )
 }
 
-/** Bordered panel used for filters and the search form. */
+/** White card that holds the filters or the search form under an {@link Intro}. */
 export function Panel({ children }: { children: ReactNode }) {
-  return <div className="mt-6 rounded-md border border-line bg-surface p-4 sm:p-5">{children}</div>
+  return <div className="card mt-7 p-4 sm:p-5">{children}</div>
 }

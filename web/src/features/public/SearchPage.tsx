@@ -41,10 +41,10 @@ export default function SearchPage() {
                 value={text}
                 placeholder={p.searchPlaceholder}
                 onChange={(e) => setText(e.target.value)}
-                className="h-12 w-full rounded-sm border border-line bg-paper pl-10 pr-4 text-ink transition-colors placeholder:text-muted hover:border-muted focus:border-accent focus:outline-none"
+                className="h-12 w-full rounded-full border border-line bg-soft pl-10 pr-4 text-ink transition-[border-color,background-color] placeholder:text-muted hover:border-accent/40 focus:border-accent focus:bg-surface focus:outline-none"
               />
             </div>
-            <button type="submit" className="btn btn-primary h-12 px-7">
+            <button type="submit" className="btn btn-primary h-12 shrink-0 px-7">
               {p.search} <ArrowUpRight aria-hidden="true" className="size-4" />
             </button>
           </form>
@@ -64,10 +64,8 @@ export default function SearchPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ ...spring, delay: Math.min(i, 8) * 0.045 }}
-                    className={`group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 rounded-md border bg-surface p-4 transition-colors sm:p-5 ${
-                      r.kind === 'event'
-                        ? 'border-event/30 hover:border-event'
-                        : 'border-accent/30 hover:border-accent'
+                    className={`card group relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 p-4 transition-[box-shadow,translate,border-color] duration-300 hover:-translate-y-0.5 hover:shadow-lift sm:p-5 ${
+                      r.kind === 'event' ? 'hover:border-event/50' : 'hover:border-accent/50'
                     }`}
                   >
                     <span aria-hidden="true" className={`font-mono text-xs ${tone}`}>
@@ -75,8 +73,10 @@ export default function SearchPage() {
                     </span>
                     <div className="min-w-0">
                       <span
-                        className={`inline-flex rounded-[3px] px-2 py-0.5 text-[11px] font-bold text-accent-ink ${
-                          r.kind === 'event' ? 'bg-event' : 'bg-accent'
+                        className={`chip text-[11px] ${
+                          r.kind === 'event'
+                            ? 'bg-event-soft text-event'
+                            : 'bg-accent-soft text-accent'
                         }`}
                       >
                         {r.kind === 'event' ? p.kindEvent : p.kindDeal}
@@ -84,7 +84,7 @@ export default function SearchPage() {
                       <p className="mt-2 font-extrabold leading-snug sm:text-lg">
                         <Link
                           to={`/${r.kind === 'event' ? 'events' : 'deals'}/${r.id}`}
-                          className="rounded-sm after:absolute after:inset-0 after:content-[''] hover:underline hover:underline-offset-4"
+                          className="rounded after:absolute after:inset-0 after:content-[''] group-hover:text-accent"
                         >
                           {r.title}
                         </Link>
@@ -95,10 +95,16 @@ export default function SearchPage() {
                           .join(' · ')}
                       </p>
                     </div>
-                    <ArrowUpRight
+                    <span
                       aria-hidden="true"
-                      className={`size-5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${tone}`}
-                    />
+                      className={`grid size-9 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] duration-300 group-hover:translate-x-0.5 group-hover:text-white ${
+                        r.kind === 'event'
+                          ? 'bg-event-soft text-event group-hover:bg-event'
+                          : 'bg-accent-soft text-accent group-hover:bg-accent'
+                      }`}
+                    >
+                      <ArrowUpRight className="size-4" />
+                    </span>
                   </motion.li>
                 )
               })}

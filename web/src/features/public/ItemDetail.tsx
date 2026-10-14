@@ -5,7 +5,7 @@ import { ApiError } from '../../lib/api'
 import { t } from '../../lib/strings'
 import { container, PageTitle } from './PublicLayout'
 import { useDeal, useEvent, type CategoryDto, type DealDetailDto, type EventDetailDto } from './api'
-import { formatDate, formatEventStart } from './format'
+import { formatDate, formatEventStart, safeHref } from './format'
 import { DealPrice, Freshness, Media, SourceLink, SyntheticBadge } from './ItemCards'
 import { Reveal } from './Intro'
 import { p } from './strings'
@@ -32,9 +32,9 @@ function DetailShell<T>({
       <div role="status" className={`${container} py-12`}>
         <p className="sr-only">{t.loading}</p>
         <div aria-hidden="true" className="space-y-4">
-          <div className="skeleton h-5 w-40 rounded-sm" />
-          <div className="skeleton h-12 w-3/4 rounded-sm" />
-          <div className="skeleton h-[240px] w-full rounded-md sm:h-[380px]" />
+          <div className="skeleton h-5 w-40 rounded-full" />
+          <div className="skeleton h-12 w-3/4 rounded-xl" />
+          <div className="skeleton h-[240px] w-full rounded-card sm:h-[380px]" />
         </div>
       </div>
     )
@@ -43,7 +43,7 @@ function DetailShell<T>({
       return <PageTitle title={t.notFound} />
     return (
       <div role="alert" className={`${container} space-y-4 py-12`}>
-        <p className="font-semibold text-danger">{t.error}</p>
+        <p className="font-bold text-danger">{t.error}</p>
         <button type="button" onClick={() => void query.refetch()} className="btn">
           {t.retry}
         </button>
@@ -63,7 +63,7 @@ function BackLink({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="group inline-flex min-h-11 items-center gap-2 rounded-sm border border-line px-4 text-sm font-semibold text-ink transition-colors hover:border-accent hover:text-accent"
+      className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-bold text-ink shadow-card transition-colors hover:border-accent hover:text-accent"
     >
       <ArrowLeft
         aria-hidden="true"
@@ -91,35 +91,32 @@ function Header({
   return (
     <Reveal delay={0.04}>
       <div className="mt-8 flex flex-wrap items-center gap-2.5 text-xs">
-        <span
-          className={`flex items-center gap-1 rounded-[3px] px-2 py-1 font-bold text-accent-ink ${toneClasses[tone].badge}`}
-        >
+        <span className={`chip text-white ${toneClasses[tone].badge}`}>
           <Icon aria-hidden="true" className="size-3" />
           {tone === 'event' ? p.typeEvent : p.typeDeal}
         </span>
         {category && <span className="font-semibold text-muted">{category.name}</span>}
         {synthetic && <SyntheticBadge />}
         {ended && (
-          <p
-            role="status"
-            className="rounded-sm border border-line px-2 py-1 font-semibold text-muted"
-          >
+          <p role="status" className="chip border border-line text-muted">
             {ended}
           </p>
         )}
       </div>
-      <h1 className="mt-4 max-w-4xl text-[34px] leading-[1.12] sm:text-5xl">{title}</h1>
+      <h1 className="mt-4 max-w-4xl text-[34px] leading-[1.08] sm:text-5xl">{title}</h1>
     </Reveal>
   )
 }
 
 function Hero({ url }: { url: string | null }) {
+  // Without a picture the detail page starts with the text: an empty placeholder box would only take space.
+  if (!url || !safeHref(url)) return null
   return (
     <Reveal delay={0.1}>
       <Media
         url={url}
         eager
-        className="h-[240px] rounded-md border border-line sm:h-[380px] lg:h-[440px]"
+        className="h-[240px] rounded-card border border-line shadow-card sm:h-[380px] lg:h-[440px]"
       />
     </Reveal>
   )
@@ -140,7 +137,7 @@ function Fact({
     <div className="flex gap-3.5 py-4 first:pt-0 last:pb-0">
       <span
         aria-hidden="true"
-        className={`grid size-10 shrink-0 place-items-center rounded-sm [&_svg]:size-[18px] ${toneClasses[tone].soft}`}
+        className={`grid size-10 shrink-0 place-items-center rounded-xl [&_svg]:size-[18px] ${toneClasses[tone].soft}`}
       >
         {icon}
       </span>
@@ -167,13 +164,11 @@ function InfoCard({
     (s) => !(s.name === item.sourceName && s.url === item.sourceUrl),
   )
   return (
-    <aside
-      className={`rounded-md border bg-surface p-5 sm:p-6 lg:sticky lg:top-28 ${toneClasses[tone].border}`}
-    >
+    <aside className={`card p-5 sm:p-6 lg:sticky lg:top-28 ${toneClasses[tone].border}`}>
       <h2 className="text-lg">{p.details}</h2>
       <dl className="mt-5 divide-y divide-line">{children}</dl>
-      <div className="mt-6 flex flex-col gap-1.5 rounded-sm bg-paper p-4 text-sm text-muted">
-        <SourceLink name={item.sourceName} url={item.sourceUrl} tone={tone} />
+      <div className="mt-6 flex flex-col gap-1.5 rounded-xl bg-soft p-4 text-sm text-muted">
+        <SourceLink name={item.sourceName} url={item.sourceUrl} />
         <Freshness lastVerifiedAt={item.lastVerifiedAt} freshness={item.freshness} />
       </div>
       {others.length > 0 && (

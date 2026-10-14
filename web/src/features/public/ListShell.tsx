@@ -1,11 +1,11 @@
 import type { UseInfiniteQueryResult } from '@tanstack/react-query'
-import { Radar } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { t } from '../../lib/strings'
 import type { Page } from './api'
+import { LogoMark } from './Logo'
 import { p } from './strings'
 
-const gridClass = 'grid gap-[23px] sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-[18px]'
+export const cardGrid = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5'
 
 type Q = Pick<
   UseInfiniteQueryResult<{ pages: Page<unknown>[] }, Error>,
@@ -22,11 +22,14 @@ type Q = Pick<
 export default function ListShell({
   queries,
   grid = false,
+  skeleton = grid,
   children,
 }: {
   queries: Q[]
-  /** Lay children out as a responsive card grid (public cards); otherwise they render as given. */
+  /** Lay children out as a responsive card grid; off when the children bring their own grids. */
   grid?: boolean
+  /** Show card skeletons while loading (on by default with `grid`). */
+  skeleton?: boolean
   children: ReactNode
 }) {
   const failed = queries.some((q) => q.isError)
@@ -37,11 +40,8 @@ export default function ListShell({
 
   if (failed)
     return (
-      <div
-        role="alert"
-        className="flex flex-col items-start gap-4 rounded-md border border-danger/40 bg-surface p-6"
-      >
-        <p className="font-semibold text-danger">{t.error}</p>
+      <div role="alert" className="card flex flex-col items-start gap-4 p-6">
+        <p className="font-bold text-danger">{t.error}</p>
         <button
           type="button"
           onClick={() => queries.filter((q) => q.isError).forEach((q) => void q.refetch())}
@@ -54,16 +54,16 @@ export default function ListShell({
   if (loading)
     return (
       <div role="status">
-        <p className={grid ? 'sr-only' : 'py-6 text-muted'}>{t.loading}</p>
-        {grid && (
-          <div aria-hidden="true" className={gridClass}>
+        <p className={skeleton ? 'sr-only' : 'py-6 text-muted'}>{t.loading}</p>
+        {skeleton && (
+          <div aria-hidden="true" className={cardGrid}>
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="overflow-hidden rounded-md border border-line bg-surface">
-                <div className="skeleton h-[168px]" />
+              <div key={i} className="card overflow-hidden">
+                <div className="skeleton h-[170px]" />
                 <div className="space-y-3 p-4">
-                  <div className="skeleton h-8 rounded-sm" />
-                  <div className="skeleton h-4 w-4/5 rounded-sm" />
-                  <div className="skeleton h-3 w-3/5 rounded-sm" />
+                  <div className="skeleton h-5 rounded-full" />
+                  <div className="skeleton h-4 w-4/5 rounded-full" />
+                  <div className="skeleton h-4 w-3/5 rounded-full" />
                 </div>
               </div>
             ))}
@@ -73,15 +73,15 @@ export default function ListShell({
     )
   if (empty)
     return (
-      <div className="flex flex-col items-center border-y border-dashed border-line px-5 py-14 text-center">
-        <Radar aria-hidden="true" className="size-9 text-accent" />
-        <p className="mt-4 font-bold">{p.empty}</p>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-muted">{p.emptyHint}</p>
+      <div className="flex flex-col items-center rounded-card border border-dashed border-line bg-soft px-5 py-14 text-center">
+        <LogoMark className="w-12 text-ink/70" />
+        <p className="mt-4 text-lg font-extrabold">{p.empty}</p>
+        <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted">{p.emptyHint}</p>
       </div>
     )
   return (
     <>
-      {grid ? <div className={gridClass}>{children}</div> : children}
+      {grid ? <div className={cardGrid}>{children}</div> : children}
       {more.length > 0 && (
         <div className="mt-10 flex justify-center">
           <button
