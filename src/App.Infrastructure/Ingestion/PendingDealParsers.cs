@@ -6,9 +6,9 @@ using App.Domain.Sources;
 namespace App.Infrastructure.Ingestion;
 
 /// <summary>
-/// Placeholders of the two shop deal parsers until their feasibility checks and fixtures land (T054 Foleja, T055 Gjirafa
-/// Mall, ADR-045). They find no listings, so a run of such a source fails with <c>MalformedPayload</c> instead of
-/// publishing anything; the adapter keys already exist so the sources can be created and seeded.
+/// Placeholder of the Gjirafa Mall deal parser until its feasibility check and fixtures land (T055, ADR-045). It finds no
+/// listings, so a run of such a source fails with <c>MalformedPayload</c> instead of publishing anything; the adapter key
+/// already exists so the source can be created and seeded.
 /// </summary>
 internal abstract class PendingDealParser(string key) : IHtmlSiteParser
 {
@@ -21,7 +21,5 @@ internal abstract class PendingDealParser(string key) : IHtmlSiteParser
     public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now) =>
         throw new NotSupportedException("The parser has no listings to map yet.");
 }
-
-internal sealed class FolejaDealsParser() : PendingDealParser(HtmlAdapters.Foleja);
 
 internal sealed class GjirafaMallDealsParser() : PendingDealParser(HtmlAdapters.GjirafaMall);
