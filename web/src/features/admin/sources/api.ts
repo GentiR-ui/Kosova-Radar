@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../../lib/api'
 
 export type SourceType = 'fixture' | 'jsonFeed' | 'rss' | 'html'
-export type HtmlAdapter = 'prishtinaEvents' | 'kapodalim'
+export type HtmlAdapter = 'prishtinaEvents' | 'kapodalim' | 'foleja' | 'gjirafaMall'
 export type SourceHealth = 'never' | 'healthy' | 'degraded' | 'failing' | 'disabled'
 
 export interface SourceDto {

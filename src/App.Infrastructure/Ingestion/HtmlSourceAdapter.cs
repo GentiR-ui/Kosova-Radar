@@ -47,12 +47,105 @@ internal sealed class HtmlSourceAdapter(
 
     protected override SourceType Type => SourceType.Html;
 
-    public override Task<FeedParseResult> ParseAsync(Source source, FetchResult fetched, CancellationToken ct)
+    /// <summary>
+    /// The configured page, then the pages of the site's own pagination the parser points to (same site, robots.txt checked,
+    /// at most <see cref="IngestionOptions.HtmlMaxPages"/> in total). A later page that cannot be fetched ends the listing:
+    /// the pages already read are still a valid, if shorter, run.
+    /// </summary>
+    public override async Task<FetchResult> FetchAsync(Source source, CancellationToken ct)
+    {
+        var first = await base.FetchAsync(source, ct);
+        var parser = parsers.FirstOrDefault(p => p.Key == source.Adapter);
+        if (parser is null || options.HtmlMaxPages < 2 || !Uri.TryCreate(source.BaseUrl, UriKind.Absolute, out var start))
+            return first;
+
+        var more = new List<FetchedPage>();
+        var visited = new HashSet<string>(StringComparer.Ordinal) { start.GetLeftPart(UriPartial.Query) };
+        var html = first.Content;
+        var current = start;
+        while (more.Count + 1 < options.HtmlMaxPages)
+        {
+            var next = await NextPageAsync(parser, html, current, ct);
+            // A relative or credentialed link, another site, or a page already read ends the pagination (fail closed).
+            if (next is null || !next.IsAbsoluteUri || !string.IsNullOrEmpty(next.UserInfo) || !IsSameSite(next, start)) break;
+            next = new Uri(next.GetLeftPart(UriPartial.Query)); // a fragment never names another page
+            if (!visited.Add(next.AbsoluteUri)) break;
+            try
+            {
+                await Robots.EnsureAllowedAsync(next, ct);
+                html = await Fetcher.GetStringAsync(next, ct);
+            }
+            catch (SourceFetchException)
+            {
+                break;
+            }
+
+            more.Add(new FetchedPage(next, html));
+            current = next;
+        }
+
+        return first with { MorePages = more };
+    }
+
+    private static bool IsSameSite(Uri candidate, Uri site) =>
+        candidate.Scheme == site.Scheme && candidate.Port == site.Port
+        && string.Equals(candidate.IdnHost, site.IdnHost, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The parser's next page, read from the page as fetched; null when there is none or the page cannot be read.</summary>
+    private static async Task<Uri?> NextPageAsync(IHtmlSiteParser parser, string html, Uri pageUrl, CancellationToken ct)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(ParseTimeout);
+        try
+        {
+            using var page = await new HtmlParser().ParseDocumentAsync(html, deadline.Token);
+            return IsTooDeep(page, deadline.Token) ? null : parser.NextPage(page, pageUrl, deadline.Token);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return null; // the layout is not what the parser expects: the pages read so far are the listing
+        }
+    }
+
+    public override async Task<FeedParseResult> ParseAsync(Source source, FetchResult fetched, CancellationToken ct)
     {
         var parser = parsers.FirstOrDefault(p => p.Key == source.Adapter);
         if (parser is null || !Uri.TryCreate(source.BaseUrl, UriKind.Absolute, out var pageUrl))
-            return Task.FromResult(FeedParseResult.Malformed);
-        return ParseAsync(source.Id, parser, pageUrl, fetched.Content, clock.UtcNow, options.EventHorizonDays, ParseTimeout, ct);
+            return FeedParseResult.Malformed;
+
+        var now = clock.UtcNow;
+        var result = await ParseAsync(source.Id, parser, pageUrl, fetched.Content, now, options.EventHorizonDays, ParseTimeout, ct);
+        if (result.ErrorCode is not null || fetched.MorePages is not { Count: > 0 } more) return result;
+
+        var items = result.Items.ToList();
+        var failures = result.Failures.ToList();
+        var received = result.Received;
+        var seen = items.Select(i => i.Fingerprint).ToHashSet(StringComparer.Ordinal);
+        foreach (var next in more)
+        {
+            // Each page resolves its own relative links against its own address.
+            var page = await ParseAsync(source.Id, parser, next.Url, next.Content, now, options.EventHorizonDays, ParseTimeout, ct);
+            if (page.ErrorCode is not null) break; // an empty or odd later page ends the listing, it does not fail the run
+
+            var fresh = page.Items.Where(i => seen.Add(i.Fingerprint)).ToList();
+            failures.AddRange(page.Failures.Select(f => f with { Index = received + f.Index }));
+            received += page.Received - (page.Items.Count - fresh.Count); // a product repeated on a later page is one listing
+
+            // The listing cap is per run, not per page: pagination must not multiply it.
+            var room = MaxListings - items.Count;
+            items.AddRange(fresh.Take(Math.Max(room, 0)));
+            if (fresh.Count > room)
+            {
+                failures.Add(new ItemFailure(received, "TooManyItems"));
+                break;
+            }
+        }
+
+        return new FeedParseResult(received, items, failures);
     }
 
     internal static async Task<FeedParseResult> ParseAsync(
@@ -169,14 +262,15 @@ internal sealed class HtmlSourceAdapter(
                 var evidence = $"{text}\nURL: {url}";
                 var fingerprint = ItemIdentity.Fingerprint(sourceId, url, url)!;
                 // The AI only fills what the listing did not show (a shown but unmapped category included: the AI may suggest one),
-                // and costs nothing when everything is known (ADR-035).
-                var aiText = fields.EventStart() is null || fields.CityText is null || fields.CategorySlug is null
+                // and costs nothing when everything is known (ADR-035). Shop deals never go to the AI: a page lists hundreds of
+                // products every few hours, and a missing price is a review issue, not a guess (ADR-045).
+                var aiText = parser.Kind == ItemKind.Event && (fields.EventStart() is null || fields.CityText is null || fields.CategorySlug is null)
                     ? CleanText(listing, parser.OccurrenceFreeText)
                     : null;
                 // The hash leaves out the evidence: card text also shows display-only parts (the poster day of a running
                 // series) that would make every fetch a change; the fields and the AI text are what the candidate is built from.
-                items.Add(new NormalizedCandidate(ItemKind.Event, url, url, fingerprint,
-                    ItemIdentity.ContentHash(ItemKind.Event, fields, aiText, url), fields, aiText, evidence));
+                items.Add(new NormalizedCandidate(parser.Kind, url, url, fingerprint,
+                    ItemIdentity.ContentHash(parser.Kind, fields, aiText, url), fields, aiText, evidence));
                 received++;
             }
 
@@ -191,9 +285,9 @@ internal sealed class HtmlSourceAdapter(
     // PostgreSQL cannot store NUL or lone surrogates; one listing with such text must not abort the run.
     // Short fields keep the limits of a reviewer's edit, so a huge heading cannot reach every queue response.
     private static bool AreStorable(CandidateFields f) =>
-        new[] { f.Title, f.Description, f.CityText, f.VenueName, f.CategoryText, f.PriceText }
+        new[] { f.Title, f.Description, f.CityText, f.VenueName, f.CategoryText, f.PriceText, f.MerchantName }
             .All(s => s is null || RadarFeedParser.IsStorableText(s))
-        && new[] { f.Title, f.CityText, f.VenueName, f.CategoryText, f.PriceText }.All(s => s is null || s.Length <= CandidateRequestValidator.MaxText)
+        && new[] { f.Title, f.CityText, f.VenueName, f.CategoryText, f.PriceText, f.MerchantName }.All(s => s is null || s.Length <= CandidateRequestValidator.MaxText)
         && (f.Description is null || f.Description.Length <= CandidateRequestValidator.MaxDescription)
         && (f.ImageUrl is null || (f.ImageUrl.Length <= RadarFeedParser.MaxUrlLength && IsHttpUrl(f.ImageUrl)));
 

@@ -24,8 +24,10 @@ public static class HtmlAdapters
 {
     public const string PrishtinaEvents = "prishtinaEvents";
     public const string Kapodalim = "kapodalim";
+    public const string GjirafaMall = "gjirafaMall";
+    public const string Foleja = "foleja";
 
-    public static readonly IReadOnlyList<string> All = [PrishtinaEvents, Kapodalim];
+    public static readonly IReadOnlyList<string> All = [PrishtinaEvents, Kapodalim, GjirafaMall, Foleja];
 }
 
 /// <summary>A place content is fetched from (design.md §4).</summary>

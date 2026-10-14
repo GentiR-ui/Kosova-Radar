@@ -82,4 +82,10 @@ public sealed class IngestionOptions
     /// fetch date are skipped, to be taken by a later fetch (REQ-026, ADR-042; replaces <c>Ingestion__HtmlHorizonDays</c>).
     /// </summary>
     public int EventHorizonDays { get; set; } = 3;
+
+    /// <summary>
+    /// Pagination pages one run of an HTML source may fetch, the first included (design.md §6; server-rendered "next page"
+    /// links only). 1 turns following pages off.
+    /// </summary>
+    public int HtmlMaxPages { get; set; } = 5;
 }

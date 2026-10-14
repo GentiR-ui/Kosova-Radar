@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AngleSharp.Dom;
+using App.Application.Public;
 using App.Application.Sources;
 using App.Domain.Content;
+using App.Domain.Reference;
 using App.Domain.Sources;
 using App.Infrastructure.Ingestion;
 using App.Infrastructure.Persistence;
@@ -21,6 +23,8 @@ namespace App.IntegrationTests;
 public sealed class HtmlSourceTests(AppFactory app) : IDisposable
 {
     private readonly Dictionary<string, string> _pages = [];
+    private readonly HashSet<string> _serverErrors = [];
+    private readonly List<string> _requested = [];
     private readonly List<IDisposable> _factories = [];
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
@@ -46,22 +50,24 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
             });
     }
 
-    private HttpClient CreateClient(bool realParsers = false)
+    private HttpClient CreateClient(bool realParsers = false, IHtmlSiteParser? parser = null, int maxPages = 5)
     {
         var factory = app.WithWebHostBuilder(b => b.ConfigureServices(services =>
         {
             services.RemoveAll<IngestionOptions>();
-            services.AddSingleton(new IngestionOptions { AllowFixtureSources = true, HttpRetries = 0, HttpTimeoutSeconds = 5, PerHostDelaySeconds = 0 });
+            services.AddSingleton(new IngestionOptions { AllowFixtureSources = true, HttpRetries = 0, HttpTimeoutSeconds = 5, PerHostDelaySeconds = 0, HtmlMaxPages = maxPages });
             if (!realParsers)
             {
                 services.RemoveAll<IHtmlSiteParser>();
-                services.AddSingleton<IHtmlSiteParser, CardParser>();
+                services.AddSingleton(parser ?? new CardParser());
             }
             services.AddHttpClient<SourceHttpFetcher>(SourceHttpFetcher.ClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
                 {
                     var url = request.RequestUri!.AbsoluteUri;
+                    _requested.Add(url);
                     if (url.EndsWith("/robots.txt")) return new HttpResponseMessage(HttpStatusCode.NotFound);
+                    if (_serverErrors.Contains(url)) return new HttpResponseMessage(HttpStatusCode.InternalServerError);
                     return _pages.TryGetValue(url, out var html)
                         ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(html) }
                         : throw new InvalidOperationException($"No page for {url}");
@@ -78,7 +84,8 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         return client;
     }
 
-    private static async Task<(Guid Id, JsonElement Run)> FetchAsync(HttpClient admin, string url, string adapter = HtmlAdapters.PrishtinaEvents)
+    private static async Task<(Guid Id, JsonElement Run)> FetchAsync(
+        HttpClient admin, string url, string adapter = HtmlAdapters.PrishtinaEvents, bool autoPublish = false)
     {
         var created = await admin.PostAsJsonAsync("/api/admin/sources", new
         {
@@ -89,6 +96,7 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
             pollIntervalMinutes = 180,
             isActive = false,
             isUnreliable = false,
+            autoPublish,
         });
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var id = JsonDocument.Parse(await created.Content.ReadAsStringAsync()).RootElement.GetProperty("id").GetGuid();
@@ -152,7 +160,7 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
     }
 
     [Fact]
-    public async Task Seeding_creates_the_two_inactive_known_sources_once_and_leaves_edits_alone()
+    public async Task Seeding_creates_the_inactive_known_sources_once_and_leaves_edits_alone()
     {
         await using var factory = app.WithWebHostBuilder(b => b.UseSetting("Seed:KnownSources", "true"));
         using var _ = factory.CreateClient(); // starts the host, which seeds
@@ -162,11 +170,12 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
             await using var scope = services.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             return await db.Sources.AsNoTracking()
-                .Where(s => s.BaseUrl == "https://prishtina.com/events" || s.BaseUrl == "https://kapodalim.com/ks").ToListAsync();
+                .Where(s => s.BaseUrl == "https://prishtina.com/events" || s.BaseUrl == "https://kapodalim.com/ks"
+                    || s.BaseUrl == "https://www.foleja.com/foleja-Deals/" || s.BaseUrl == "https://gjirafamall.com").ToListAsync();
         }
 
         var known = await KnownAsync(factory.Services);
-        Assert.Equal(2, known.Count);
+        Assert.Equal(4, known.Count);
         Assert.All(known, s =>
         {
             Assert.Equal(SourceType.Html, s.Type);
@@ -176,6 +185,10 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         });
         Assert.Equal(HtmlAdapters.PrishtinaEvents, known.Single(s => s.BaseUrl == "https://prishtina.com/events").Adapter);
         Assert.Equal(HtmlAdapters.Kapodalim, known.Single(s => s.BaseUrl == "https://kapodalim.com/ks").Adapter);
+        var foleja = known.Single(s => s.BaseUrl == "https://www.foleja.com/foleja-Deals/");
+        Assert.Equal((HtmlAdapters.Foleja, ItemKind.Deal), (foleja.Adapter, foleja.DefaultKind));
+        var gjirafa = known.Single(s => s.BaseUrl == "https://gjirafamall.com");
+        Assert.Equal((HtmlAdapters.GjirafaMall, ItemKind.Deal), (gjirafa.Adapter, gjirafa.DefaultKind));
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
@@ -185,7 +198,7 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         }
 
         var again = await KnownAsync(factory.Services);
-        Assert.Equal(2, again.Count);
+        Assert.Equal(4, again.Count);
         Assert.Equal("Ka Po Dalim (riemëruar)", again.Single(s => s.BaseUrl == "https://kapodalim.com/ks").Name);
     }
 
@@ -231,6 +244,225 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         Assert.Equal(0, again.GetProperty("created").GetInt32());
         Assert.Equal(0, again.GetProperty("updated").GetInt32());
     }
+
+    /// <summary>
+    /// Shop deals (ADR-045): <c>li.p</c> with an <c>a</c>, an <c>h3</c> and <c>data-old</c>/<c>data-new</c> prices; the
+    /// pagination is the <c>a[rel=next]</c> link, which sits in a <c>nav</c> the page cleaning removes.
+    /// </summary>
+    private sealed class ShopParser : IHtmlSiteParser
+    {
+        public string Key => HtmlAdapters.Foleja;
+
+        public ItemKind Kind => ItemKind.Deal;
+
+        public IReadOnlyList<IElement> FindListings(IDocument page, CancellationToken ct) => page.QuerySelectorAll("li.p").ToList();
+
+        public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now) =>
+            new(listing.QuerySelector("a")?.GetAttribute("href"), new CandidateFields
+            {
+                Title = listing.QuerySelector("h3")?.TextContent.Trim(),
+                OldPrice = decimal.Parse(listing.GetAttribute("data-old")!, System.Globalization.CultureInfo.InvariantCulture),
+                NewPrice = decimal.Parse(listing.GetAttribute("data-new")!, System.Globalization.CultureInfo.InvariantCulture),
+                Currency = "EUR",
+                MerchantName = "Dyqani",
+            });
+
+        public Uri? NextPage(IDocument page, Uri pageUrl, CancellationToken ct) =>
+            page.QuerySelector("a[rel=next]")?.GetAttribute("href") is { } href ? new Uri(pageUrl, href) : null;
+    }
+
+    private static string ShopPage(string? next, params (string Title, string Slug, decimal Old, decimal New)[] products) =>
+        "<html><body>" + (next is null ? "" : $"<nav><a rel='next' href='{next}'>Next</a></nav>") + "<ul>"
+        + string.Concat(products.Select(p =>
+            FormattableString.Invariant($"<li class='p' data-old='{p.Old}' data-new='{p.New}'><a href='/p/{p.Slug}'><h3>{p.Title}</h3></a></li>")))
+        + "</ul></body></html>";
+
+    [Fact]
+    public async Task A_paginated_deal_listing_is_followed_page_by_page_and_never_goes_to_the_AI()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        _pages[url] = ShopPage("?p=2", ($"Aspirator {g}", $"a-{g}", 200m, 120m), ($"Televizor {g}", $"t-{g}", 500m, 400m));
+        _pages[url + "?p=2"] = ShopPage("?p=3", ($"Hekur {g}", $"h-{g}", 80m, 40m));
+        _pages[url + "?p=3"] = ShopPage(null, ($"Mikser {g}", $"m-{g}", 60m, 30m));
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser(), maxPages: 2));
+
+        var (id, run) = await FetchAsync(admin, url, HtmlAdapters.Foleja);
+
+        // Two pages allowed (maxPages: 2): the third is not requested.
+        Assert.Equal("succeeded", run.GetProperty("status").GetString());
+        Assert.Equal(3, run.GetProperty("received").GetInt32());
+        Assert.Equal(3, run.GetProperty("created").GetInt32());
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var candidates = await db.Candidates.AsNoTracking().Where(c => c.SourceId == id).ToListAsync();
+        Assert.All(candidates, c =>
+        {
+            Assert.Equal(ItemKind.Deal, c.Kind);
+            Assert.Null(c.Fields.ValidUntil);
+            Assert.Equal("Dyqani", c.Fields.MerchantName);
+            Assert.Empty(c.AiSuggestedFields);
+            Assert.Null(c.AiModel);
+        });
+        Assert.DoesNotContain(candidates, c => c.Fields.Title!.StartsWith("Mikser"));
+    }
+
+    [Fact]
+    public async Task A_later_page_that_cannot_be_read_keeps_the_pages_already_read()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        _pages[url] = ShopPage("/elsewhere", ($"Aspirator {g}", $"a-{g}", 200m, 120m));
+        _pages[url.Replace("/events", "/elsewhere")] = "<html><body><p>Faqja u ndryshua</p></body></html>";
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser()));
+
+        var (_, run) = await FetchAsync(admin, url, HtmlAdapters.Foleja);
+
+        Assert.Equal("succeeded", run.GetProperty("status").GetString());
+        Assert.Equal(1, run.GetProperty("created").GetInt32());
+    }
+
+    private async Task<(Deal Deal, bool Active)> DealStateAsync(string title)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var now = new DateTimeOffset(2026, 10, 8, 7, 0, 0, TimeSpan.Zero); // the fetch time of RunAsync
+        var deal = await db.Deals.AsNoTracking().SingleAsync(d => d.Title == title);
+        var active = await db.Deals.AsNoTracking().Where(d => d.Id == deal.Id).Where(ActiveItems.Deal(now)).AnyAsync();
+        return (deal, active);
+    }
+
+    [Fact]
+    public async Task A_listing_deal_ends_when_it_falls_below_35_percent_and_returns_with_the_discount()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        var title = $"Lavatriçe {g}";
+        _pages[url] = ShopPage(null, (title, $"l-{g}", 100m, 60m));
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser()));
+
+        var (id, first) = await FetchAsync(admin, url, HtmlAdapters.Foleja, autoPublish: true);
+        Assert.Equal("succeeded", first.GetProperty("status").GetString());
+        var (published, active) = await DealStateAsync(title);
+        Assert.Equal(ItemStatus.Published, published.Status);
+        Assert.True(active);
+
+        // The shop still lists it, now with 20 % off: no longer today's deal, at once; the status is not touched.
+        _pages[url] = ShopPage(null, (title, $"l-{g}", 100m, 80m));
+        Assert.Equal("succeeded", (await RunAsync(admin, id)).GetProperty("status").GetString());
+        var (delisted, stillActive) = await DealStateAsync(title);
+        Assert.Equal(ItemStatus.Published, delisted.Status);
+        Assert.False(stillActive);
+
+        // Back to 40 % off: the same item is active again, not a second one.
+        _pages[url] = ShopPage(null, (title, $"l-{g}", 100m, 60m));
+        Assert.Equal("succeeded", (await RunAsync(admin, id)).GetProperty("status").GetString());
+        var (back, activeAgain) = await DealStateAsync(title);
+        Assert.Equal(published.Id, back.Id);
+        Assert.True(activeAgain);
+    }
+
+    [Fact]
+    public async Task A_listing_deal_comes_back_when_a_person_rejected_the_lower_priced_change()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        var title = $"Mikrovalë {g}";
+        _pages[url] = ShopPage(null, (title, $"v-{g}", 100m, 60m));
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser()));
+        var (id, _) = await FetchAsync(admin, url, HtmlAdapters.Foleja, autoPublish: true);
+
+        _pages[url] = ShopPage(null, (title, $"v-{g}", 100m, 80m));
+        await RunAsync(admin, id);
+        Assert.False((await DealStateAsync(title)).Active);
+
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // What a reviewer's "Refuzo" leaves behind: the change is rejected by a person.
+            await db.Candidates.Where(c => c.SourceId == id && c.Status == CandidateStatus.Pending)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.Status, CandidateStatus.Rejected).SetProperty(c => c.RejectedByUserId, Guid.NewGuid()));
+        }
+
+        _pages[url] = ShopPage(null, (title, $"v-{g}", 100m, 60m));
+        await RunAsync(admin, id);
+
+        Assert.True((await DealStateAsync(title)).Active);
+    }
+
+    [Fact]
+    public async Task A_deal_a_person_expired_is_not_published_again_by_a_later_fetch()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        var title = $"Frigorifer {g}";
+        _pages[url] = ShopPage(null, (title, $"f-{g}", 100m, 60m));
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser()));
+        var (id, _) = await FetchAsync(admin, url, HtmlAdapters.Foleja, autoPublish: true);
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Deals.Where(d => d.Title == title).ExecuteUpdateAsync(s => s.SetProperty(d => d.Status, ItemStatus.Expired));
+        }
+
+        // A price change that is still 35 % off would be published onto the same item by the system.
+        _pages[url] = ShopPage(null, (title, $"f-{g}", 100m, 55m));
+        await RunAsync(admin, id);
+
+        var (deal, active) = await DealStateAsync(title);
+        Assert.Equal(ItemStatus.Expired, deal.Status);
+        Assert.False(active);
+        await using var check = app.Services.CreateAsyncScope();
+        var pending = await check.ServiceProvider.GetRequiredService<AppDbContext>().Candidates.AsNoTracking()
+            .Where(c => c.SourceId == id && c.Status == CandidateStatus.Pending).ToListAsync();
+        Assert.Single(pending); // waits for a person
+    }
+
+    [Fact]
+    public async Task Pagination_never_leaves_the_site_repeats_a_page_or_goes_beyond_the_page_limit()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        _pages[url] = ShopPage("https://elsewhere.example/events?p=2", ($"Aspirator {g}", $"a-{g}", 200m, 120m));
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser()));
+        var (_, foreign) = await FetchAsync(admin, url, HtmlAdapters.Foleja);
+        Assert.Equal(1, foreign.GetProperty("created").GetInt32());
+        Assert.DoesNotContain(_requested, r => r.Contains("elsewhere.example"));
+
+        // A loop: page 2 points back to page 1 (with a fragment).
+        var loop = NewUrl();
+        _pages[loop] = ShopPage("?p=2", ($"Hekur {g}", $"h-{g}", 80m, 40m));
+        _pages[loop + "?p=2"] = ShopPage($"{loop}#top", ($"Mikser {g}", $"m-{g}", 60m, 30m));
+        _requested.Clear();
+        var (_, looped) = await FetchAsync(admin, loop, HtmlAdapters.Foleja);
+        Assert.Equal(2, looped.GetProperty("created").GetInt32());
+        Assert.Equal(1, _requested.Count(r => r == loop));
+
+        // maxPages 1 turns pagination off.
+        var single = NewUrl();
+        _pages[single] = ShopPage("?p=2", ($"Televizor {g}", $"t-{g}", 500m, 300m));
+        var onePage = await LoginAsync(CreateClient(parser: new ShopParser(), maxPages: 1));
+        _requested.Clear();
+        var (_, one) = await FetchAsync(onePage, single, HtmlAdapters.Foleja);
+        Assert.Equal(1, one.GetProperty("created").GetInt32());
+        Assert.DoesNotContain(_requested, r => r.Contains("?p=2"));
+    }
+
+    [Fact]
+    public async Task A_later_page_with_a_server_error_keeps_the_first_page()
+    {
+        var url = NewUrl();
+        var g = Guid.NewGuid().ToString("N")[..8];
+        _pages[url] = ShopPage("?p=2", ($"Aspirator {g}", $"a-{g}", 200m, 120m));
+        _serverErrors.Add(url + "?p=2");
+        var admin = await LoginAsync(CreateClient(parser: new ShopParser()));
+
+        var (_, run) = await FetchAsync(admin, url, HtmlAdapters.Foleja);
+
+        Assert.Equal("succeeded", run.GetProperty("status").GetString());
+        Assert.Equal(1, run.GetProperty("created").GetInt32());
+    }
+
 
     public void Dispose() => _factories.ForEach(f => f.Dispose());
 }

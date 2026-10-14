@@ -62,15 +62,20 @@ public static class DependencyInjection
         services.AddScoped<BootstrapAdmin>();
         services.AddScoped<UserAdmin>();
         var ingestion = config.GetSection(IngestionOptions.Section).Get<IngestionOptions>() ?? new IngestionOptions();
-        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0 || ingestion.EventHorizonDays is < 1 or > 30)
+        if (ingestion.HttpTimeoutSeconds < 1 || ingestion.HttpRetries < 0 || ingestion.PerHostDelaySeconds < 0 || ingestion.EventHorizonDays is < 1 or > 30 || ingestion.HtmlMaxPages is < 1 or > 10)
             throw new InvalidOperationException(
-                "Ingestion__HttpTimeoutSeconds must be at least 1, Ingestion__EventHorizonDays between 1 and 30, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
+                "Ingestion__HttpTimeoutSeconds must be at least 1, Ingestion__EventHorizonDays between 1 and 30, Ingestion__HtmlMaxPages between 1 and 10, Ingestion__HttpRetries and Ingestion__PerHostDelaySeconds at least 0.");
         services.AddSingleton(ingestion);
         var autoPublish = config.GetSection(AutoPublishOptions.Section).Get<AutoPublishOptions>() ?? new AutoPublishOptions();
         if (autoPublish.MinDealDiscountPercent is < 1 or > 100 || autoPublish.MaxPerRun < 0)
             throw new InvalidOperationException(
                 "AutoPublish__MinDealDiscountPercent must be between 1 and 100 and AutoPublish__MaxPerRun at least 0.");
         services.AddSingleton(autoPublish);
+        var deals = config.GetSection(DealOptions.Section).Get<DealOptions>() ?? new DealOptions();
+        if (deals.ListingStaleHours is < 4 or > 168)
+            throw new InvalidOperationException("Deals__ListingStaleHours must be between 4 and 168 (more than the 3 hours between two fetches of a shop).");
+        deals.MinDiscountPercent = autoPublish.MinDealDiscountPercent;
+        services.AddSingleton(deals);
         services.AddScoped<AutoPublisher>();
         services.AddAi(config);
         services.AddScoped<SourceAdmin>();
@@ -97,6 +102,8 @@ public static class DependencyInjection
         services.AddScoped<ISourceAdapter, RssSourceAdapter>();
         services.AddSingleton<IHtmlSiteParser, PrishtinaEventsParser>();
         services.AddSingleton<IHtmlSiteParser, KapodalimParser>();
+        services.AddSingleton<IHtmlSiteParser, FolejaDealsParser>();
+        services.AddSingleton<IHtmlSiteParser, GjirafaMallDealsParser>();
         services.AddScoped<ISourceAdapter, HtmlSourceAdapter>();
         services.AddScoped<IngestionService>();
         services.AddScoped<SyntheticFixtureSeeder>();

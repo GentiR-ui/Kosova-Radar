@@ -27,8 +27,11 @@ public sealed class SourceFetchException(string errorCode, string message, int? 
     public int? HttpStatus { get; } = httpStatus;
 }
 
-/// <summary>The raw payload of one fetch, before parsing.</summary>
-public sealed record FetchResult(string Content);
+/// <summary>The raw payload of one fetch, before parsing. <paramref name="MorePages"/>: further pages of a paginated HTML listing (§6).</summary>
+public sealed record FetchResult(string Content, IReadOnlyList<FetchedPage>? MorePages = null);
+
+/// <summary>A further page of a paginated HTML listing with the address it was read from.</summary>
+public sealed record FetchedPage(Uri Url, string Content);
 
 /// <summary>
 /// Turns one source into normalized candidates (design.md §2). Parsing and normalization are one step because

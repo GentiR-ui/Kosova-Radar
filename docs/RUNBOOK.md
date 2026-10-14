@@ -38,9 +38,9 @@ The app applies pending EF Core migrations at every start, before anything else;
 Sources are configured in the admin UI (`/admin/sources`): type, URL, interval (15–1440 min), then tick "Aktiv". "Merr tani" runs one fetch.
 Fixture sources are disabled in Production (`Ingestion__AllowFixtureSources=false`); synthetic fixture seeding is off. Only add sources
 the client has confirmed in writing (ADR-006); the crawler honours robots.txt and a per-host delay.
-HTML sources (type "Faqe HTML", ADR-035) need an adapter ("Prishtina.com — evente" or "Ka' Po Dalim"). With `Seed__KnownSources=true` (default) both are
+HTML sources (type "Faqe HTML", ADR-035) need an adapter ("Prishtina.com — evente", "Ka' Po Dalim", "Foleja — oferta" or "Gjirafa Mall — oferta"). With `Seed__KnownSources=true` (default) all four are
 created at start-up when no source has their URL, inactive and without auto-publish unless `Seed__KnownSourcesActive` / `Seed__KnownSourcesAutoPublish`
-are true (existing rows are never changed); an inactive source stays disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
+are true (existing rows are never changed; the two shop parsers are placeholders until T054/T055, so their runs fail with `MalformedPayload`); an inactive source stays disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
 responsible for the sites' terms of use. A run that finds no listing fails with `MalformedPayload`: the site layout probably changed and its parser needs an update.
 
 Auto-publish (ADR-039): a source with "Publiko automatikisht" publishes its new `Valid` candidates, and changes whose only review issue is
@@ -49,6 +49,14 @@ Auto-publish (ADR-039): a source with "Publiko automatikisht" publishes its new 
 renames `Ingestion__HtmlHorizonDays` (30) to `Ingestion__EventHorizonDays` (3): events of HTML and auto-publish sources starting on a local date
 more than 3 days after the fetch date are skipped (counted in `received` only) and taken by a later fetch. Auto-published deals must be daily and at least
 `AutoPublish__MinDealDiscountPercent` (35) off; other valid deals wait for a person (ADR-042).
+
+Shop deals (ADR-045): "Foleja — Deals" and "Gjirafa Mall — Oferta" list products on sale without an end date. For an auto-publish source such a
+deal is "today's deal" (public text "Oferta e sotme"): it is published when it is at least 35 % off, stays active while a successful fetch (every
+3 h) still lists it, and disappears from the public site `Deals__ListingStaleHours` (6, 4–168; keep it above twice the poll interval) hours after the last fetch that listed it. Only deals with at least the minimum discount get this window. A fetch that lists
+it with less than 35 % off ends it at once (it stays `Published` but is no longer active); when the discount comes back the same item is active again. A deal a person expired ("Skado") is never republished by a fetch. Listing deals are not
+marked `Expired` by the expiration job when they merely stop being listed: they reappear on the first fetch that lists them again. HTML sources
+follow the site's own "next page" links up to `Ingestion__HtmlMaxPages` (5) pages per run, same host only, robots.txt checked; a later page that
+cannot be read ends the listing and keeps the pages already read. Shop deals never go to the AI.
 
 Auto-publish is conservative by design: it does not backfill (candidates that are already pending stay pending until their content changes), it never
 overrides a person's rejection, applies a change only to an item the same source published, requires the item link to be on the source's own host,

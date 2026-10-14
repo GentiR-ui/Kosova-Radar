@@ -16,10 +16,20 @@ public static class ActiveItems
                 : e.StartTimeKnown ? e.StartsAt > noEndCutoff : e.StartsAt >= todayStart);
     }
 
-    public static Expression<Func<Deal, bool>> Deal(DateTimeOffset now)
+    /// <summary>
+    /// A deal without <c>ValidUntil</c> whose primary source auto-publishes and that has at least the minimum discount is a
+    /// listing deal (REQ-045): active only while a
+    /// fetch listed it within <paramref name="options"/>' stale window; other undated deals keep the 7-day window.
+    /// </summary>
+    public static Expression<Func<Deal, bool>> Deal(DateTimeOffset now, DealOptions? options = null)
     {
         var undatedCutoff = now - ContentRules.UndatedDealWindow;
+        options ??= new DealOptions();
+        var listingCutoff = now - options.ListingWindow;
+        var minDiscount = options.MinDiscountPercent;
         return d => d.Status == ItemStatus.Published
-            && (d.ValidUntil != null ? d.ValidUntil > now : d.LastVerifiedAt > undatedCutoff);
+            && (d.ValidUntil != null
+                ? d.ValidUntil > now
+                : d.LastVerifiedAt > (d.PrimarySource!.AutoPublish && d.DiscountPercent >= minDiscount ? listingCutoff : undatedCutoff));
     }
 }

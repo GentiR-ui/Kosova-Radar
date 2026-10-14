@@ -143,11 +143,17 @@ public class AutoPublishRulesTests
     }
 
     [Fact]
-    public void A_deal_without_validUntil_or_prices_is_not_a_featured_deal()
+    public void A_deal_without_prices_or_with_a_daily_deal_missing_its_discount_is_not_published()
     {
-        Assert.False(Can(Deal(100m, 50m, null, null)));
         Assert.False(Can(Deal(null, 50m, null, Fetched.AddHours(5))));
+        Assert.False(Can(Deal(null, null, null, null)));
     }
+
+    [Theory]
+    [InlineData(100, 65, true)] // 35 %
+    [InlineData(100, 66, false)] // 34 %
+    public void An_undated_deal_counts_as_todays_deal_and_needs_the_minimum_discount(int oldPrice, int newPrice, bool expected) =>
+        Assert.Equal(expected, Can(Deal(oldPrice, newPrice, null, null)));
 
     [Theory]
     [InlineData("startsAt")]

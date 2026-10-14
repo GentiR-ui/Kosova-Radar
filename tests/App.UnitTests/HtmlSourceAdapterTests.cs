@@ -51,6 +51,45 @@ public class HtmlSourceAdapterTests
         return $"<li class='card'{attrs}><a href='{href}'><h3>{title}</h3></a><span>Salla e madhe</span>{extra}</li>";
     }
 
+    /// <summary>An online-shop listing: kind deal, prices as the shop prints them (decimal comma, currency sign).</summary>
+    private sealed class ShopStubParser : IHtmlSiteParser
+    {
+        public string Key => "shop";
+
+        public ItemKind Kind => ItemKind.Deal;
+
+        public IReadOnlyList<IElement> FindListings(IDocument page, CancellationToken ct) => page.QuerySelectorAll("li.p").ToList();
+
+        public HtmlListing Map(IElement listing, Uri pageUrl, DateTimeOffset now) =>
+            new(listing.QuerySelector("a")?.GetAttribute("href"), new CandidateFields
+            {
+                Title = listing.QuerySelector("h3")?.TextContent.Trim(),
+                OldPrice = ShopPrice.Parse(listing.QuerySelector(".old")?.TextContent),
+                NewPrice = ShopPrice.Parse(listing.QuerySelector(".new")?.TextContent),
+                StatedDiscountPercent = 33,
+                MerchantName = "Dyqani",
+            });
+    }
+
+    private static FeedParseResult ParseShop(string html, DateTimeOffset now) =>
+        HtmlSourceAdapter.ParseAsync(Source, new ShopStubParser(), Page, html, now, 3, TimeSpan.FromSeconds(30)).GetAwaiter().GetResult();
+
+    [Fact]
+    public void A_shop_listing_becomes_a_deal_without_AI_text_and_its_hash_ignores_the_fetch_time()
+    {
+        const string html = "<ul><li class='p'><a href='/p/1'><h3>Aspirator</h3></a><s class='old'>89,00 €</s><b class='new'>59,50 €</b><span>-33%</span></li></ul>";
+
+        var first = ParseShop(html, Now);
+        var later = ParseShop(html, Now.AddHours(3));
+
+        var item = Assert.Single(first.Items);
+        Assert.Equal(ItemKind.Deal, item.Kind);
+        Assert.Null(item.Text); // no city, no start: an event would be sent to the AI, a shop deal never is
+        Assert.Null(item.Fields.ValidUntil);
+        Assert.Equal((89m, 59.5m, "Dyqani"), (item.Fields.OldPrice, item.Fields.NewPrice, item.Fields.MerchantName));
+        Assert.Equal(item.ContentHash, Assert.Single(later.Items).ContentHash);
+    }
+
     [Fact]
     public void A_listing_becomes_one_event_with_its_own_cleaned_text_and_url_as_evidence()
     {

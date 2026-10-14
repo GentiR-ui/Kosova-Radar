@@ -134,7 +134,7 @@ internal sealed class DealConfiguration : IEntityTypeConfiguration<Deal>
         b.HasIndex(d => d.ValidUntil);
         b.HasOne<City>().WithMany().HasForeignKey(d => d.CityId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<Category>().WithMany().HasForeignKey(d => d.CategoryId).OnDelete(DeleteBehavior.Restrict);
-        b.HasOne<Source>().WithMany().HasForeignKey(d => d.PrimarySourceId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne(d => d.PrimarySource).WithMany().HasForeignKey(d => d.PrimarySourceId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(d => d.Status);
         b.HasIndex(d => d.PrimarySourceId);
         b.HasIndex(d => d.Fingerprint);

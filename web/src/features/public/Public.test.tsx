@@ -51,6 +51,7 @@ const deal: DealSummaryDto = {
   freshness: 'stale',
   status: 'active',
   isSynthetic: false,
+  isTodaysDeal: false,
 }
 const page = <T,>(items: T[], totalCount = items.length) => ({
   items,
@@ -87,6 +88,12 @@ describe('cards', () => {
     expect(screen.getByText('Kontrolluar së fundi më 01.06.2026')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Burimi: Burimi B' })).not.toBeInTheDocument()
     expect(screen.getByText('Burimi: Burimi B')).toBeInTheDocument()
+  })
+
+  it('labels a listing deal as today\'s deal instead of "unknown validity"', () => {
+    renderRoutes([{ path: '/', element: <DealCard deal={{ ...deal, isTodaysDeal: true }} /> }], '/')
+    expect(screen.getByText('Oferta e sotme')).toBeInTheDocument()
+    expect(screen.queryByText('Afati nuk dihet')).not.toBeInTheDocument()
   })
 })
 

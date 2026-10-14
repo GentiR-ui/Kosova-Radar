@@ -11,7 +11,7 @@ public sealed record DashboardDto(
     int FailingSources, int DegradedSources, int AiCallsToday, int AiErrorsToday);
 
 /// <summary>Counts for the admin dashboard (design.md §5). Active items use the same rules as the public API.</summary>
-public sealed class DashboardQueries(IAppDbContext db, IClock clock, TimeProvider wallClock)
+public sealed class DashboardQueries(IAppDbContext db, IClock clock, TimeProvider wallClock, DealOptions? dealOptions = null)
 {
     public async Task<DashboardDto> GetAsync(CancellationToken ct)
     {
@@ -24,7 +24,7 @@ public sealed class DashboardQueries(IAppDbContext db, IClock clock, TimeProvide
         var pendingCount = await pending.CountAsync(ct);
         var needsReview = await pending.CountAsync(c => c.Validation == ValidationOutcome.NeedsReview, ct);
         var activeEvents = await db.Events.AsNoTracking().CountAsync(ActiveItems.Event(now), ct);
-        var activeDeals = await db.Deals.AsNoTracking().CountAsync(ActiveItems.Deal(now), ct);
+        var activeDeals = await db.Deals.AsNoTracking().CountAsync(ActiveItems.Deal(now, dealOptions), ct);
         // Expiry time is not stored; UpdatedAt is set when an item expires and is not touched afterwards by the system.
         var expired = await db.Events.AsNoTracking().CountAsync(e => e.Status == ItemStatus.Expired && e.UpdatedAt > weekAgo, ct)
             + await db.Deals.AsNoTracking().CountAsync(d => d.Status == ItemStatus.Expired && d.UpdatedAt > weekAgo, ct);

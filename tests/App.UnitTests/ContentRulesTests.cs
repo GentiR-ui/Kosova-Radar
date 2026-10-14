@@ -86,6 +86,16 @@ public class ContentRulesTests
         Assert.False(ContentRules.IsActiveDeal(ItemStatus.Published, null, Now.AddDays(-7), Now));
     }
 
+    [Fact]
+    public void Listing_deal_is_active_for_the_stale_window_after_the_last_fetch_that_listed_it()
+    {
+        Assert.True(ContentRules.IsActiveDeal(ItemStatus.Published, null, Now.AddHours(-6).AddTicks(1), Now, isListingDeal: true));
+        Assert.False(ContentRules.IsActiveDeal(ItemStatus.Published, null, Now.AddHours(-6), Now, isListingDeal: true));
+        Assert.True(ContentRules.IsActiveDeal(ItemStatus.Published, null, Now.AddHours(-11), Now, isListingDeal: true, listingWindow: TimeSpan.FromHours(12)));
+        // A dated deal ignores the listing window.
+        Assert.True(ContentRules.IsActiveDeal(ItemStatus.Published, Now.AddDays(1), Now.AddDays(-3), Now, isListingDeal: true));
+    }
+
     [Theory]
     [InlineData(100, 50, 50)]
     [InlineData(3, 2, 33)] // 33.33

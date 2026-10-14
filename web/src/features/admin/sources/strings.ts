@@ -23,7 +23,12 @@ export const s = {
     autoPublish: 'Publiko automatikisht',
   },
   types: { fixture: 'Fixture (të dhëna testuese)', jsonFeed: 'JSON feed', rss: 'RSS', html: 'Faqe HTML' },
-  adapters: { prishtinaEvents: 'Prishtina.com — evente', kapodalim: "Ka' Po Dalim" },
+  adapters: {
+    prishtinaEvents: 'Prishtina.com — evente',
+    kapodalim: "Ka' Po Dalim",
+    foleja: 'Foleja — oferta',
+    gjirafaMall: 'Gjirafa Mall — oferta',
+  },
   kinds: { event: 'Event', deal: 'Ofertë' },
   columns: {
     name: 'Emri',

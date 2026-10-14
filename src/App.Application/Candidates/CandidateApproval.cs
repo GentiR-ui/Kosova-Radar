@@ -61,6 +61,10 @@ public sealed class CandidateApproval(IAppDbContext db, IAuditWriter audit, IClo
         var matched = c.MatchedItemId is { } matchedId ? await LoadMatchedAsync(c.Kind, matchedId, ct) : null;
         if (c.MatchedItemId is not null && matched is null)
             return new(ApprovalStatus.Invalid, Errors: new Dictionary<string, string[]> { ["matchedItemId"] = ["The linked item no longer exists or was withdrawn."] });
+        // An undated deal is never expired by the system, so an expired one was ended by a person ("Skado"): only a person
+        // publishes it again, not the next fetch of a shop whose prices keep changing (ADR-045).
+        if (bySystem && matched?.Deal is { Status: ItemStatus.Expired, ValidUntil: null })
+            return new(ApprovalStatus.Invalid, Errors: new Dictionary<string, string[]> { ["matchedItemId"] = ["The linked deal was ended by a person."] });
 
         Guid itemId;
         if (c.Kind == ItemKind.Event)

@@ -37,6 +37,8 @@ services:
       Ai__MinIntervalMs: ${AI_MIN_INTERVAL_MS:-0}
       Ingestion__AllowFixtureSources: "false"
       Ingestion__EventHorizonDays: ${INGESTION_EVENT_HORIZON_DAYS:-3}
+      Ingestion__HtmlMaxPages: ${INGESTION_HTML_MAX_PAGES:-5}
+      Deals__ListingStaleHours: ${DEALS_LISTING_STALE_HOURS:-6}
       AutoPublish__MinDealDiscountPercent: ${AUTO_PUBLISH_MIN_DEAL_DISCOUNT_PERCENT:-35}
       AutoPublish__MaxPerRun: ${AUTO_PUBLISH_MAX_PER_RUN:-100}
       Seed__KnownSourcesActive: ${SEED_KNOWN_SOURCES_ACTIVE:-false}

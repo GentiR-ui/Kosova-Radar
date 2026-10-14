@@ -8,6 +8,12 @@ public static class ContentRules
     public static readonly TimeSpan DefaultEventDuration = TimeSpan.FromHours(6);
     public static readonly TimeSpan FreshnessWindow = TimeSpan.FromHours(48);
     public static readonly TimeSpan UndatedDealWindow = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// How long a listing deal (no <c>validUntil</c>, auto-publish source) stays active after the last fetch that listed it
+    /// (REQ-045, <c>Deals__ListingStaleHours</c>).
+    /// </summary>
+    public static readonly TimeSpan DefaultListingStaleWindow = TimeSpan.FromHours(6);
     public const double DuplicateSimilarityThreshold = 0.8;
 
     /// <summary>"Europe/Pristina" = IANA <c>Europe/Belgrade</c> (design.md §4).</summary>
@@ -44,9 +50,14 @@ public static class ContentRules
         bool startTimeKnown = true) =>
         status == ItemStatus.Published && EffectiveEnd(startsAt, endsAt, startTimeKnown) > now;
 
-    public static bool IsActiveDeal(ItemStatus status, DateTimeOffset? validUntil, DateTimeOffset lastVerifiedAt, DateTimeOffset now) =>
+    /// <param name="isListingDeal">No <c>validUntil</c> and the primary source has auto-publish: valid while it is listed (REQ-045).</param>
+    /// <param name="listingWindow">The stale window of a listing deal; <see cref="DefaultListingStaleWindow"/> when null.</param>
+    public static bool IsActiveDeal(ItemStatus status, DateTimeOffset? validUntil, DateTimeOffset lastVerifiedAt, DateTimeOffset now,
+        bool isListingDeal = false, TimeSpan? listingWindow = null) =>
         status == ItemStatus.Published
-        && (validUntil is { } until ? until > now : lastVerifiedAt > now - UndatedDealWindow);
+        && (validUntil is { } until
+            ? until > now
+            : lastVerifiedAt > now - (isListingDeal ? listingWindow ?? DefaultListingStaleWindow : UndatedDealWindow));
 
     /// <summary>Fresh when verified within the last 48 hours (inclusive).</summary>
     public static bool IsFresh(DateTimeOffset lastVerifiedAt, DateTimeOffset now) => lastVerifiedAt >= now - FreshnessWindow;

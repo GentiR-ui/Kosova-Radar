@@ -41,13 +41,15 @@ public static class AutoPublishRules
     }
 
     /// <summary>
+    /// No <c>validUntil</c>: an online-shop offer that is valid while it is listed counts as today's deal (REQ-045). Otherwise
     /// <c>validUntil</c> at most 24 h after <c>validFrom</c> (or after the fetch when there is no <c>validFrom</c>), and the day
     /// starts no later than 24 h after the fetch: a far-future "daily" deal would otherwise be active at once (REQ-044).
     /// </summary>
     public static bool IsDailyDeal(CandidateFields f, DateTimeOffset fetchedAt) =>
-        f.ValidUntil is { } until && until > fetchedAt
-        && (f.ValidFrom ?? fetchedAt) <= fetchedAt + DailyDealWindow
-        && until <= (f.ValidFrom ?? fetchedAt) + DailyDealWindow;
+        f.ValidUntil is not { } until
+        || (until > fetchedAt
+            && (f.ValidFrom ?? fetchedAt) <= fetchedAt + DailyDealWindow
+            && until <= (f.ValidFrom ?? fetchedAt) + DailyDealWindow);
 
     /// <summary>Starts inside the horizon (REQ-026) and does not run longer than <see cref="MaxEventSpan"/>.</summary>
     private static bool IsCurrentEvent(CandidateFields f, DateTimeOffset fetchedAt, int horizonDays) =>

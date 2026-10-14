@@ -22,6 +22,7 @@ export const p = {
   priceUnknown: 'Çmimi nuk dihet',
   validUntil: (date: string) => `Vlen deri më ${date}`,
   validityUnknown: 'Afati nuk dihet',
+  todaysDeal: 'Oferta e sotme',
   source: (name: string) => `Burimi: ${name}`,
   fresh: 'Verifikuar së fundmi',
   eventEnded: 'Ky event ka përfunduar',

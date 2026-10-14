@@ -39,6 +39,8 @@ export interface DealSummaryDto extends ItemBase {
   discountPercent: number | null
   validFrom: string | null
   validUntil: string | null
+  /** No end date and listed by an auto-publish shop: valid while the shop lists it (REQ-045). */
+  isTodaysDeal: boolean
 }
 export interface SourceRefDto {
   name: string

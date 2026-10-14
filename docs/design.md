@@ -61,11 +61,11 @@ Counters: received = items in the payload; created = new candidates (incl. auto-
 ```
 
 - `ISourceAdapter { bool CanHandle(Source); Task<FetchResult> FetchAsync(Source, ct); Task<FeedParseResult> ParseAsync(Source, FetchResult, ct); }` — returns normalized candidates (plus per-item failures), never entities; a whole-fetch failure is a `SourceFetchException` with a run error code (ADR-023).
-- Adapters: `FixtureSourceAdapter`, `JsonFeedSourceAdapter`, `RssSourceAdapter` and `HtmlSourceAdapter` (type `Html`). `HtmlSourceAdapter` does the fetching and page cleaning and delegates the site-specific part to an `IHtmlSiteParser` chosen by `Source.Adapter` (`prishtinaEvents` → `PrishtinaEventsParser`, `kapodalim` → `KapodalimParser`). Adding a site = one `IHtmlSiteParser`, its adapter key, saved fixtures and contract tests; `IngestionService` and the other pipeline steps do not change (ADR-035).
+- Adapters: `FixtureSourceAdapter`, `JsonFeedSourceAdapter`, `RssSourceAdapter` and `HtmlSourceAdapter` (type `Html`). `HtmlSourceAdapter` does the fetching and page cleaning and delegates the site-specific part to an `IHtmlSiteParser` chosen by `Source.Adapter` (`prishtinaEvents` → `PrishtinaEventsParser`, `kapodalim` → `KapodalimParser`, `foleja` → `FolejaDealsParser`, `gjirafaMall` → `GjirafaMallDealsParser`). Adding a site = one `IHtmlSiteParser`, its adapter key, saved fixtures and contract tests; `IngestionService` and the other pipeline steps do not change (ADR-035).
 - Runs of the same source never overlap: a per-source `SemaphoreSlim`. Scheduled runs skip a locked source; manual runs wait up to 30 s, then 409.
 - Retry policy: HTTP resilience handler (`Ingestion__HttpRetries` retries with exponential backoff, `Ingestion__HttpTimeoutSeconds` total timeout). A failed run is retried at the next due time; from the 3rd consecutive failure the source is `failing` and shows on the dashboard.
 - On startup, `JobExecution` rows left in `Running` are marked `failed` with error code `Interrupted`.
-- `ExpirationJob` (every 5 min, real clock): sets `Status = Expired` on published items past their effective end. Public queries additionally filter by time, so expiry is visible immediately (REQ-086).
+- `ExpirationJob` (every 5 min, real clock): sets `Status = Expired` on published items past their effective end. Public queries additionally filter by time, so expiry is visible immediately (REQ-086). Listing deals (REQ-045) are not expired by the job when they merely stop being listed: they are inactive by the time filter and active again on the first fetch that lists them; a fetch that lists one below the minimum discount moves its `LastVerifiedAt` back to the start of the stale window, so it is inactive at once while its status stays `Published` (ADR-045).
 - Source health is derived on read: `disabled` if inactive; else `never` if never fetched; `healthy` if the last run succeeded; `degraded` if it failed with < 3 consecutive failures; `failing` otherwise.
 
 ### Configuration (environment variables; `.env.example` documents them)
@@ -149,7 +149,7 @@ Money `decimal(18,2)`, currency ISO code (never assumed). Times `DateTimeOffset`
 
 - **Effective end** of an event = `EndsAt` when present and ≥ `StartsAt`, else `StartsAt + 6 h` when the start time is known, else the end of the start date in Europe/Pristina (next local midnight; REQ-025, ADR-040) (internal, never displayed; ADR-010).
 - **Date-only events** (ADR-040): candidate field `startDate` (local `YYYY-MM-DD`) with `startsAt` null. No `MissingStartsAt`; the horizon, `Expired` and duplicate rules use the date (local 00:00; duplicates compare dates as before). On publish `StartsAt` = local 00:00 of `startDate`, `StartTimeKnown = false`; a later known time sets `StartTimeKnown = true`. The UI shows only the date ("gjatë ditës" instead of a time).
-- **Active event**: `Status = Published` and effective end > now. **Active deal**: `Status = Published` and (`ValidUntil` > now, or `ValidUntil` is null and `LastVerifiedAt` > now − 7 days; for a **listing deal** — no `ValidUntil` and its primary source has auto-publish — `LastVerifiedAt` > now − `Deals__ListingStaleHours` (6 h), REQ-045, ADR-045). A published deal that is not active is shown as `expired` on detail.
+- **Active event**: `Status = Published` and effective end > now. **Active deal**: `Status = Published` and (`ValidUntil` > now, or `ValidUntil` is null and `LastVerifiedAt` > now − 7 days; for a **listing deal** — no `ValidUntil`, its primary source has auto-publish and its discount is at least `AutoPublish__MinDealDiscountPercent` — `LastVerifiedAt` > now − `Deals__ListingStaleHours` (6 h), REQ-045, ADR-045). A published deal that is not active is shown as `expired` on detail.
 - **Freshness**: `fresh` if `LastVerifiedAt` ≥ now − 48 h, else `stale`.
 - **Discount**: `round((old − new) / old × 100)` (midpoint away from zero), only when both prices are present and old > new.
 - **Normalization for matching/search**: lower-case, Albanian/Latin diacritics folded (ë→e, ç→c, č/ć→c, š→s, ž→z, đ→d), punctuation treated as a word separator ("Fushë-Kosovë" = "Fushë Kosovë"), whitespace collapsed (ADR-020). `SearchText` = normalized title + description + venue name.
@@ -206,7 +206,8 @@ EventDetailDto  = EventSummaryDto + { description|null, sources: SourceRefDto[] 
 DealSummaryDto  = { id, title, merchantName|null, city: CityDto|null, category: CategoryDto|null,
                     oldPrice|null, newPrice|null, priceText|null, currency|null, discountPercent|null,
                     validFrom|null, validUntil|null, imageUrl|null,
-                    sourceName, sourceUrl, lastVerifiedAt, freshness, status: "active"|"expired", isSynthetic }
+                    sourceName, sourceUrl, lastVerifiedAt, freshness, status: "active"|"expired", isSynthetic,
+                    isTodaysDeal /* no validUntil and the primary source auto-publishes: listing deal, REQ-045; the UI says "Oferta e sotme" */ }
 DealDetailDto   = DealSummaryDto + { description|null, sources: SourceRefDto[] }
 SearchResultDto = { kind: "event"|"deal", id, title, date|null /* event startsAt or deal validUntil */,
                     cityName|null, sourceName }

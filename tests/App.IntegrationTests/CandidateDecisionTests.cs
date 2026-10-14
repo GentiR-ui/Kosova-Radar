@@ -95,7 +95,8 @@ public class CandidateDecisionTests(AppFactory app)
         string dealCategory;
         await using (var scope = app.Services.CreateAsyncScope())
             dealCategory = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Categories
-                .Where(c => c.Kind == ItemKind.Deal).Select(c => c.Slug).FirstAsync();
+                // A slug that exists only for deals ("ushqim" is a slug of both kinds, and row order is not guaranteed).
+                .Where(c => c.Kind == ItemKind.Deal && c.Slug == "teknologji").Select(c => c.Slug).FirstAsync();
         var id = await SeedAsync(_ => { });
 
         var res = await admin.PutAsJsonAsync($"/api/admin/candidates/{id}", Body(categorySlug: dealCategory));

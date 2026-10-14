@@ -1,3 +1,5 @@
+using App.Domain.Sources;
+
 namespace App.Domain.Content;
 
 public sealed class Deal
@@ -28,5 +30,9 @@ public sealed class Deal
     public DateTimeOffset UpdatedAt { get; set; }
     public uint Version { get; set; }
 
-    public bool IsActive(DateTimeOffset now) => ContentRules.IsActiveDeal(Status, ValidUntil, LastVerifiedAt, now);
+    /// <summary>Not loaded by default; set by queries that need the source's settings (<c>AutoPublish</c>, REQ-045).</summary>
+    public Source? PrimarySource { get; set; }
+
+    public bool IsActive(DateTimeOffset now, bool isListingDeal = false, TimeSpan? listingWindow = null) =>
+        ContentRules.IsActiveDeal(Status, ValidUntil, LastVerifiedAt, now, isListingDeal, listingWindow);
 }

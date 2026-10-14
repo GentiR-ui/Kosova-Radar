@@ -8,9 +8,14 @@ internal abstract class HttpSourceAdapter(SourceHttpFetcher fetcher, RobotsCheck
 {
     protected abstract SourceType Type { get; }
 
+    /// <summary>For adapters that follow more than the configured URL (paginated HTML listings).</summary>
+    protected SourceHttpFetcher Fetcher => fetcher;
+
+    protected RobotsChecker Robots => robots;
+
     public bool CanHandle(Source source) => source.Type == Type;
 
-    public async Task<FetchResult> FetchAsync(Source source, CancellationToken ct)
+    public virtual async Task<FetchResult> FetchAsync(Source source, CancellationToken ct)
     {
         if (!Uri.TryCreate(source.BaseUrl, UriKind.Absolute, out var url) || url.Scheme is not ("http" or "https"))
             throw new SourceFetchException(RunErrorCodes.Unreachable, "The source URL is not a valid http(s) address.");

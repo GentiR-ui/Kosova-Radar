@@ -286,7 +286,11 @@ export function DealDetailPage() {
                   <DealPrice deal={d} withDiscount />
                 </Fact>
                 <Fact tone="deal" icon={<Clock3 />} label={p.validity}>
-                  {d.validUntil ? p.validUntil(formatDate(d.validUntil)) : p.validityUnknown}
+                  {d.validUntil
+                    ? p.validUntil(formatDate(d.validUntil))
+                    : d.isTodaysDeal
+                      ? p.todaysDeal
+                      : p.validityUnknown}
                 </Fact>
                 {(d.merchantName || d.city) && (
                   <Fact tone="deal" icon={<Store />} label={p.merchant}>

@@ -320,7 +320,11 @@ export function DealCard({ deal, index = 0 }: { deal: DealSummaryDto; index?: nu
       details={
         <>
           <Detail icon={<CalendarDays />}>
-            {deal.validUntil ? p.validUntil(formatDate(deal.validUntil)) : p.validityUnknown}
+            {deal.validUntil
+              ? p.validUntil(formatDate(deal.validUntil))
+              : deal.isTodaysDeal
+                ? p.todaysDeal
+                : p.validityUnknown}
           </Detail>
           {(deal.merchantName || deal.city) && (
             <Detail icon={<Store />}>

@@ -21,11 +21,11 @@ public sealed record DealDetailDto(
     Guid Id, string Title, string? MerchantName, CityDto? City, CategoryDto? Category, decimal? OldPrice, decimal? NewPrice,
     string? PriceText, string? Currency, int? DiscountPercent, DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil,
     string? ImageUrl, string SourceName, string SourceUrl, DateTimeOffset LastVerifiedAt, string Freshness, string Status,
-    bool IsSynthetic, string? Description, IReadOnlyList<SourceRefDto> Sources,
+    bool IsSynthetic, bool IsTodaysDeal, string? Description, IReadOnlyList<SourceRefDto> Sources,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? AdminStatus = null);
 
 /// <summary>Anonymous detail of a published event or deal (REQ-079, 085). Withdrawn items do not exist publicly; the admin view (REQ-069) includes them with <c>adminStatus</c>.</summary>
-public sealed class PublicItemQueries(IAppDbContext db, IClock clock)
+public sealed class PublicItemQueries(IAppDbContext db, IClock clock, DealOptions? dealOptions = null)
 {
     public async Task<EventDetailDto?> GetEventAsync(Guid id, CancellationToken ct, bool admin = false)
     {
@@ -50,9 +50,13 @@ public sealed class PublicItemQueries(IAppDbContext db, IClock clock)
             ? await db.Cities.AsNoTracking().Where(x => x.Id == c).Select(x => new CityDto(x.Slug, x.Name)).SingleOrDefaultAsync(ct)
             : null;
         var (sourceName, sources) = await SourcesAsync(ItemKind.Deal, d.Id, d.PrimarySourceId, d.SourceUrl, ct);
+        var autoPublish = await db.Sources.AsNoTracking().Where(s => s.Id == d.PrimarySourceId).Select(s => s.AutoPublish).SingleAsync(ct);
+        var listing = (dealOptions ?? new DealOptions()).IsListingDeal(d.ValidUntil, d.DiscountPercent, autoPublish);
         return new(d.Id, d.Title, d.MerchantName, city, await CategoryAsync(d.CategoryId, ct), d.OldPrice, d.NewPrice, d.PriceText,
             d.Currency, ContentRules.DiscountPercent(d.OldPrice, d.NewPrice), d.ValidFrom, d.ValidUntil, d.ImageUrl, sourceName,
-            d.SourceUrl, d.LastVerifiedAt, Freshness(d.LastVerifiedAt, now), d.IsActive(now) ? "active" : "expired", d.IsSynthetic,
+            d.SourceUrl, d.LastVerifiedAt, Freshness(d.LastVerifiedAt, now),
+            d.IsActive(now, listing, dealOptions?.ListingWindow) ? "active" : "expired", d.IsSynthetic,
+            listing && d.IsActive(now, listing, dealOptions?.ListingWindow),
             d.Description, sources, admin ? PublishedItems.AdminStatus(d.Status) : null);
     }
 

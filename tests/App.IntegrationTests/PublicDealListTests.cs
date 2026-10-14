@@ -20,9 +20,13 @@ public class PublicDealListTests(AppFactory app)
     private static readonly DateTimeOffset Now = new(2026, 10, 4, 12, 0, 0, TimeSpan.Zero);
 
     private static async Task<(List<Event> Events, List<Deal> Deals)> SeedAsync(
-        AppDbContext db, string token, int events, params (DateTimeOffset? Until, DateTimeOffset Verified, ItemStatus Status)[] deals)
+        AppDbContext db, string token, int events, params (DateTimeOffset? Until, DateTimeOffset Verified, ItemStatus Status)[] deals) =>
+        await SeedAsync(db, token, events, autoPublish: false, deals);
+
+    private static async Task<(List<Event> Events, List<Deal> Deals)> SeedAsync(
+        AppDbContext db, string token, int events, bool autoPublish, params (DateTimeOffset? Until, DateTimeOffset Verified, ItemStatus Status)[] deals)
     {
-        var source = new Source { Name = $"S-{token}", Type = SourceType.Fixture, PollIntervalMinutes = 60 };
+        var source = new Source { Name = $"S-{token}", Type = SourceType.Fixture, PollIntervalMinutes = 60, AutoPublish = autoPublish };
         db.Sources.Add(source);
         var city = await db.Cities.SingleAsync(c => c.Slug == "prishtine");
         var eventRows = Enumerable.Range(0, events).Select(i => new Event
@@ -50,6 +54,7 @@ public class PublicDealListTests(AppFactory app)
             Fingerprint = $"{token}-d{i}",
             SearchText = TextNormalizer.Fold($"Deal {token} {i}"),
             LastVerifiedAt = x.Verified,
+            DiscountPercent = autoPublish ? 50 : null,
             PublishedAt = Now,
             CreatedAt = Now,
             UpdatedAt = Now,
@@ -78,6 +83,31 @@ public class PublicDealListTests(AppFactory app)
 
         Assert.Equal(deals.Where(d => d.IsActive(Now)).Select(d => d.Id).Order(), viaSql.Order());
         Assert.Equal(2, viaSql.Count);
+    }
+
+    [Fact]
+    public async Task Sql_filter_equals_the_domain_rule_for_listing_deals_of_an_auto_publish_source()
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var token = "dl" + Guid.NewGuid().ToString("N")[..8];
+        var (_, deals) = await SeedAsync(db, token, 0, autoPublish: true,
+            (null, Now.AddHours(-6).AddSeconds(1), ItemStatus.Published),  // listed 5 h 59 min ago: active
+            (null, Now.AddHours(-6), ItemStatus.Published),                // exactly 6 h: stale
+            (null, Now.AddDays(-1), ItemStatus.Published),                 // not listed since yesterday
+            (Now.AddDays(1), Now.AddDays(-3), ItemStatus.Published),       // dated: the listing window does not apply
+            (null, Now, ItemStatus.Expired));                              // ended by a fetch (price below the minimum)
+
+        var viaSql = await db.Deals.Where(d => d.SearchText.Contains(token)).Where(ActiveItems.Deal(Now)).Select(d => d.Id).ToListAsync();
+        var listing = (Deal d) => d.ValidUntil is null;
+        var expected = deals.Where(d => d.IsActive(Now, listing(d))).Select(d => d.Id);
+
+        Assert.Equal(expected.Order(), viaSql.Order());
+        Assert.Equal(2, viaSql.Count);
+
+        var wider = await db.Deals.Where(d => d.SearchText.Contains(token))
+            .Where(ActiveItems.Deal(Now, new DealOptions { ListingStaleHours = 48 })).CountAsync();
+        Assert.Equal(4, wider); // the three listed rows and the dated one; the expired row stays out
     }
 
     [Fact]

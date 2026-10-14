@@ -11,12 +11,13 @@ namespace App.Application.Public;
 public sealed record DealSummaryDto(
     Guid Id, string Title, string? MerchantName, CityDto? City, CategoryDto? Category, decimal? OldPrice, decimal? NewPrice,
     string? PriceText, string? Currency, int? DiscountPercent, DateTimeOffset? ValidFrom, DateTimeOffset? ValidUntil,
-    string? ImageUrl, string SourceName, string SourceUrl, DateTimeOffset LastVerifiedAt, string Freshness, string Status, bool IsSynthetic);
+    string? ImageUrl, string SourceName, string SourceUrl, DateTimeOffset LastVerifiedAt, string Freshness, string Status, bool IsSynthetic,
+    bool IsTodaysDeal);
 
 /// <summary>Raw (unvalidated) query-string values of <c>GET /api/deals</c>.</summary>
 public sealed record DealListRequest(string? City, string? Category, string? Search, string? Page, string? PageSize);
 
-public sealed class PublicDealQueries(IAppDbContext db, IClock clock)
+public sealed class PublicDealQueries(IAppDbContext db, IClock clock, DealOptions? dealOptions = null)
 {
     /// <summary>Returns the page, or the field errors of an invalid request (REQ-082, 083).</summary>
     public async Task<(PagedResult<DealSummaryDto>? Result, Dictionary<string, string[]>? Errors)> ListAsync(
@@ -43,7 +44,7 @@ public sealed class PublicDealQueries(IAppDbContext db, IClock clock)
         if (errors.Count > 0) return (null, errors);
 
         var now = clock.UtcNow;
-        var query = db.Deals.AsNoTracking().Where(ActiveItems.Deal(now));
+        var query = db.Deals.AsNoTracking().Where(ActiveItems.Deal(now, dealOptions));
         if (cityId is { } cid) query = query.Where(d => d.CityId == cid);
         if (categoryId is { } catId) query = query.Where(d => d.CategoryId == catId);
         var needle = TextNormalizer.Fold(request.Search);
@@ -66,12 +67,19 @@ public sealed class PublicDealQueries(IAppDbContext db, IClock clock)
         var cities = await db.Cities.AsNoTracking().Where(c => cityIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, c => new CityDto(c.Slug, c.Name), ct);
         var categories = await db.Categories.AsNoTracking().Where(c => categoryIds.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => new CategoryDto(c.Slug, c.Name, c.Kind), ct);
-        var sources = await db.Sources.AsNoTracking().Where(s => sourceIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.Name, ct);
-        return deals.Select(d => new DealSummaryDto(
-            d.Id, d.Title, d.MerchantName, d.CityId is { } c ? cities.GetValueOrDefault(c) : null,
-            d.CategoryId is { } k ? categories.GetValueOrDefault(k) : null, d.OldPrice, d.NewPrice, d.PriceText, d.Currency,
-            ContentRules.DiscountPercent(d.OldPrice, d.NewPrice), d.ValidFrom, d.ValidUntil, d.ImageUrl, sources[d.PrimarySourceId],
-            d.SourceUrl, d.LastVerifiedAt, ContentRules.IsFresh(d.LastVerifiedAt, now) ? "fresh" : "stale",
-            d.IsActive(now) ? "active" : "expired", d.IsSynthetic)).ToList();
+        var sources = await db.Sources.AsNoTracking().Where(s => sourceIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => new { s.Name, s.AutoPublish }, ct);
+        return deals.Select(d =>
+        {
+            var source = sources[d.PrimarySourceId];
+            var listing = (dealOptions ?? new DealOptions()).IsListingDeal(d.ValidUntil, d.DiscountPercent, source.AutoPublish);
+            return new DealSummaryDto(
+                d.Id, d.Title, d.MerchantName, d.CityId is { } c ? cities.GetValueOrDefault(c) : null,
+                d.CategoryId is { } k ? categories.GetValueOrDefault(k) : null, d.OldPrice, d.NewPrice, d.PriceText, d.Currency,
+                ContentRules.DiscountPercent(d.OldPrice, d.NewPrice), d.ValidFrom, d.ValidUntil, d.ImageUrl, source.Name,
+                d.SourceUrl, d.LastVerifiedAt, ContentRules.IsFresh(d.LastVerifiedAt, now) ? "fresh" : "stale",
+                d.IsActive(now, listing, dealOptions?.ListingWindow) ? "active" : "expired", d.IsSynthetic,
+                listing && d.IsActive(now, listing, dealOptions?.ListingWindow));
+        }).ToList();
     }
 }

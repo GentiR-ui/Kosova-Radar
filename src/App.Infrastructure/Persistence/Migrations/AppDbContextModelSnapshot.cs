@@ -988,11 +988,13 @@ namespace App.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CityId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("App.Domain.Sources.Source", null)
+                    b.HasOne("App.Domain.Sources.Source", "PrimarySource")
                         .WithMany()
                         .HasForeignKey("PrimarySourceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("PrimarySource");
                 });
 
             modelBuilder.Entity("App.Domain.Content.Event", b =>

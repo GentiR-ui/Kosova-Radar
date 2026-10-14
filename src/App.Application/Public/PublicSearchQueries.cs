@@ -11,7 +11,7 @@ public sealed record SearchResultDto(string Kind, Guid Id, string Title, DateTim
 public sealed record SearchRequest(string? Q, string? Page, string? PageSize);
 
 /// <summary>Unified search over active events (by start) followed by active deals (by validUntil, open-ended last), REQ-089.</summary>
-public sealed class PublicSearchQueries(IAppDbContext db, IClock clock)
+public sealed class PublicSearchQueries(IAppDbContext db, IClock clock, DealOptions? dealOptions = null)
 {
     public const int MinQueryLength = 2;
 
@@ -32,7 +32,7 @@ public sealed class PublicSearchQueries(IAppDbContext db, IClock clock)
 
         var now = clock.UtcNow;
         var events = db.Events.AsNoTracking().Where(ActiveItems.Event(now)).Where(e => e.SearchText.Contains(needle));
-        var deals = db.Deals.AsNoTracking().Where(ActiveItems.Deal(now)).Where(d => d.SearchText.Contains(needle));
+        var deals = db.Deals.AsNoTracking().Where(ActiveItems.Deal(now, dealOptions)).Where(d => d.SearchText.Contains(needle));
         var eventCount = await events.CountAsync(ct);
         var dealCount = await deals.CountAsync(ct);
         var total = eventCount + dealCount;

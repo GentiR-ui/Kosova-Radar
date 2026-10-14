@@ -168,6 +168,8 @@ public sealed class IngestionService(
         var verified = new List<PublishedLink>();
         var publishedInRun = new List<PublishedRef>();
         var auto = new AutoPublishRun();
+        var delisted = new HashSet<Guid>();
+        var delistedAt = autoPublisher.DelistedVerifiedAt(fetchedAt);
         await ai.BeginRunAsync(ct);
         var now = clock.UtcNow;
 
@@ -236,6 +238,14 @@ public sealed class IngestionService(
             validation = match.Validation;
             var fields = validation.Fields;
 
+            // REQ-045: the shop still lists its own published deal, but no longer with enough off: it stops being today's deal
+            // now, not when it goes stale (its LastVerifiedAt moves back to the start of the stale window; the status is a
+            // person's to change). A change it comes back with is a new candidate on the same item.
+            if (matchedItemId is { } matchedId && source.AutoPublish && item.Kind == ItemKind.Deal && fields.ValidUntil is null
+                && published.TryGetValue(item.Fingerprint, out var own) && own.Id == matchedId && own.PrimarySourceId == source.Id
+                && autoPublisher.IsBelowDealThreshold(fields))
+                delisted.Add(matchedId);
+
             if (open is not null)
             {
                 open.Kind = item.Kind;
@@ -287,6 +297,13 @@ public sealed class IngestionService(
         if (dealIds.Count > 0)
             await db.Deals.Where(d => dealIds.Contains(d.Id) && d.Status != ItemStatus.Withdrawn)
                 .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastVerifiedAt, fetchedAt), ct);
+        if (delisted.Count > 0)
+        {
+            var ended = await db.Deals
+                .Where(d => delisted.Contains(d.Id) && d.Status == ItemStatus.Published && d.ValidUntil == null && d.LastVerifiedAt > delistedAt)
+                .ExecuteUpdateAsync(s => s.SetProperty(d => d.LastVerifiedAt, delistedAt), ct);
+            if (ended > 0) log.LogInformation("{Count} listing deal(s) of source {SourceId} are no longer today's deals", ended, source.Id);
+        }
     }
 
     /// <summary>
