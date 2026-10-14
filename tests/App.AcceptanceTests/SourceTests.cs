@@ -62,6 +62,8 @@ public class SourceTests(AppFactory app)
     [Theory, Trait("Req", "REQ-010")]
     [InlineData("prishtinaEvents")]
     [InlineData("kapodalim")]
+    [InlineData("gjirafaMall")]
+    [InlineData("foleja")]
     public async Task Admin_creates_an_html_source_with_a_site_adapter(string adapter)
     {
         var admin = await Radar.AdminAsync(app);

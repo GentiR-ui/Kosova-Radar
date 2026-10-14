@@ -10,6 +10,11 @@
 - Next: T011.
 -->
 
+## 2026-10-14 · Spec amendment v4 (human)
+- Client: deals from Gjirafa Mall and Foleja like the event sources; neither shop states an end date, so the client chose "today's deal" (ADR-045): ≥ 35 % off and listed now → published; active while listed (6 h without being listed → gone); < 35 % on a later fetch → gone.
+- Changed: REQ-010 (adapters `gjirafaMall`, `foleja`), REQ-022 (events or deals), REQ-044 (undated deals → REQ-045); new REQ-045; tests in `SourceTests.cs` and `AutoPublishTests.cs`; design.md §2/§4/§5/§6; ADR-045.
+- New tasks: T053 (deal support for HTML sources), T054 (Foleja), T055 (Gjirafa Mall). Feasibility first in T054/T055: no workaround if a shop blocks bots or renders products only with JavaScript.
+
 ## 2026-10-13 · T052 done
 - Built: public pages ported from the client's Lovable project "Kosova Pulse" (ADR-044), connected to the real API: `.theme-radar` tokens (graphite/lime/coral) on the public layout only, Manrope font for the whole app (Inter removed), solid sticky header (menu readable while scrolling) with radar mark and scroll progress, intro + "Në fokus sot" (today's first event with a picture), ticker, "Në radarin tënd" with city select, "Sot/Evente/Oferta" tabs styled as the day switcher (+ "Nesër"/"Pasnesër" inside "Evente", `day` URL param), result count, 4-column cards (index row, type badge, tilted discount badge, live countdown via one shared clock, coloured source link), restyled empty/error/loading states, events/deals/search/detail pages, `lucide-react` icons.
 - Tests: new `Countdown.test.tsx` (start/started/ended, deal end, date-only, Pristina midnight in summer/winter); all web unit tests green (75); production build passes; 360 px: no horizontal scroll on home, events tab, events, deals, search, detail, 404 (Playwright check against the local app). Playwright acceptance/flow suites not run in this session.

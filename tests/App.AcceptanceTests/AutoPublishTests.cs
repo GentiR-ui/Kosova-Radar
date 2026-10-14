@@ -144,6 +144,58 @@ public class AutoPublishTests(AppFactory app)
         Assert.Single(ids);
     }
 
+    // ---------- REQ-045 ----------
+
+    private static JsonObject ListedDeal(string g, decimal oldPrice, decimal newPrice) =>
+        Radar.DealItem(Radar.Title(g, "Ofertë"), oldPrice: oldPrice, newPrice: newPrice, noValidUntil: true);
+
+    [Fact, Trait("Req", "REQ-045")]
+    public async Task Undated_deal_of_an_auto_publish_source_is_published_as_todays_deal_and_goes_stale()
+    {
+        var admin = await Radar.AdminAsync(app);
+        var g = Radar.Token();
+
+        var ing = await IngestAutoAsync(admin, ListedDeal(g, 100m, 60m));
+
+        Assert.Equal("published", ing.Single.Str("status"));
+        var anon = app.CreateClient();
+        Assert.Single(await Radar.PublicIdsAsync(anon, $"/api/deals?search={g}"));
+        Assert.Empty(await Radar.PublicIdsAsync(anon, $"/api/deals?search={g}", Clock.Now.AddHours(7)));
+    }
+
+    [Fact, Trait("Req", "REQ-045")]
+    public async Task Listed_deal_stays_active_while_later_fetches_still_list_it()
+    {
+        var admin = await Radar.AdminAsync(app);
+        var g = Radar.Token();
+        var deal = ListedDeal(g, 100m, 60m);
+        var ing = await IngestAutoAsync(admin, deal);
+        Assert.Equal("published", ing.Single.Str("status"));
+
+        var run = await Radar.RefetchWithAsync(admin, ing.SourceId, ing.SourceBody, [deal], Clock.Now.AddHours(5));
+        Assert.Equal("succeeded", run.Str("status"));
+
+        var anon = app.CreateClient();
+        Assert.Single(await Radar.PublicIdsAsync(anon, $"/api/deals?search={g}", Clock.Now.AddHours(10)));
+        Assert.Empty(await Radar.PublicIdsAsync(anon, $"/api/deals?search={g}", Clock.Now.AddHours(12)));
+    }
+
+    [Fact, Trait("Req", "REQ-045")]
+    public async Task Listed_deal_stops_being_active_when_its_discount_falls_below_35_percent()
+    {
+        var admin = await Radar.AdminAsync(app);
+        var g = Radar.Token();
+        var deal = ListedDeal(g, 100m, 60m);
+        var ing = await IngestAutoAsync(admin, deal);
+        Assert.Equal("published", ing.Single.Str("status"));
+
+        deal["newPrice"] = 80m;
+        var run = await Radar.RefetchWithAsync(admin, ing.SourceId, ing.SourceBody, [deal]);
+        Assert.Equal("succeeded", run.Str("status"));
+
+        Assert.Empty(await Radar.PublicIdsAsync(app.CreateClient(), $"/api/deals?search={g}"));
+    }
+
     // ---------- REQ-025 ----------
 
     [Fact, Trait("Req", "REQ-025")]
