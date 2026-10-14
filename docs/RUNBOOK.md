@@ -40,7 +40,7 @@ Fixture sources are disabled in Production (`Ingestion__AllowFixtureSources=fals
 the client has confirmed in writing (ADR-006); the crawler honours robots.txt and a per-host delay.
 HTML sources (type "Faqe HTML", ADR-035) need an adapter ("Prishtina.com — evente", "Ka' Po Dalim", "Foleja — oferta" or "Gjirafa Mall — oferta"). With `Seed__KnownSources=true` (default) all four are
 created at start-up when no source has their URL, inactive and without auto-publish unless `Seed__KnownSourcesActive` / `Seed__KnownSourcesAutoPublish`
-are true (existing rows are never changed; the two shop parsers are placeholders until T054/T055, so their runs fail with `MalformedPayload`); an inactive source stays disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
+are true (existing rows are never changed, except that a Gjirafa Mall row seeded on the site root moves to `https://gjirafamall.com/oferta-speciale`); an inactive source stays disabled until an Admin ticks "Aktiv" or uses "Merr tani". The operator is
 responsible for the sites' terms of use. A run that finds no listing fails with `MalformedPayload`: the site layout probably changed and its parser needs an update.
 
 Auto-publish (ADR-039): a source with "Publiko automatikisht" publishes its new `Valid` candidates, and changes whose only review issue is

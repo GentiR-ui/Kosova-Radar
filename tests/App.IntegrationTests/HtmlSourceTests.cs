@@ -171,7 +171,7 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             return await db.Sources.AsNoTracking()
                 .Where(s => s.BaseUrl == "https://prishtina.com/events" || s.BaseUrl == "https://kapodalim.com/ks"
-                    || s.BaseUrl == "https://www.foleja.com/foleja-Deals/" || s.BaseUrl == "https://gjirafamall.com").ToListAsync();
+                    || s.BaseUrl == "https://www.foleja.com/foleja-Deals/" || s.BaseUrl == "https://gjirafamall.com/oferta-speciale").ToListAsync();
         }
 
         var known = await KnownAsync(factory.Services);
@@ -187,7 +187,7 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         Assert.Equal(HtmlAdapters.Kapodalim, known.Single(s => s.BaseUrl == "https://kapodalim.com/ks").Adapter);
         var foleja = known.Single(s => s.BaseUrl == "https://www.foleja.com/foleja-Deals/");
         Assert.Equal((HtmlAdapters.Foleja, ItemKind.Deal), (foleja.Adapter, foleja.DefaultKind));
-        var gjirafa = known.Single(s => s.BaseUrl == "https://gjirafamall.com");
+        var gjirafa = known.Single(s => s.BaseUrl == "https://gjirafamall.com/oferta-speciale");
         Assert.Equal((HtmlAdapters.GjirafaMall, ItemKind.Deal), (gjirafa.Adapter, gjirafa.DefaultKind));
 
         await using (var scope = factory.Services.CreateAsyncScope())
@@ -200,6 +200,36 @@ public sealed class HtmlSourceTests(AppFactory app) : IDisposable
         var again = await KnownAsync(factory.Services);
         Assert.Equal(4, again.Count);
         Assert.Equal("Ka Po Dalim (riemëruar)", again.Single(s => s.BaseUrl == "https://kapodalim.com/ks").Name);
+    }
+
+    [Fact]
+    public async Task Seeding_moves_a_gjirafa_mall_row_from_the_site_root_to_the_listing_and_keeps_its_settings()
+    {
+        await using var factory = app.WithWebHostBuilder(b => b.UseSetting("Seed:KnownSources", "true"));
+        using var _ = factory.CreateClient();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Sources.Where(s => s.BaseUrl == "https://gjirafamall.com/oferta-speciale")
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.BaseUrl, "https://gjirafamall.com").SetProperty(x => x.Name, "Gjirafa (emri im)").SetProperty(x => x.IsActive, true));
+
+        await scope.ServiceProvider.GetRequiredService<KnownSourcesSeeder>().SeedAsync();
+
+        var rows = await db.Sources.AsNoTracking().Where(s => s.Adapter == HtmlAdapters.GjirafaMall).ToListAsync();
+        var row = rows.Count == 1 ? rows[0] : null;
+        // The database is shared with the other tests of the class: put the row back whatever the asserts say.
+        try
+        {
+            Assert.NotNull(row);
+            Assert.Equal("https://gjirafamall.com/oferta-speciale", row.BaseUrl);
+            Assert.Equal("Gjirafa (emri im)", row.Name);
+            Assert.True(row.IsActive);
+        }
+        finally
+        {
+            await db.Sources.Where(s => s.Adapter == HtmlAdapters.GjirafaMall)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Name, "Gjirafa Mall — Oferta").SetProperty(x => x.IsActive, false)
+                    .SetProperty(x => x.BaseUrl, "https://gjirafamall.com/oferta-speciale"));
+        }
     }
 
     [Theory]

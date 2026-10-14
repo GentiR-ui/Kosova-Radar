@@ -69,22 +69,7 @@ internal sealed partial class FolejaDealsParser : IHtmlSiteParser
         return ShopPrice.Parse(digits.Length > 0 && digits.All(char.IsDigit) ? $"{whole},{digits}" : whole);
     }
 
-    /// <summary>The product path <c>/{SKU}/{slug}</c> of a link on the shop's own host, else null.</summary>
-    private static string? PathOf(string? href, Uri? pageUrl)
-    {
-        if (string.IsNullOrWhiteSpace(href)) return null;
-        string path;
-        if (Uri.TryCreate(href, UriKind.Absolute, out var abs))
-        {
-            if (pageUrl is not null && !abs.Host.Equals(pageUrl.Host, StringComparison.OrdinalIgnoreCase)) return null;
-            path = abs.AbsolutePath;
-        }
-        else
-        {
-            path = href.Split('?', '#')[0];
-        }
-        return ProductPath().IsMatch(path) ? path : null;
-    }
+    private static string? PathOf(string? href, Uri? pageUrl) => ShopLinks.ProductPath(href, pageUrl, ProductPath());
 
     private static string Collapse(string s) => Whitespace().Replace(s, " ").Trim();
 
