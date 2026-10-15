@@ -143,22 +143,22 @@ describe('list states', () => {
   })
 })
 
-describe('home tabs', () => {
-  it('"Sot" asks for today only; the deals tab lists deals only', async () => {
+describe('home sections', () => {
+  it('shows the events of today and the deals in their own regions', async () => {
     const today = pristinaToday()
     const calls = stubFetch({
       [`GET /api/events?from=${today}&to=${today}&page=1&pageSize=20`]: [200, page([event])],
       'GET /api/deals?page=1&pageSize=20': [200, page([deal])],
     })
     renderRoutes([{ path: '/', element: <HomePage /> }], '/')
-    // The items are asserted inside the tab panel: the "best deals" panel shows the same deal.
-    const panel = () => within(screen.getByRole('tabpanel'))
-    expect(await panel().findByRole('heading', { name: 'Koncert xyz' })).toBeInTheDocument()
-    expect(await panel().findByRole('heading', { name: 'Zbritje xyz' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Oferta' }))
-    expect(screen.getByRole('tab', { name: 'Oferta' })).toHaveAttribute('aria-selected', 'true')
-    expect(panel().queryByRole('heading', { name: 'Koncert xyz' })).not.toBeInTheDocument()
+    const todaySection = within(await screen.findByRole('region', { name: 'Sot në Kosovë' }))
+    expect(await todaySection.findByRole('heading', { name: 'Koncert xyz' })).toBeInTheDocument()
+    expect(todaySection.queryByRole('heading', { name: 'Zbritje xyz' })).not.toBeInTheDocument()
+
+    const dealsSection = within(screen.getByRole('region', { name: 'Ofertat më të mira' }))
+    expect(await dealsSection.findByRole('heading', { name: 'Zbritje xyz' })).toBeInTheDocument()
+    expect(dealsSection.queryByRole('heading', { name: 'Koncert xyz' })).not.toBeInTheDocument()
     expect(calls.filter((c) => c.includes('/api/deals'))).toHaveLength(1)
   })
 })

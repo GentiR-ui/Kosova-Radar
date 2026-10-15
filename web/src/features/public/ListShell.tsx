@@ -24,6 +24,7 @@ export default function ListShell({
   grid = false,
   skeleton = grid,
   emptyHint,
+  emptyAction,
   children,
 }: {
   queries: Q[]
@@ -32,6 +33,8 @@ export default function ListShell({
   /** Show card skeletons while loading (on by default with `grid`). */
   skeleton?: boolean
   emptyHint?: string
+  /** Optional call to action inside the empty state (e.g. a link to the full list). */
+  emptyAction?: ReactNode
   children: ReactNode
 }) {
   const failed = queries.some((q) => q.isError)
@@ -82,6 +85,7 @@ export default function ListShell({
         </span>
         <p className="mt-4 text-lg font-extrabold">{p.empty}</p>
         <p className="mt-1.5 max-w-sm text-sm text-muted">{emptyHint ?? p.emptyHint}</p>
+        {emptyAction}
       </div>
     )
   return (

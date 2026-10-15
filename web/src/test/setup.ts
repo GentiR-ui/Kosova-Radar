@@ -8,6 +8,32 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+// jsdom has no matchMedia (Embla's responsive options need it): report "no match" for every query.
+beforeEach(() => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => false,
+  }))
+})
+
+// jsdom has no ResizeObserver either (Embla observes its viewport).
+beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+})
+
 // jsdom has no IntersectionObserver (Motion's whileInView needs it): report every target as visible.
 beforeEach(() => {
   vi.stubGlobal(

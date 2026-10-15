@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { ArrowUpRight, CalendarDays, ChevronRight, Clock3, MapPin } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { cn } from '../../lib/cn'
 import type { CategoryDto, DealSummaryDto, EventSummaryDto } from './api'
@@ -91,7 +91,9 @@ export function Media({
   contain?: boolean
   children?: ReactNode
 }) {
-  const href = url ? safeHref(url) : undefined
+  // Sources sometimes publish a broken image URL; fall back to the category tile instead of a broken icon.
+  const [failed, setFailed] = useState(false)
+  const href = url && !failed ? safeHref(url) : undefined
   const { tile, Icon } = categoryStyle(category?.slug, kind)
   return (
     <div className={cn('media-frame', className)}>
@@ -105,6 +107,7 @@ export function Media({
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
           referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
           className={contain ? 'object-contain p-3' : undefined}
         />
       ) : (
