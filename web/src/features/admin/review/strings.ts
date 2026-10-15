@@ -19,7 +19,12 @@ export const r = {
         ? `${ok} u aprovuan.`
         : `${ok} u aprovuan, ${failed} dështuan (mund të jenë ndryshuar nga dikush tjetër). Rifreskoni listën.`,
   },
-  status: { pending: 'Në pritje', rejected: 'Refuzuar', published: 'Publikuar', merged: 'Bashkuar' },
+  status: {
+    pending: 'Në pritje',
+    rejected: 'Refuzuar',
+    published: 'Publikuar',
+    merged: 'Bashkuar',
+  },
   validation: { valid: 'Valid', needsReview: 'Kërkon shqyrtim', rejected: 'Refuzuar' },
   kind: { event: 'Event', deal: 'Ofertë' },
   detail: {

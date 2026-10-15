@@ -2,17 +2,19 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (ADR-048).
- * `@theme` keeps the light theme the admin already uses and adds the brand palette taken from the logo.
- * `.theme-radar` (the public layout) switches the surfaces to warm paper + charcoal + orange.
+ * Design tokens (ADR-050, palette from docs/design/reference-v3.png).
+ * `@theme` keeps the light theme the admin already uses and adds the public brand palette;
+ * `.theme-radar` (the public layout) switches the surfaces to the violet–blue system.
  *
  * Contrast (WCAG, computed for these exact values):
- *   ink #141416 on paper #FAF8F5 17.4:1 · muted #5C5F66 on paper 6.0:1 / on white 6.4:1
- *   brand-text #A84300 on paper 5.7:1 · brand-on-dark #FF8A1F on charcoal 7.9:1
- *   on-dark #FFFFFF on charcoal 18.7:1 · on-dark-muted #B9BBC2 on charcoal 9.8:1
- *   brand-ink #7A2E00 on brand-soft #FFE9D6 8.1:1 · ink on brand #FF7A00 7.0:1
- *   ink on the gradient 5.9:1 (start #FF5A00) … 9.1:1 (end #FFA21A)
- *   white on orange is 2.6:1 and is therefore never used.
+ *   ink #0B1B3F on paper #F3F6FA 15.6:1 · on white 16.9:1
+ *   muted #5B6478 on paper 5.5:1 · on white 5.9:1
+ *   violet #6D4AF6 on white 5.3:1 · on paper 4.9:1 · white on violet 5.3:1
+ *   white on the brand gradient 6.3:1 (start #5B3FE8) … 5.5:1 (end #2F5BEA)
+ *   white on hero #03142E 18.4:1 · on-dark-muted #B9C0D4 on hero 10.1:1
+ *   headline gradient on hero 4.8:1 (#C044FA) … 6.8:1 (#A78BFA), used only at 40 px+
+ *   icon tiles (text/icon on tile): orange 4.7:1, cyan 4.8:1, pink 5.1:1, indigo 6.4:1,
+ *   violet 6.0:1, green 4.6:1, red 5.3:1, amber 4.5:1
  */
 @theme {
   /* shared light theme (admin) */
@@ -29,21 +31,18 @@
   --color-warn: oklch(0.52 0.12 70);
   --color-danger: oklch(0.52 0.2 25);
 
-  /* brand (from the logo) */
-  --color-charcoal: #121214;
-  --color-charcoal-soft: #1c1c20;
-  --color-brand: #ff7a00;
-  --color-brand-strong: #ff5a00;
-  --color-brand-text: #a84300;
-  --color-brand-on-dark: #ff8a1f;
-  --color-brand-soft: #ffe9d6;
-  --color-brand-ink: #7a2e00;
+  /* public brand */
+  --color-violet: #6d4af6;
+  --color-violet-soft: #ede9fe;
+  --color-blue: #2f5bea;
+  --color-hero: #03142e;
   --color-on-dark: #ffffff;
-  --color-on-dark-muted: #b9bbc2;
+  --color-on-dark-muted: #b9c0d4;
 
-  --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(20 20 22 / 0.04), 0 8px 24px rgb(20 20 22 / 0.06);
-  --shadow-lift: 0 4px 10px rgb(20 20 22 / 0.06), 0 18px 40px rgb(20 20 22 / 0.12);
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(11 27 63 / 0.04), 0 8px 24px rgb(11 27 63 / 0.06);
+  --shadow-lift: 0 6px 14px rgb(11 27 63 / 0.08), 0 24px 48px rgb(11 27 63 / 0.14);
+  --shadow-brand: 0 10px 24px rgb(91 63 232 / 0.32);
   --font-display: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans:
     'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
@@ -51,19 +50,20 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The public pages: warm paper, charcoal bands, orange brand. */
+/* The public pages. */
 .theme-radar {
-  --color-paper: #faf8f5;
+  --color-paper: #f3f6fa;
   --color-surface: #ffffff;
-  --color-soft: #f4f1ec;
-  --color-ink: #141416;
-  --color-muted: #5c5f66;
-  --color-line: #ece7e1;
-  --color-accent: #ff7a00;
-  --color-accent-strong: #ff5a00;
-  --color-accent-soft: #ffe9d6;
-  --color-accent-ink: #141416; /* never white on orange */
-  --brand-gradient: linear-gradient(135deg, #ff5a00, #ffa21a);
+  --color-soft: #eef2f8;
+  --color-ink: #0b1b3f;
+  --color-muted: #5b6478;
+  --color-line: #e6eaf2;
+  --color-accent: #6d4af6;
+  --color-accent-strong: #5b3fe8;
+  --color-accent-soft: #ede9fe;
+  --color-accent-ink: #ffffff;
+  --brand-gradient: linear-gradient(135deg, #5b3fe8, #2f5bea);
+  --headline-gradient: linear-gradient(90deg, #c044fa, #a78bfa);
   background: var(--color-paper);
   color: var(--color-ink);
 }
@@ -75,7 +75,7 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow-wrap: anywhere; /* long unbroken source text must not widen the page */
-    scroll-padding-top: 5.5rem; /* height of the sticky header */
+    scroll-padding-top: 6rem; /* height of the sticky header */
   }
   button,
   input,
@@ -91,20 +91,20 @@
     letter-spacing: -0.02em;
   }
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-violet);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 6px;
   }
 }
 
 @layer components {
   .page-width {
-    width: min(1280px, calc(100% - 40px));
+    width: min(1320px, calc(100% - 32px));
     margin-inline: auto;
   }
   @media (min-width: 768px) {
     .page-width {
-      width: min(1280px, calc(100% - 64px));
+      width: min(1320px, calc(100% - 64px));
     }
   }
 
@@ -115,11 +115,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 12px;
+    border-radius: 999px;
     border: 1px solid var(--color-line);
     background: var(--color-surface);
     color: var(--color-ink);
-    padding-inline: 1.15rem;
+    padding-inline: 1.25rem;
     font-size: 0.9rem;
     font-weight: 700;
     transition:
@@ -131,37 +131,40 @@
       transform 200ms var(--ease-out-expo);
   }
   .btn:hover:not(:disabled) {
-    border-color: var(--color-ink);
+    border-color: var(--color-violet);
+    color: var(--color-violet);
     transform: translateY(-1px);
   }
   .btn:active:not(:disabled) {
-    transform: scale(0.97);
+    transform: scale(0.98);
   }
   .btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
   }
-  /* Primary: brand gradient with ink text (7.0:1). */
+  /* Primary: brand gradient with white text (5.5–6.3:1). */
   .btn-primary {
     border-color: transparent;
-    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
-    color: #141416;
-    box-shadow: 0 8px 20px rgb(255 122 0 / 0.28);
+    background: var(--brand-gradient, linear-gradient(135deg, #5b3fe8, #2f5bea));
+    color: #ffffff;
+    box-shadow: var(--shadow-brand);
   }
   .btn-primary:hover:not(:disabled) {
     border-color: transparent;
-    filter: brightness(1.06);
-    box-shadow: 0 12px 26px rgb(255 122 0 / 0.36);
+    color: #ffffff;
+    filter: brightness(1.07);
+    box-shadow: 0 14px 30px rgb(91 63 232 / 0.4);
   }
-  /* Secondary on a dark surface. */
-  .btn-on-dark {
-    border-color: rgb(255 255 255 / 0.28);
-    background: rgb(255 255 255 / 0.06);
+  /* Glass button for dark surfaces (hero, footer). */
+  .btn-glass {
+    border-color: rgb(255 255 255 / 0.25);
+    background: rgb(255 255 255 / 0.1);
     color: var(--color-on-dark);
+    backdrop-filter: blur(6px);
   }
-  .btn-on-dark:hover:not(:disabled) {
-    border-color: rgb(255 255 255 / 0.6);
-    background: rgb(255 255 255 / 0.12);
+  .btn-glass:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.18);
     color: var(--color-on-dark);
   }
   .btn-icon {
@@ -169,13 +172,14 @@
     width: 44px;
     height: 44px;
     place-items: center;
-    border-radius: 12px;
+    border-radius: 999px;
     transition:
       background-color 200ms,
-      color 200ms;
+      color 200ms,
+      transform 200ms var(--ease-out-expo);
   }
 
-  /* ---------- cards ---------- */
+  /* ---------- cards (proportions and hover from the client's shop pages) ---------- */
   .card {
     border-radius: var(--radius-card);
     border: 1px solid var(--color-line);
@@ -184,19 +188,20 @@
   }
   .card-hover {
     transition:
-      box-shadow 300ms var(--ease-out-expo),
-      transform 300ms var(--ease-out-expo),
+      box-shadow 320ms var(--ease-out-expo),
+      transform 320ms var(--ease-out-expo),
       border-color 200ms;
   }
   .card-hover:hover,
   .card-hover:focus-within {
-    transform: translateY(-4px);
+    transform: translateY(-6px);
     box-shadow: var(--shadow-lift);
+    border-color: color-mix(in srgb, var(--color-violet) 35%, var(--color-line));
   }
-  /* 16:10 media frame; the picture zooms a little on hover. */
   .media-frame {
     position: relative;
     overflow: hidden;
+    border-radius: 20px;
     background: var(--color-soft);
     aspect-ratio: 16 / 10;
   }
@@ -204,12 +209,29 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 500ms var(--ease-out-expo);
+    transition: transform 600ms var(--ease-out-expo);
   }
   .card-hover:hover .media-frame img {
-    transform: scale(1.04);
+    transform: scale(1.06);
   }
-  /* Title stretches over the whole card; links above it stay clickable. */
+  /* Light sweep over the picture on hover. */
+  .media-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 35%,
+      rgb(255 255 255 / 0.28) 50%,
+      transparent 65%
+    );
+    transform: translateX(-120%);
+    transition: transform 700ms var(--ease-out-expo);
+    pointer-events: none;
+  }
+  .card-hover:hover .media-frame::after {
+    transform: translateX(120%);
+  }
   .stretched::after {
     content: '';
     position: absolute;
@@ -225,142 +247,134 @@
     display: inline-flex;
     width: fit-content;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     border-radius: 999px;
-    padding: 4px 10px;
+    padding: 5px 11px;
     font-size: 12px;
     font-weight: 700;
     line-height: 1.3;
   }
-  .badge-live {
-    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
-    color: #141416;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .badge-discount {
-    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
-    color: #141416;
-    font-weight: 800;
+  .badge-brand {
+    background: var(--brand-gradient, linear-gradient(135deg, #5b3fe8, #2f5bea));
+    color: #ffffff;
     font-variant-numeric: tabular-nums;
   }
+  .badge-glass {
+    background: rgb(3 20 46 / 0.72);
+    color: #ffffff;
+    backdrop-filter: blur(6px);
+  }
   .badge-soft {
-    background: var(--color-brand-soft);
-    color: var(--color-brand-ink);
+    background: var(--color-violet-soft);
+    color: #5b21b6;
   }
   .badge-outline {
     border: 1px solid var(--color-line);
     background: var(--color-surface);
     color: var(--color-muted);
   }
-  /* Category tints: soft background + dark text of the same hue, all ≥ 6.3:1 (see header comment). */
-  .cat-muzike {
-    background: #ede9fe;
-    color: #5b21b6;
-  }
-  .cat-teater {
-    background: #ffe4e6;
-    color: #9f1239;
-  }
-  .cat-art {
-    background: #fef3c7;
-    color: #92400e;
-  }
-  .cat-sport {
-    background: #dcfce7;
-    color: #166534;
-  }
-  .cat-ushqim {
-    background: #ffedd5;
-    color: #9a3412;
-  }
-  .cat-nate {
-    background: #e0e7ff;
-    color: #3730a3;
-  }
-  .cat-edukim {
-    background: #cffafe;
-    color: #155e75;
-  }
-  .cat-familje {
-    background: #fce7f3;
-    color: #9d174d;
-  }
-  .cat-default {
-    background: #f1f5f9;
-    color: #334155;
+  .badge-live {
+    background: rgb(255 255 255 / 0.14);
+    color: #ffffff;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
   }
 
-  /* ---------- chips, tabs, inputs ---------- */
+  /* Icon tiles: one fixed colour per category, reused on chips, badges and placeholders. */
+  .tile {
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+  }
+  .tile-orange {
+    background: #fff1e6;
+    color: #c2410c;
+  }
+  .tile-cyan {
+    background: #e0f7fc;
+    color: #0e7490;
+  }
+  .tile-pink {
+    background: #fce7f3;
+    color: #be185d;
+  }
+  .tile-indigo {
+    background: #e0e7ff;
+    color: #4338ca;
+  }
+  .tile-violet {
+    background: #ede9fe;
+    color: #6d28d9;
+  }
+  .tile-green {
+    background: #dcfce7;
+    color: #15803d;
+  }
+  .tile-red {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+  .tile-amber {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  /* ---------- chips, fields ---------- */
   .chip {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     border-radius: 999px;
     border: 1px solid var(--color-line);
     background: var(--color-surface);
-    padding-inline: 16px;
+    padding: 4px 16px 4px 4px;
     font-size: 14px;
     font-weight: 700;
-    color: var(--color-muted);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-card);
     transition:
       color 200ms,
       border-color 200ms,
       background-color 200ms,
+      box-shadow 250ms,
       transform 200ms var(--ease-out-expo);
   }
   .chip:hover {
-    color: var(--color-ink);
-    border-color: var(--color-ink);
+    border-color: color-mix(in srgb, var(--color-violet) 40%, var(--color-line));
+    transform: scale(1.04);
   }
   .chip-active {
     border-color: transparent;
-    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
-    color: #141416;
+    background: var(--brand-gradient, linear-gradient(135deg, #5b3fe8, #2f5bea));
+    color: #ffffff;
+    box-shadow: var(--shadow-brand);
   }
   .chip-active:hover {
-    color: #141416;
-    border-color: transparent;
+    color: #ffffff;
   }
-  .tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid var(--color-line);
-  }
-  .tab {
-    white-space: nowrap;
-    position: relative;
+  /* Removable filter chip (smaller, text only). */
+  .chip-filter {
     display: inline-flex;
-    min-height: 44px;
+    min-height: 36px;
     align-items: center;
-    padding: 0 14px 10px;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-muted);
-    transition: color 200ms;
-  }
-  .tab:hover {
-    color: var(--color-ink);
-  }
-  .tab[aria-selected='true'] {
-    color: var(--color-ink);
-  }
-  .tab-indicator {
-    position: absolute;
-    inset-inline: 6px;
-    bottom: -1px;
-    height: 3px;
+    gap: 6px;
     border-radius: 999px;
-    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
+    border: 1px solid var(--color-line);
+    background: var(--color-violet-soft);
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #5b21b6;
   }
   .field {
     min-height: 44px;
     width: 100%;
-    border-radius: 12px;
+    border-radius: 999px;
     border: 1px solid var(--color-line);
     background: var(--color-surface);
-    padding: 0 14px;
+    padding: 0 16px;
     font-size: 15px;
     color: var(--color-ink);
     transition:
@@ -368,12 +382,22 @@
       box-shadow 200ms;
   }
   .field:hover {
-    border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-line));
+    border-color: color-mix(in srgb, var(--color-violet) 45%, var(--color-line));
   }
   .field:focus {
-    border-color: var(--color-brand);
-    box-shadow: 0 0 0 4px rgb(255 122 0 / 0.18);
+    border-color: var(--color-violet);
+    box-shadow: 0 0 0 4px rgb(109 74 246 / 0.18);
     outline: none;
+  }
+  /* Native selects keep their behaviour; only the chrome changes. */
+  select.field {
+    appearance: none;
+    padding-right: 38px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235B6478' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+    cursor: pointer;
   }
   .field-label {
     display: block;
@@ -394,46 +418,46 @@
     flex-direction: column;
     align-items: center;
     border-radius: var(--radius-card);
-    border: 1px dashed var(--color-line);
+    border: 1px solid var(--color-line);
     background: var(--color-surface);
-    padding: 48px 20px;
+    padding: 44px 20px;
     text-align: center;
+    box-shadow: var(--shadow-card);
   }
 
-  /* ---------- brand surfaces ---------- */
-  .on-charcoal {
-    background: var(--color-charcoal);
+  /* ---------- dark surfaces ---------- */
+  .on-hero {
+    background: var(--color-hero);
     color: var(--color-on-dark);
   }
-  /* Faint repeated K-mark behind charcoal panels. */
   .brand-pattern::before {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: url('/brand/kosova-radar-mark.png');
-    background-size: 120px;
+    background-image: url('/brand/kosova-radar-mark-violet.png');
+    background-size: 130px;
     background-repeat: repeat;
-    opacity: 0.05;
+    opacity: 0.06;
     pointer-events: none;
   }
-  .brand-glow::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(60% 70% at 85% 10%, rgb(255 122 0 / 0.35), transparent 70%);
-    pointer-events: none;
+  .headline-gradient {
+    background: var(--headline-gradient, linear-gradient(90deg, #c044fa, #a78bfa));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .tnum {
     font-variant-numeric: tabular-nums;
   }
   .live-dot {
     display: inline-block;
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     flex-shrink: 0;
     border-radius: 999px;
-    background: #141416;
-    animation: live-pulse 1.8s ease-in-out infinite;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0.6);
+    animation: live-pulse 2s ease-out infinite;
   }
 }
 
@@ -446,14 +470,14 @@
   }
 }
 @keyframes live-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
+  0% {
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0.6);
   }
-  50% {
-    opacity: 0.45;
-    transform: scale(0.82);
+  70% {
+    box-shadow: 0 0 0 8px rgb(34 197 94 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(34 197 94 / 0);
   }
 }
 

@@ -63,7 +63,8 @@ export function usePublishedItem(kind: Kind, id: string | undefined) {
 export function useSaveItem(kind: Kind, id: string) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (body: FieldsRequest) => api<PublishedDetail>(path(kind, id), { method: 'PUT', body }),
+    mutationFn: (body: FieldsRequest) =>
+      api<PublishedDetail>(path(kind, id), { method: 'PUT', body }),
     onSuccess: (saved) => {
       client.setQueryData(['admin', 'item', kind, id], saved)
       void client.invalidateQueries({ queryKey: ['admin', 'items'] })
@@ -101,7 +102,8 @@ export function fieldsOf(item: PublishedDetail): CandidateFields {
     categoryText: null,
     categorySlug: item.category?.slug ?? null,
     startsAt: event && event.startTimeKnown !== false ? event.startsAt : null,
-    startDate: event && event.startTimeKnown === false ? pristinaToday(new Date(event.startsAt)) : null,
+    startDate:
+      event && event.startTimeKnown === false ? pristinaToday(new Date(event.startsAt)) : null,
     endsAt: event?.endsAt ?? null,
     priceText: item.priceText,
     priceAmount: event?.priceAmount ?? null,

@@ -22,7 +22,12 @@ export const s = {
     unreliable: 'I pabesueshëm',
     autoPublish: 'Publiko automatikisht',
   },
-  types: { fixture: 'Fixture (të dhëna testuese)', jsonFeed: 'JSON feed', rss: 'RSS', html: 'Faqe HTML' },
+  types: {
+    fixture: 'Fixture (të dhëna testuese)',
+    jsonFeed: 'JSON feed',
+    rss: 'RSS',
+    html: 'Faqe HTML',
+  },
   adapters: {
     prishtinaEvents: 'Prishtina.com — evente',
     kapodalim: "Ka' Po Dalim",

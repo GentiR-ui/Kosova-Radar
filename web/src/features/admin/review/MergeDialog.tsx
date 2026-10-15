@@ -112,7 +112,9 @@ export default function MergeDialog({
                 <span className="min-w-0 break-words">
                   {i.title}
                   <span className="block text-sm text-muted">
-                    {[i.cityName, i.date && formatDate(i.date), i.sourceName].filter(Boolean).join(' · ')}
+                    {[i.cityName, i.date && formatDate(i.date), i.sourceName]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </span>
                 {confirmButton(i.id)}

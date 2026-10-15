@@ -5,7 +5,7 @@ import { t } from '../../lib/strings'
 import type { Page } from './api'
 import { p } from './strings'
 
-export const cardGrid = 'grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+export const cardGrid = 'grid gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4'
 
 type Q = Pick<
   UseInfiniteQueryResult<{ pages: Page<unknown>[] }, Error>,
@@ -60,9 +60,9 @@ export default function ListShell({
         {skeleton && (
           <div aria-hidden="true" className={cardGrid}>
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="card overflow-hidden">
-                <div className="skeleton aspect-[16/10]" />
-                <div className="space-y-3 p-4">
+              <div key={i} className="card overflow-hidden p-3">
+                <div className="skeleton aspect-[16/10] rounded-[20px]" />
+                <div className="space-y-3 p-3 pt-4">
                   <div className="skeleton h-4 w-2/5 rounded-full" />
                   <div className="skeleton h-5 w-4/5 rounded-full" />
                   <div className="skeleton h-4 w-3/5 rounded-full" />
@@ -77,7 +77,7 @@ export default function ListShell({
   if (empty)
     return (
       <div className="empty-state">
-        <span className="grid size-14 place-items-center rounded-2xl bg-brand-soft text-brand-ink">
+        <span className="tile tile-violet size-14">
           <CalendarSearch aria-hidden="true" className="size-7" />
         </span>
         <p className="mt-4 text-lg font-extrabold">{p.empty}</p>

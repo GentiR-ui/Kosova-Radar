@@ -7,7 +7,12 @@ import ListShell from '../../public/ListShell'
 import { formatDate } from '../../public/format'
 import ConfirmDialog from '../ConfirmDialog'
 import { r } from '../review/strings'
-import { useItemAction, usePublishedItems, type PublishedFilters, type PublishedItemDto } from './api'
+import {
+  useItemAction,
+  usePublishedItems,
+  type PublishedFilters,
+  type PublishedItemDto,
+} from './api'
 import { p } from './strings'
 
 const buttonClass =
@@ -36,7 +41,10 @@ export default function PublishedPage() {
   const expire = useItemAction('expire')
   const withdraw = useItemAction('withdraw')
   const failure = expire.error ?? withdraw.error
-  const [confirm, setConfirm] = useState<{ action: 'expire' | 'withdraw'; item: PublishedItemDto } | null>(null)
+  const [confirm, setConfirm] = useState<{
+    action: 'expire' | 'withdraw'
+    item: PublishedItemDto
+  } | null>(null)
 
   const act = (m: typeof expire, item: PublishedItemDto) => {
     expire.reset()

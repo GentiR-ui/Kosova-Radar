@@ -1,4 +1,10 @@
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { api, ApiError } from '../../../lib/api'
 import type { Page } from '../../public/api'
 
@@ -141,7 +147,11 @@ export function useBulkApprove() {
         try {
           // A candidate a run changed since the list was loaded is content nobody has seen: skip it.
           const now = await api<CandidateDto>(path)
-          if (now.status !== 'pending' || now.validation !== 'valid' || now.fetchedAt !== row.fetchedAt) {
+          if (
+            now.status !== 'pending' ||
+            now.validation !== 'valid' ||
+            now.fetchedAt !== row.fetchedAt
+          ) {
             failed++
             continue
           }

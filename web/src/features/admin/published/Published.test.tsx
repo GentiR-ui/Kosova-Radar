@@ -56,12 +56,19 @@ describe('PublishedPage', () => {
     stubFetch({
       [listUrl]: [
         200,
-        page([row({}), row({ id: 'e2', title: 'Ofertë A', adminStatus: 'expired' }), row({ id: 'e3', title: 'Ofertë B', adminStatus: 'withdrawn' })]),
+        page([
+          row({}),
+          row({ id: 'e2', title: 'Ofertë A', adminStatus: 'expired' }),
+          row({ id: 'e3', title: 'Ofertë B', adminStatus: 'withdrawn' }),
+        ]),
       ],
     })
     renderRoutes(routes, '/admin/published')
     const published = (await screen.findByText('Koncert')).closest('tr')!
-    expect(within(published).getByRole('link', { name: 'Ndrysho' })).toHaveAttribute('href', '/admin/published/event/e1')
+    expect(within(published).getByRole('link', { name: 'Ndrysho' })).toHaveAttribute(
+      'href',
+      '/admin/published/event/e1',
+    )
     expect(within(published).getByRole('button', { name: 'Skado' })).toBeEnabled()
     const expired = screen.getByText('Ofertë A').closest('tr')!
     expect(within(expired).getByRole('button', { name: 'Skado' })).toBeDisabled()
@@ -228,7 +235,10 @@ describe('PublishedEditPage', () => {
   })
 
   it('is read-only for a withdrawn item', async () => {
-    stubFetch({ ...reference, 'GET /api/admin/events/e1': [200, detail({ adminStatus: 'withdrawn' })] })
+    stubFetch({
+      ...reference,
+      'GET /api/admin/events/e1': [200, detail({ adminStatus: 'withdrawn' })],
+    })
     renderRoutes(routes, '/admin/published/event/e1')
     expect(await screen.findByLabelText('Titulli')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Ruaj ndryshimet' })).toBeDisabled()

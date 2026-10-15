@@ -9,7 +9,13 @@ interface Props {
 }
 
 /** In-page confirmation for destructive actions (ADR-037). Focus goes to "Anulo"; the caller restores it on close. */
-export default function ConfirmDialog({ title, confirmLabel, cancelLabel, onConfirm, onClose }: Props) {
+export default function ConfirmDialog({
+  title,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onClose,
+}: Props) {
   const cancel = useRef<HTMLButtonElement>(null)
   // Callers pass inline callbacks; keep the latest one in a ref so re-renders do not re-run the focus effect.
   const close = useRef(onClose)

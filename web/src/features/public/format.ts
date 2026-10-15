@@ -29,6 +29,12 @@ export function formatEventStart(iso: string, timeKnown: boolean): string {
   return timeKnown ? formatDateTime(iso) : `${formatDate(iso)} · gjatë ditës`
 }
 
+/** "HH:mm" in Pristina time. */
+export function formatTime(iso: string): string {
+  const p = parts(new Date(iso))
+  return `${p.hour}:${p.minute}`
+}
+
 /** "dd.MM.yyyy" in Pristina time. */
 export function formatDate(iso: string): string {
   const p = parts(new Date(iso))

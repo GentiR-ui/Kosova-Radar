@@ -6,7 +6,7 @@ import { flat, useCategories, useDeals, useEvents, type DealSummaryDto } from '.
 import { BrandMark } from './Brand'
 import { categoryStyle } from './categories'
 import { addDays, pristinaToday, safeHref } from './format'
-import { DealRow, DiscountBadge, EventRow, Media } from './ItemCards'
+import { DealCard, DiscountBadge, EventCard, Media } from './ItemCards'
 import ListShell from './ListShell'
 import { spring } from './motion'
 import { p } from './strings'
@@ -364,12 +364,12 @@ function CategoryRow() {
           first
         />
         {items.map((c) => {
-          const { tint, Icon } = categoryStyle(c.slug)
+          const { tile, Icon } = categoryStyle(c.slug)
           return (
             <CategoryChip
               key={c.slug}
               to={`/events?category=${c.slug}`}
-              tint={tint}
+              tint={tile}
               label={c.name}
               Icon={Icon}
             />
@@ -461,10 +461,10 @@ function Feed({
     <ListShell queries={active} skeleton={false}>
       <div className="card divide-y divide-line overflow-hidden">
         {dealItems.map((d, i) => (
-          <DealRow key={d.id} deal={d} index={i} />
+          <DealCard key={d.id} deal={d} index={i} />
         ))}
         {eventItems.map((e, i) => (
-          <EventRow key={e.id} event={e} index={dealItems.length + i} />
+          <EventCard key={e.id} event={e} index={dealItems.length + i} />
         ))}
       </div>
     </ListShell>

@@ -23,7 +23,8 @@ export default function RejectDialog({ id, onClose }: { id: string; onClose: () 
   const trimmed = reason.trim()
   const invalid = trimmed.length === 0 || trimmed.length > 500
   const error = reject.error
-    ? error409(reject.error) ?? (reject.error instanceof ApiError && reject.error.status === 400 ? s.required : t.error)
+    ? (error409(reject.error) ??
+      (reject.error instanceof ApiError && reject.error.status === 400 ? s.required : t.error))
     : null
 
   const onSubmit = (e: FormEvent) => {

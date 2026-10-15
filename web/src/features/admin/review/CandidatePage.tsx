@@ -3,12 +3,7 @@ import { Link, useParams } from 'react-router'
 import { ApiError } from '../../../lib/api'
 import { t } from '../../../lib/strings'
 import { safeHref } from '../../public/format'
-import {
-  useApprove,
-  useCandidate,
-  useSaveFields,
-  type CandidateDto,
-} from './api'
+import { useApprove, useCandidate, useSaveFields, type CandidateDto } from './api'
 import { FieldsForm, initial, toRequest } from './FieldsForm'
 import MergeDialog from './MergeDialog'
 import RejectDialog from './RejectDialog'
@@ -190,7 +185,12 @@ function CandidateView({ candidate }: { candidate: CandidateDto }) {
         >
           {r.detail.reject}
         </button>
-        <button type="button" disabled={!open} onClick={() => setMerging(true)} className={buttonClass}>
+        <button
+          type="button"
+          disabled={!open}
+          onClick={() => setMerging(true)}
+          className={buttonClass}
+        >
           {r.detail.merge}
         </button>
       </div>
@@ -244,6 +244,7 @@ function unshownErrors(e: ApiError, values: Record<string, string>): boolean {
 
 function approveMessage(e: ApiError): string {
   const keys = Object.keys(e.problem.errors ?? {})
-  return keys.includes('validation') ? r.detail.notApprovable : r.detail.missing + keys.map((k) => r.fieldKeys[k as keyof typeof r.fieldKeys] ?? k).join(', ')
+  return keys.includes('validation')
+    ? r.detail.notApprovable
+    : r.detail.missing + keys.map((k) => r.fieldKeys[k as keyof typeof r.fieldKeys] ?? k).join(', ')
 }
-

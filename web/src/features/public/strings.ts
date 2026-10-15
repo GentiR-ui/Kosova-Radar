@@ -3,6 +3,8 @@ export const p = {
   // --- shell ---
   footer: 'Qyteti yt. Planet e tua.',
   backHome: 'Kthehu te ballina',
+  tagline: 'Zbulo më të mirën në Kosovë',
+  pickCity: 'Zgjidh qytetin',
   openMenu: 'Hap menynë',
   closeMenu: 'Mbyll menynë',
   footerLead:

@@ -45,7 +45,11 @@ const fields = {
   validUntil: null,
 }
 const candidate = {
-  ...summary({ issues: [{ code: 'MissingPrice', severity: 'review', field: 'priceText', message: 'Çmimi mungon' }] }),
+  ...summary({
+    issues: [
+      { code: 'MissingPrice', severity: 'review', field: 'priceText', message: 'Çmimi mungon' },
+    ],
+  }),
   externalId: 'ext-1',
   sourceUrl: 'javascript:alert(1)',
   fields,
@@ -78,7 +82,10 @@ describe('ReviewQueuePage', () => {
     const row = (await screen.findByRole('link', { name: 'Koncert' })).closest('tr')!
     expect(within(row).getByText('Kërkon shqyrtim')).toBeInTheDocument()
     expect(within(row).getByText('Në pritje')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '(pa titull)' })).toHaveAttribute('href', '/admin/items/c2')
+    expect(screen.getByRole('link', { name: '(pa titull)' })).toHaveAttribute(
+      'href',
+      '/admin/items/c2',
+    )
     expect(screen.getByRole('columnheader', { name: 'Titulli' })).toBeInTheDocument()
     expect(calls).toContain('GET /api/admin/candidates?status=pending&page=1&pageSize=25')
   })
@@ -92,7 +99,9 @@ describe('ReviewQueuePage', () => {
     renderRoutes(routes, '/admin/review')
     await screen.findByRole('link', { name: 'Koncert' })
     await userEvent.selectOptions(screen.getByLabelText('Statusi'), 'Të gjitha')
-    expect(await within(await screen.findByRole('table')).findByText('Bashkuar')).toBeInTheDocument()
+    expect(
+      await within(await screen.findByRole('table')).findByText('Bashkuar'),
+    ).toBeInTheDocument()
     expect(calls).toContain('GET /api/admin/candidates?page=1&pageSize=25')
   })
 
@@ -107,8 +116,14 @@ describe('ReviewQueuePage', () => {
           summary({ id: 'c', title: 'Tre', validation: 'needsReview' }),
         ]),
       ],
-      'GET /api/admin/candidates/a': [200, { ...candidate, id: 'a', validation: 'valid', issues: [] }],
-      'GET /api/admin/candidates/b': [200, { ...candidate, id: 'b', validation: 'valid', issues: [] }],
+      'GET /api/admin/candidates/a': [
+        200,
+        { ...candidate, id: 'a', validation: 'valid', issues: [] },
+      ],
+      'GET /api/admin/candidates/b': [
+        200,
+        { ...candidate, id: 'b', validation: 'valid', issues: [] },
+      ],
       'POST /api/admin/candidates/a/approve': [200, { kind: 'event', itemId: 'i1' }],
       'POST /api/admin/candidates/b/approve': [409, { status: 409 }],
     })
@@ -135,10 +150,19 @@ describe('ReviewQueuePage', () => {
           summary({ id: 'b', title: 'Dy', validation: 'valid' }),
         ]),
       ],
-      'GET /api/admin/candidates/a': [200, { ...candidate, id: 'a', validation: 'valid', issues: [] }],
+      'GET /api/admin/candidates/a': [
+        200,
+        { ...candidate, id: 'a', validation: 'valid', issues: [] },
+      ],
       'GET /api/admin/candidates/b': [
         200,
-        { ...candidate, id: 'b', validation: 'valid', issues: [], fetchedAt: '2026-01-02T00:00:00Z' },
+        {
+          ...candidate,
+          id: 'b',
+          validation: 'valid',
+          issues: [],
+          fetchedAt: '2026-01-02T00:00:00Z',
+        },
       ],
       'POST /api/admin/candidates/a/approve': [200, { kind: 'event', itemId: 'i1' }],
     })
@@ -172,11 +196,15 @@ describe('CandidatePage', () => {
     stubFetch({ ...reference, 'GET /api/admin/candidates/c1': [200, candidate] })
     renderRoutes(routes, '/admin/items/c1')
     expect(await screen.findByRole('heading', { level: 1, name: 'Koncert' })).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: 'Evidenca nga burimi' })).getByText('<b>raw</b>')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Evidenca nga burimi' })).getByText('<b>raw</b>'),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Hap burimin' })).toBeNull()
     expect(screen.getByLabelText('Fillon më')).toHaveValue('2026-07-01T20:00')
     expect(screen.getByLabelText('Titulli')).toHaveValue('Koncert')
-    expect(within(screen.getByRole('list', { name: 'Problemet e validimit' })).getByText(/Çmimi mungon/)).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('list', { name: 'Problemet e validimit' })).getByText(/Çmimi mungon/),
+    ).toBeInTheDocument()
   })
 
   it('approves and shows the public link', async () => {
@@ -188,7 +216,10 @@ describe('CandidatePage', () => {
     renderRoutes(routes, '/admin/items/c1')
     await userEvent.click(await screen.findByRole('button', { name: 'Aprovo' }))
     expect(await screen.findByText(/U publikua/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Shiko faqen publike' })).toHaveAttribute('href', '/events/e1')
+    expect(screen.getByRole('link', { name: 'Shiko faqen publike' })).toHaveAttribute(
+      'href',
+      '/events/e1',
+    )
   })
 
   it('names the missing fields when approval is refused', async () => {
@@ -224,7 +255,10 @@ describe('CandidatePage', () => {
     stubFetch({
       ...reference,
       'GET /api/admin/candidates/c1': [200, candidate],
-      'PUT /api/admin/candidates/c1': [200, { ...candidate, fields: { ...fields, title: 'Koncert i ri' } }],
+      'PUT /api/admin/candidates/c1': [
+        200,
+        { ...candidate, fields: { ...fields, title: 'Koncert i ri' } },
+      ],
     })
     const real = globalThis.fetch
     vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) => {
@@ -240,7 +274,12 @@ describe('CandidatePage', () => {
     expect(screen.getByRole('button', { name: 'Aprovo' })).toBeDisabled()
     await userEvent.click(saveBtn)
     expect(await screen.findByText('Ndryshimet u ruajtën.')).toBeInTheDocument()
-    expect(bodies[0]).toMatchObject({ title: 'Koncert i ri', startsAt: fields.startsAt, endsAt: null, imageUrl: null })
+    expect(bodies[0]).toMatchObject({
+      title: 'Koncert i ri',
+      startsAt: fields.startsAt,
+      endsAt: null,
+      imageUrl: null,
+    })
     expect(bodies[0]).not.toHaveProperty('cityText')
     expect(screen.getByRole('button', { name: 'Aprovo' })).toBeEnabled()
   })
@@ -249,7 +288,10 @@ describe('CandidatePage', () => {
     stubFetch({
       ...reference,
       'GET /api/admin/candidates/c1': [200, candidate],
-      'PUT /api/admin/candidates/c1': [400, { status: 400, errors: { citySlug: ['Unknown city.'] } }],
+      'PUT /api/admin/candidates/c1': [
+        400,
+        { status: 400, errors: { citySlug: ['Unknown city.'] } },
+      ],
     })
     renderRoutes(routes, '/admin/items/c1')
     const title = await screen.findByLabelText('Titulli')
@@ -265,7 +307,16 @@ describe('CandidatePage', () => {
       'GET /api/admin/candidates/c1': [200, candidate],
       'GET /api/admin/items?kind=event&status=published&pageSize=10': [
         200,
-        page([{ kind: 'event', id: 'e9', title: 'Koncert ekzistues', cityName: 'Prishtinë', date: null, sourceName: 'B' }]),
+        page([
+          {
+            kind: 'event',
+            id: 'e9',
+            title: 'Koncert ekzistues',
+            cityName: 'Prishtinë',
+            date: null,
+            sourceName: 'B',
+          },
+        ]),
       ],
       'POST /api/admin/candidates/c1/merge': [200, { ...candidate, status: 'merged' }],
     })
@@ -281,7 +332,10 @@ describe('CandidatePage', () => {
   it('keeps a human-rejected candidate read-only', async () => {
     stubFetch({
       ...reference,
-      'GET /api/admin/candidates/c1': [200, { ...candidate, status: 'rejected', rejectionReason: 'Jo publike' }],
+      'GET /api/admin/candidates/c1': [
+        200,
+        { ...candidate, status: 'rejected', rejectionReason: 'Jo publike' },
+      ],
     })
     renderRoutes(routes, '/admin/items/c1')
     expect(await screen.findByLabelText('Titulli')).toBeDisabled()

@@ -14,32 +14,33 @@ describe('Countdown', () => {
     expect(screen.getByText('02:30:15')).toBeInTheDocument()
   })
 
-  it('shows started, then ended after the end', () => {
-    at('2026-10-13T13:00:00Z')
-    const { unmount } = render(
-      <Countdown start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00Z" />,
-    )
-    expect(screen.getByText('Ka filluar')).toBeInTheDocument()
-    at('2026-10-13T15:00:00Z')
-    unmount() // the shared clock re-reads the time on the next mount
-    render(<Countdown start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00.001Z" />)
-    expect(screen.getByText('Ka përfunduar')).toBeInTheDocument()
-  })
-
-  it('counts down to the end of a deal and labels date-only events', () => {
+  it('counts down to the end of a deal', () => {
     at('2026-10-13T10:00:00Z')
     render(<Countdown end="2026-10-13T16:30:45Z" />)
     expect(screen.getByText('Përfundon për')).toBeInTheDocument()
     expect(screen.getByText('06:30:45')).toBeInTheDocument()
-    render(<Countdown start="2026-10-12T22:00:00Z" end="2026-10-13T22:00:00Z" allDay />)
-    expect(screen.getByText('Gjatë ditës')).toBeInTheDocument()
   })
 
-  it('counts whole days while the target is more than a day away', () => {
+  it('shows nothing once the event started, after the end, or for a date-only event', () => {
+    at('2026-10-13T13:00:00Z')
+    const started = render(<Countdown start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00Z" />)
+    expect(started.container).toBeEmptyDOMElement()
+    started.unmount()
+
+    const ended = render(<Countdown start="2026-10-13T10:00:00Z" end="2026-10-13T12:00:00Z" />)
+    expect(ended.container).toBeEmptyDOMElement()
+    ended.unmount()
+
+    const allDay = render(
+      <Countdown start="2026-10-12T22:00:00Z" end="2026-10-13T22:00:00Z" allDay />,
+    )
+    expect(allDay.container).toBeEmptyDOMElement()
+  })
+
+  it('stays hidden while the target is further away than the window', () => {
     at('2026-10-13T10:00:00Z')
-    render(<Countdown start="2026-10-16T12:00:00Z" end={null} />)
-    expect(screen.getByText('Fillon për')).toBeInTheDocument()
-    expect(screen.getByText('3 ditë')).toBeInTheDocument()
+    const { container } = render(<Countdown start="2026-10-16T12:00:00Z" end={null} />)
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('shows nothing when there is no date to count', () => {

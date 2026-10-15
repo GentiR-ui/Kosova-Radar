@@ -132,9 +132,21 @@ export function toRequest(f: CandidateFields, v: Values): FieldsRequest {
     const value = v[key] ?? ''
     if (value !== base[key]) out[key] = convert(value)
   }
-  for (const k of ['title', 'description', 'url', 'citySlug', 'venueName', 'categorySlug', 'merchantName', 'priceText', 'currency', 'startDate'] as const)
+  for (const k of [
+    'title',
+    'description',
+    'url',
+    'citySlug',
+    'venueName',
+    'categorySlug',
+    'merchantName',
+    'priceText',
+    'currency',
+    'startDate',
+  ] as const)
     set(k, trimOrNull)
-  for (const k of ['startsAt', 'endsAt', 'validFrom', 'validUntil'] as const) set(k, fromPristinaInput)
+  for (const k of ['startsAt', 'endsAt', 'validFrom', 'validUntil'] as const)
+    set(k, fromPristinaInput)
   for (const k of ['priceAmount', 'oldPrice', 'newPrice'] as const) set(k, num)
   return out
 }
