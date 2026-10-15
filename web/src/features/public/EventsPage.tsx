@@ -33,7 +33,7 @@ export default function EventsPage() {
 
   return (
     <>
-      <Intro eyebrow={p.eyebrow} title={p.eventsHeading} lead={p.eventsLead}>
+      <Intro title={p.eventsHeading} lead={p.eventsLead}>
         <Panel>
           <h2 className="sr-only">{p.filters}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

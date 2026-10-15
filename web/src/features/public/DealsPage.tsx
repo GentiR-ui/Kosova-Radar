@@ -31,7 +31,7 @@ export default function DealsPage() {
 
   return (
     <>
-      <Intro eyebrow={p.eyebrow} title={p.dealsHeading} lead={p.dealsLead}>
+      <Intro title={p.dealsHeading} lead={p.dealsLead}>
         <Panel>
           <h2 className="sr-only">{p.filters}</h2>
           <div className="grid gap-4 sm:grid-cols-3">

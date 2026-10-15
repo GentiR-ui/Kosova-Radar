@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { renderRoutes, stubFetch } from '../../test/render'
@@ -151,12 +151,14 @@ describe('home tabs', () => {
       'GET /api/deals?page=1&pageSize=20': [200, page([deal])],
     })
     renderRoutes([{ path: '/', element: <HomePage /> }], '/')
-    expect(await screen.findByRole('heading', { name: 'Koncert xyz' })).toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: 'Zbritje xyz' })).toBeInTheDocument()
+    // The items are asserted inside the tab panel: the "best deals" panel shows the same deal.
+    const panel = () => within(screen.getByRole('tabpanel'))
+    expect(await panel().findByRole('heading', { name: 'Koncert xyz' })).toBeInTheDocument()
+    expect(await panel().findByRole('heading', { name: 'Zbritje xyz' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Oferta' }))
     expect(screen.getByRole('tab', { name: 'Oferta' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('heading', { name: 'Koncert xyz' })).not.toBeInTheDocument()
+    expect(panel().queryByRole('heading', { name: 'Koncert xyz' })).not.toBeInTheDocument()
     expect(calls.filter((c) => c.includes('/api/deals'))).toHaveLength(1)
   })
 })

@@ -43,7 +43,7 @@ function CitySelect() {
   }
 
   return (
-    <label className="relative hidden items-center md:flex">
+    <label className="relative hidden items-center lg:flex">
       <span className="sr-only">{p.city}</span>
       <select
         value={city}
@@ -100,7 +100,7 @@ function MenuSheet({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className="on-charcoal absolute inset-x-0 top-full border-t border-white/10 shadow-lift md:hidden"
+      className="on-charcoal absolute inset-x-0 top-full border-t border-white/10 shadow-lift lg:hidden"
     >
       <ul className="page-width flex flex-col py-2">
         {nav.map((n) => (
@@ -165,7 +165,7 @@ function Header() {
           <BrandMark className="h-8 min-[380px]:hidden" decorative={false} />
         </Link>
 
-        <nav aria-label={t.nav.label} className="hidden md:block">
+        <nav aria-label={t.nav.label} className="hidden lg:block">
           <ul className="flex items-center gap-1">
             {nav.map((n) => (
               <li key={n.to}>
@@ -212,7 +212,7 @@ function Header() {
             aria-expanded={open}
             aria-label={open ? p.closeMenu : p.openMenu}
             onClick={() => (open ? close() : setOpenedAt(pathname))}
-            className="btn-icon text-on-dark hover:bg-white/10 md:hidden"
+            className="btn-icon text-on-dark hover:bg-white/10 lg:hidden"
           >
             {open ? (
               <X aria-hidden="true" className="size-6" />

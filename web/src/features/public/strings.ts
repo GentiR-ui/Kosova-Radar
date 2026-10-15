@@ -10,25 +10,24 @@ export const p = {
   footerNav: 'Faqet',
 
   // --- home ---
-  eyebrow: 'Zbulo · Përjeto · Përfaqësohu',
+  live: 'Live',
   heroLead:
-    'Zbulo ngjarje që ia vlejnë, oferta të volitshme dhe gjërat interesante që po ndodhin pranë teje.',
-  heroScript: 'Më afër gjërave që të interesojnë.',
-  searchAria: 'Kërko ngjarje, oferta ose vende',
-  searchPlaceholderHome: 'Kërko ngjarje, oferta, vende…',
-  allCitiesShort: 'Të gjitha',
-  benefits: [
-    { title: 'Oferta të volitshme', text: 'Zbritje 35% e më shumë' },
-    { title: 'Evente aktuale', text: 'Muzikë, art dhe kulturë' },
-    { title: 'Qyteti në radar', text: 'Planet për 3 ditët e ardhshme' },
-  ],
-  feedEyebrow: 'Në radar tani',
-  feedTitlePre: 'Çka po ndodh në',
-  kosovo: 'Kosovë',
-  savedItems: 'Të ruajturat',
-  savedEmpty: 'Ruaj një event ose ofertë me shenjën e faqerojtësit dhe shfaqet këtu.',
-  byTime: 'Sipas orarit',
-  tabHint: { events: '3 ditë', deals: '35%+' },
+    'Eventet e tri ditëve të ardhshme dhe ofertat e sotme mbi 35%, me datë, vend dhe lidhje te burimi.',
+  ctaEvents: 'Shiko eventet e sotme',
+  ctaDeals: 'Ofertat e sotme',
+  dealsPanelTitle: 'Ofertat më të mira',
+  dealsPanelLead: 'Zbritje mbi 35%, vetëm sot',
+  seeAll: 'Shiko të gjitha',
+  seeAllEvents: 'Shiko të gjitha eventet',
+  seeAllDeals: 'Shiko të gjitha ofertat',
+  noDeals: 'Tani nuk ka ofertë aktive mbi 35%.',
+  categoriesLabel: 'Kategoritë',
+  allCategories2: 'Të gjitha',
+  dealsChip: 'Oferta',
+  promoTitle: 'Evente reale. Në kohë reale.',
+  promoLead:
+    'Nga koncertet te festivalet dhe ofertat e ditës: çdo njoftim vjen nga burimi i tij, i verifikuar.',
+  promoCta: 'Eksploro eventet',
   days: { label: 'Dita', all: 'Të gjitha', tomorrow: 'Nesër', dayAfter: 'Pasnesër' },
 
   // --- lists and filters ---

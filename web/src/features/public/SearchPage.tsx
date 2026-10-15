@@ -23,7 +23,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <Intro eyebrow={p.eyebrow} title={p.searchHeading} lead={p.searchLead}>
+      <Intro title={p.searchHeading} lead={p.searchLead}>
         <Panel>
           <form onSubmit={submit} role="search" className="flex flex-col gap-3 sm:flex-row">
             <label htmlFor="f-q" className="sr-only">

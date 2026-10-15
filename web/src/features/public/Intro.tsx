@@ -30,18 +30,18 @@ export default function Intro({
   lead,
   children,
 }: {
-  eyebrow: string
+  eyebrow?: string
   title: ReactNode
   lead?: ReactNode
   children?: ReactNode
 }) {
   return (
     <section className="page-width pb-2 pt-8 sm:pt-12">
-      <Reveal>
-        <p className="eyebrow text-accent">
-          <span className="live-dot" /> {eyebrow}
-        </p>
-      </Reveal>
+      {eyebrow && (
+        <Reveal>
+          <p className="badge badge-soft">{eyebrow}</p>
+        </Reveal>
+      )}
       <Reveal delay={0.06}>
         <h1 className="mt-3 text-[38px] leading-[1.06] sm:text-[52px]">{title}</h1>
       </Reveal>

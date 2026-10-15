@@ -271,3 +271,118 @@ export function DealCard({ deal, index = 0 }: { deal: DealSummaryDto; index?: nu
     </Card>
   )
 }
+
+/** Compact row used by the home list (the reference's "latest events" block). */
+function Row({
+  title,
+  to,
+  index,
+  thumb,
+  children,
+  footer,
+}: {
+  title: string
+  to: string
+  index: number
+  thumb: ReactNode
+  children: ReactNode
+  footer: ReactNode
+}) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '0px 0px -40px 0px' }}
+      transition={{ ...spring, delay: Math.min(index, 6) * 0.04 }}
+      className="card-hover relative flex gap-4 p-4"
+    >
+      <div className="w-24 shrink-0 overflow-hidden rounded-xl sm:w-32">{thumb}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <h3 className="text-[15px] font-bold leading-snug sm:text-base">
+          <Link to={to} className="stretched rounded transition-colors hover:text-brand-text">
+            {title}
+          </Link>
+        </h3>
+        {children}
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted">
+          {footer}
+        </div>
+      </div>
+    </motion.article>
+  )
+}
+
+export function EventRow({ event, index = 0 }: { event: EventSummaryDto; index?: number }) {
+  return (
+    <Row
+      title={event.title}
+      to={`/events/${event.id}`}
+      index={index}
+      thumb={<Media url={event.imageUrl} category={event.category} className="!aspect-[4/3]" />}
+      footer={
+        <>
+          <Freshness lastVerifiedAt={event.lastVerifiedAt} freshness={event.freshness} />
+          <SourceLink name={event.sourceName} url={event.sourceUrl} />
+        </>
+      }
+    >
+      <p className="order-first text-[13px] font-bold text-brand-text">
+        <Meta icon={<CalendarDays />}>
+          <span className="tnum">{formatEventStart(event.startsAt, event.startTimeKnown)}</span>
+        </Meta>
+      </p>
+      <p className="text-sm text-muted">
+        <Meta icon={<MapPin />}>
+          {[event.venueName, event.city.name].filter(Boolean).join(', ')}
+        </Meta>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {event.category && <CategoryBadge category={event.category} />}
+        {event.isSynthetic && <SyntheticBadge />}
+        <Countdown
+          start={event.startsAt}
+          end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
+          allDay={!event.startTimeKnown}
+        />
+      </div>
+    </Row>
+  )
+}
+
+export function DealRow({ deal, index = 0 }: { deal: DealSummaryDto; index?: number }) {
+  return (
+    <Row
+      title={deal.title}
+      to={`/deals/${deal.id}`}
+      index={index}
+      thumb={
+        <Media url={deal.imageUrl} category={deal.category} kind="deal" className="!aspect-[4/3]" />
+      }
+      footer={
+        <>
+          <Freshness lastVerifiedAt={deal.lastVerifiedAt} freshness={deal.freshness} />
+          <SourceLink name={deal.sourceName} url={deal.sourceUrl} />
+        </>
+      }
+    >
+      <p className="order-first flex flex-wrap items-center gap-2">
+        <DealPrice deal={deal} />
+        {deal.discountPercent !== null && <DiscountBadge percent={deal.discountPercent} />}
+      </p>
+      <p className="text-sm text-muted">
+        <Meta icon={<Clock3 />}>
+          {deal.validUntil
+            ? p.validUntil(formatDate(deal.validUntil))
+            : deal.isTodaysDeal
+              ? p.todaysDeal
+              : p.validityUnknown}
+          {deal.merchantName ? ` · ${deal.merchantName}` : ''}
+        </Meta>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {deal.category && <CategoryBadge category={deal.category} />}
+        {deal.isSynthetic && <SyntheticBadge />}
+      </div>
+    </Row>
+  )
+}
