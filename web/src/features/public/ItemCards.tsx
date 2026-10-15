@@ -1,9 +1,9 @@
 import { motion } from 'motion/react'
-import { ArrowUpRight, CalendarDays, Clock3, MapPin, Store } from 'lucide-react'
+import { ArrowUpRight, Bookmark, Check, Clock3, MapPin, Tag, Ticket } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { CategoryDto, DealSummaryDto, EventSummaryDto } from './api'
-import Countdown, { DAY_MS } from './Countdown'
+import type { DealSummaryDto, EventSummaryDto } from './api'
+import Countdown from './Countdown'
 import {
   dayAndMonth,
   endOfPristinaDay,
@@ -12,14 +12,15 @@ import {
   formatMoney,
   safeHref,
 } from './format'
-import { LogoMark } from './Logo'
+import LogoMark from './Logo'
 import { spring } from './motion'
+import { savedKey, useSaved } from './saved'
 import { p } from './strings'
 
-type Tone = 'event' | 'deal'
+type Kind = 'event' | 'deal'
 
 export function SyntheticBadge() {
-  return <span className="chip border border-warn text-warn">{p.synthetic}</span>
+  return <span className="chip mt-2.5 border border-warn text-warn">{p.synthetic}</span>
 }
 
 export function Freshness({
@@ -29,15 +30,7 @@ export function Freshness({
   lastVerifiedAt: string
   freshness: 'fresh' | 'stale'
 }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span
-        aria-hidden="true"
-        className={`size-1.5 shrink-0 rounded-full ${freshness === 'fresh' ? 'bg-brand' : 'bg-warn'}`}
-      />
-      {freshness === 'fresh' ? p.fresh : p.stale(formatDate(lastVerifiedAt))}
-    </span>
-  )
+  return <span>{freshness === 'fresh' ? p.fresh : p.stale(formatDate(lastVerifiedAt))}</span>
 }
 
 export function SourceLink({ name, url }: { name: string; url: string }) {
@@ -45,19 +38,14 @@ export function SourceLink({ name, url }: { name: string; url: string }) {
   const label = p.source(name)
   if (!href) return <span>{label}</span>
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="relative z-10 inline-flex w-fit items-center gap-1 rounded font-semibold text-ink underline-offset-4 transition-colors hover:text-accent hover:underline"
-    >
+    <a href={href} target="_blank" rel="noopener noreferrer" className="source-link">
       {label}
-      <ArrowUpRight aria-hidden="true" className="size-3 shrink-0" />
+      <ArrowUpRight aria-hidden="true" size={12} />
     </a>
   )
 }
 
-/** Discount label; the colour rises with the discount, from violet to rose. */
+/** Rose discount pill. The minus is a plain "-" so the published percentage stays searchable. */
 export function DiscountBadge({
   percent,
   className = '',
@@ -65,217 +53,169 @@ export function DiscountBadge({
   percent: number
   className?: string
 }) {
-  const tone =
-    percent >= 50
-      ? 'bg-hot'
-      : percent >= 40
-        ? 'bg-accent'
-        : percent >= 30
-          ? 'bg-[#0e7490]'
-          : percent >= 20
-            ? 'bg-[#c2410c]'
-            : 'bg-event'
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold leading-none text-white shadow-sm ${tone} ${className}`}
-    >{`-${percent}%`}</span>
-  )
+  return <span className={`discount-badge ${className}`}>{`-${percent}%`}</span>
 }
 
-/** Category chips get a stable colour from their slug, so the same category always looks the same. */
-const categoryTones = [
-  'bg-event-soft text-event',
-  'bg-accent-soft text-accent',
-  'bg-hot-soft text-hot',
-  'bg-[#e7f2fb] text-[#0e5f8a]',
-  'bg-[#fdf0e3] text-[#9a4a06]',
-]
-
-export function CategoryChip({
-  category,
-  className = '',
-}: {
-  category: CategoryDto
-  className?: string
-}) {
-  const tone =
-    categoryTones[
-      [...category.slug].reduce((n, c) => n + c.charCodeAt(0), 0) % categoryTones.length
-    ]
-  return <span className={`chip ${tone} ${className}`}>{category.name}</span>
-}
-
-/** Picture of the item, or a soft brand panel when the source has none, so every card keeps its shape. */
+/** Picture of the item, or the brand mark on a soft panel when the source has none. */
 export function Media({
   url,
   eager = false,
-  className = '',
+  alt = '',
   children,
 }: {
   url: string | null
   /** The main picture of a detail page: load it first. */
   eager?: boolean
-  className?: string
+  alt?: string
   children?: ReactNode
 }) {
   const href = url ? safeHref(url) : undefined
   return (
-    <div className={`relative overflow-hidden bg-soft ${className}`}>
+    <>
       {href ? (
         <img
           src={href}
-          alt=""
+          alt={alt}
           width={1024}
           height={768}
           loading={eager ? 'eager' : 'lazy'}
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
           referrerPolicy="no-referrer"
-          className="size-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-[1.06]"
         />
       ) : (
-        <div className="grid size-full place-items-center bg-[radial-gradient(circle_at_50%_40%,#e6f7ef,#f3f8f6_70%)]">
-          <LogoMark className="w-16 text-ink/70 transition-transform duration-700 ease-out-expo group-hover:scale-110" />
+        <div className="photo-empty">
+          <LogoMark className="w-12 opacity-70" />
         </div>
       )}
       {children}
-    </div>
+    </>
+  )
+}
+
+function SaveButton({ kind, id, title }: { kind: Kind; id: string; title: string }) {
+  const saved = useSaved()
+  const key = savedKey(kind, id)
+  const on = saved.has(key)
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label={on ? p.unsave(title) : p.save(title)}
+      onClick={() => saved.toggle(key)}
+      className={`bookmark-button ${on ? 'is-saved' : ''}`}
+    >
+      {on ? <Check aria-hidden="true" size={15} /> : <Bookmark aria-hidden="true" size={15} />}
+    </button>
+  )
+}
+
+function CategoryTag({ kind, name }: { kind: Kind; name: string }) {
+  const Icon = kind === 'deal' ? Tag : Ticket
+  return (
+    <span className="photo-category">
+      <Icon aria-hidden="true" size={12} />
+      {name}
+    </span>
   )
 }
 
 /** Calendar-style date badge on an event picture. */
 function DateBadge({ iso }: { iso: string }) {
   const { day, month } = dayAndMonth(iso)
-  const name = p.months[month] ?? ''
   return (
-    <span
-      aria-hidden="true"
-      className="absolute left-3 top-3 flex w-12 flex-col items-center rounded-xl bg-surface/95 py-1.5 shadow-card backdrop-blur-sm"
-    >
-      <span className="text-lg font-extrabold leading-none text-event">{Number(day)}</span>
-      <span className="mt-0.5 text-[10px] font-bold uppercase leading-none text-muted">
-        {name.slice(0, 3)}
-      </span>
-    </span>
-  )
-}
-
-function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <span className="flex items-start gap-1.5 leading-snug">
-      <span aria-hidden="true" className="mt-px shrink-0 [&_svg]:size-3.5">
-        {icon}
-      </span>
-      <span className="min-w-0">{children}</span>
+    <span aria-hidden="true" className="event-date">
+      <b>{Number(day)}</b>
+      <small>{(p.months[month] ?? '').slice(0, 3)}</small>
     </span>
   )
 }
 
 function Card({
-  tone,
+  kind,
+  id,
   title,
   to,
   index,
-  synthetic,
   photo,
   children,
-  footer,
 }: {
-  tone: Tone
+  kind: Kind
+  id: string
   title: string
   to: string
   index: number
-  synthetic: boolean
   photo: ReactNode
   children: ReactNode
-  footer: ReactNode
 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 26 }}
+      initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -40px 0px' }}
-      transition={{ ...spring, delay: (index % 4) * 0.06 }}
-      className="card group relative flex h-full flex-col overflow-hidden transition-[box-shadow,translate,border-color] duration-300 ease-out-expo hover:-translate-y-1.5 hover:shadow-lift focus-within:-translate-y-1.5 focus-within:shadow-lift"
+      whileHover={{ y: -5 }}
+      transition={{ ...spring, delay: (index % 4) * 0.04 }}
+      className={`feed-card ${kind}-card`}
     >
-      {photo}
-      <div className="flex min-w-0 flex-1 flex-col p-4">
-        <h2 className="line-clamp-2 text-[15px] font-extrabold leading-snug sm:text-base">
-          <Link
-            to={to}
-            className="rounded after:absolute after:inset-0 after:content-[''] group-hover:text-accent"
-          >
+      <div className="card-photo">
+        {photo}
+        <SaveButton kind={kind} id={id} title={title} />
+      </div>
+      <div className="card-body">
+        <h2>
+          <Link to={to} className="card-title after:absolute after:inset-0 after:content-['']">
             {title}
+            <ArrowUpRight aria-hidden="true" size={17} />
           </Link>
         </h2>
-        <div className="mt-2 flex flex-col gap-1.5 text-xs text-muted">{children}</div>
-        {synthetic && (
-          <div className="mt-2.5">
-            <SyntheticBadge />
-          </div>
-        )}
-        <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-3">
-          <p className="flex min-w-0 flex-col gap-1 text-[11px] text-muted">{footer}</p>
-          <span
-            aria-hidden="true"
-            className={`grid size-8 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] duration-300 ease-out-expo group-hover:translate-x-0.5 group-hover:text-white ${
-              tone === 'event'
-                ? 'bg-event-soft text-event group-hover:bg-event'
-                : 'bg-accent-soft text-accent group-hover:bg-accent'
-            }`}
-          >
-            <ArrowUpRight className="size-4" />
-          </span>
-        </div>
+        {children}
       </div>
     </motion.article>
   )
 }
 
-const photoSize = 'h-[190px] sm:h-[200px] lg:h-[170px]'
-
 export function EventCard({ event, index = 0 }: { event: EventSummaryDto; index?: number }) {
   return (
     <Card
-      tone="event"
+      kind="event"
+      id={event.id}
       title={event.title}
       to={`/events/${event.id}`}
       index={index}
-      synthetic={event.isSynthetic}
       photo={
-        <Media url={event.imageUrl} className={photoSize}>
+        <Media url={event.imageUrl}>
           <DateBadge iso={event.startsAt} />
-          {event.category && (
-            <CategoryChip
-              category={event.category}
-              className="absolute bottom-3 right-3 bg-surface/95 shadow-card backdrop-blur-sm"
-            />
-          )}
-          <span className="absolute bottom-3 left-3">
-            <Countdown
-              tone="event"
-              start={event.startsAt}
-              end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
-              allDay={!event.startTimeKnown}
-              within={DAY_MS}
-            />
-          </span>
+          {event.category && <CategoryTag kind="event" name={event.category.name} />}
         </Media>
       }
-      footer={
-        <>
-          <SourceLink name={event.sourceName} url={event.sourceUrl} />
-          <Freshness lastVerifiedAt={event.lastVerifiedAt} freshness={event.freshness} />
-        </>
-      }
     >
-      <Meta icon={<Clock3 />}>
-        <span className="font-bold text-ink">
+      <p className="venue-line">{event.venueName}</p>
+      {event.priceText && (
+        <p className="price-row">
+          <strong>{event.priceText}</strong>
+        </p>
+      )}
+      <p className="card-details">
+        <span>
+          <Clock3 aria-hidden="true" size={13} />
           {formatEventStart(event.startsAt, event.startTimeKnown)}
         </span>
-      </Meta>
-      <Meta icon={<MapPin />}>{[event.venueName, event.city.name].filter(Boolean).join(', ')}</Meta>
-      {event.priceText && <Meta icon={<Store />}>{event.priceText}</Meta>}
+        <span>
+          <MapPin aria-hidden="true" size={13} />
+          {event.city.name}
+        </span>
+      </p>
+      <Countdown
+        tone="event"
+        start={event.startsAt}
+        end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
+        allDay={!event.startTimeKnown}
+      />
+      {event.isSynthetic && <SyntheticBadge />}
+      <p className="card-bottom">
+        <Freshness lastVerifiedAt={event.lastVerifiedAt} freshness={event.freshness} />
+        <SourceLink name={event.sourceName} url={event.sourceUrl} />
+      </p>
     </Card>
   )
 }
@@ -292,69 +232,58 @@ export function DealPrice({
     return <span>{deal.priceText ?? p.priceUnknown}</span>
   }
   return (
-    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-      {deal.newPrice !== null && (
-        <strong className="text-lg font-extrabold text-accent">
-          {formatMoney(deal.newPrice, deal.currency)}
-        </strong>
-      )}
-      {deal.oldPrice !== null && (
-        <s className="text-sm font-medium text-muted">
-          {formatMoney(deal.oldPrice, deal.currency)}
-        </s>
-      )}
+    <>
+      {deal.newPrice !== null && <strong>{formatMoney(deal.newPrice, deal.currency)}</strong>}
+      {deal.oldPrice !== null && <s>{formatMoney(deal.oldPrice, deal.currency)}</s>}
       {withDiscount && deal.discountPercent !== null && (
-        <DiscountBadge percent={deal.discountPercent} className="text-sm" />
+        <DiscountBadge percent={deal.discountPercent} className="static" />
       )}
-    </span>
+    </>
   )
 }
 
 export function DealCard({ deal, index = 0 }: { deal: DealSummaryDto; index?: number }) {
-  const place = [deal.merchantName, deal.city?.name].filter(Boolean).join(' · ')
   return (
     <Card
-      tone="deal"
+      kind="deal"
+      id={deal.id}
       title={deal.title}
       to={`/deals/${deal.id}`}
       index={index}
-      synthetic={deal.isSynthetic}
       photo={
-        <Media url={deal.imageUrl} className={photoSize}>
-          {deal.discountPercent !== null && (
-            <span className="absolute left-3 top-3">
-              <DiscountBadge percent={deal.discountPercent} className="px-3 py-1.5 text-sm" />
-            </span>
-          )}
-          {deal.category && (
-            <CategoryChip
-              category={deal.category}
-              className="absolute bottom-3 right-3 bg-surface/95 shadow-card backdrop-blur-sm"
-            />
-          )}
-          <span className="absolute bottom-3 left-3">
-            <Countdown tone="deal" end={deal.validUntil} within={DAY_MS} />
-          </span>
+        <Media url={deal.imageUrl}>
+          {deal.discountPercent !== null && <DiscountBadge percent={deal.discountPercent} />}
+          {deal.category && <CategoryTag kind="deal" name={deal.category.name} />}
         </Media>
       }
-      footer={
-        <>
-          <SourceLink name={deal.sourceName} url={deal.sourceUrl} />
-          <Freshness lastVerifiedAt={deal.lastVerifiedAt} freshness={deal.freshness} />
-        </>
-      }
     >
-      {place && <span className="truncate">{place}</span>}
-      <span className="my-0.5">
+      <p className="venue-line">{deal.merchantName}</p>
+      <p className="price-row">
         <DealPrice deal={deal} />
-      </span>
-      <Meta icon={<CalendarDays />}>
-        {deal.validUntil
-          ? p.validUntil(formatDate(deal.validUntil))
-          : deal.isTodaysDeal
-            ? p.todaysDeal
-            : p.validityUnknown}
-      </Meta>
+        {deal.isTodaysDeal && <small>{p.todayOnly}</small>}
+      </p>
+      <p className="card-details">
+        <span>
+          <Clock3 aria-hidden="true" size={13} />
+          {deal.validUntil
+            ? p.validUntil(formatDate(deal.validUntil))
+            : deal.isTodaysDeal
+              ? p.todaysDeal
+              : p.validityUnknown}
+        </span>
+        {deal.city && (
+          <span>
+            <MapPin aria-hidden="true" size={13} />
+            {deal.city.name}
+          </span>
+        )}
+      </p>
+      <Countdown tone="deal" end={deal.validUntil} />
+      {deal.isSynthetic && <SyntheticBadge />}
+      <p className="card-bottom">
+        <Freshness lastVerifiedAt={deal.lastVerifiedAt} freshness={deal.freshness} />
+        <SourceLink name={deal.sourceName} url={deal.sourceUrl} />
+      </p>
     </Card>
   )
 }

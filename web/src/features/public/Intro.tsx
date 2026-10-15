@@ -1,6 +1,5 @@
 import { motion } from 'motion/react'
 import type { ReactNode } from 'react'
-import { container } from './PublicLayout'
 
 /** Fades and lifts its content into place; `delay` staggers siblings. */
 export function Reveal({
@@ -37,7 +36,7 @@ export default function Intro({
   children?: ReactNode
 }) {
   return (
-    <section className={`${container} pb-2 pt-8 sm:pt-12`}>
+    <section className="page-width pb-2 pt-8 sm:pt-12">
       <Reveal>
         <p className="eyebrow text-accent">
           <span className="live-dot" /> {eyebrow}

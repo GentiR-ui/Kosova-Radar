@@ -7,7 +7,6 @@ import { formatDate } from './format'
 import ListShell from './ListShell'
 import Intro, { Panel } from './Intro'
 import { spring } from './motion'
-import { container } from './PublicLayout'
 import { p } from './strings'
 
 export default function SearchPage() {
@@ -50,7 +49,7 @@ export default function SearchPage() {
           </form>
         </Panel>
       </Intro>
-      <div className={`${container} pt-4`}>
+      <div className="page-width pt-4">
         {q.length < 2 ? (
           <p className="text-muted">{p.searchHint}</p>
         ) : (

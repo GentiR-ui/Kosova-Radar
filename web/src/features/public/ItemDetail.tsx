@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../../lib/api'
 import { t } from '../../lib/strings'
-import { container, PageTitle } from './PublicLayout'
+import { PageTitle } from './PublicLayout'
 import { useDeal, useEvent, type CategoryDto, type DealDetailDto, type EventDetailDto } from './api'
 import { formatDate, formatEventStart, safeHref } from './format'
 import { DealPrice, Freshness, Media, SourceLink, SyntheticBadge } from './ItemCards'
@@ -29,7 +29,7 @@ function DetailShell<T>({
 }) {
   if (query.isPending)
     return (
-      <div role="status" className={`${container} py-12`}>
+      <div role="status" className="page-width py-12">
         <p className="sr-only">{t.loading}</p>
         <div aria-hidden="true" className="space-y-4">
           <div className="skeleton h-5 w-40 rounded-full" />
@@ -42,7 +42,7 @@ function DetailShell<T>({
     if (query.error instanceof ApiError && query.error.status === 404)
       return <PageTitle title={t.notFound} />
     return (
-      <div role="alert" className={`${container} space-y-4 py-12`}>
+      <div role="alert" className="page-width space-y-4 py-12">
         <p className="font-bold text-danger">{t.error}</p>
         <button type="button" onClick={() => void query.refetch()} className="btn">
           {t.retry}
@@ -50,7 +50,7 @@ function DetailShell<T>({
       </div>
     )
   }
-  return data ? <article className={`${container} py-8 sm:py-12`}>{children(data)}</article> : null
+  return data ? <article className="page-width py-8 sm:py-12">{children(data)}</article> : null
 }
 
 type Tone = 'event' | 'deal'
@@ -113,11 +113,9 @@ function Hero({ url }: { url: string | null }) {
   if (!url || !safeHref(url)) return null
   return (
     <Reveal delay={0.1}>
-      <Media
-        url={url}
-        eager
-        className="h-[240px] rounded-card border border-line shadow-card sm:h-[380px] lg:h-[440px]"
-      />
+      <div className="h-[240px] overflow-hidden rounded-card border border-line sm:h-[380px] lg:h-[440px] [&_img]:size-full [&_img]:object-cover">
+        <Media url={url} eager />
+      </div>
     </Reveal>
   )
 }
@@ -198,6 +196,13 @@ function Body({
   description: string | null
   info: ReactNode
 }) {
+  // With neither a picture nor a description the facts card carries the page on its own.
+  if (!hero && !description)
+    return (
+      <Reveal delay={0.12} className="mt-8 max-w-xl">
+        {info}
+      </Reveal>
+    )
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
       <div className="min-w-0 space-y-8">
@@ -278,7 +283,9 @@ export function DealDetailPage() {
             info={
               <InfoCard tone="deal" item={d}>
                 <Fact tone="deal" icon={<Tag />} label={p.price}>
-                  <DealPrice deal={d} withDiscount />
+                  <span className="price-row">
+                    <DealPrice deal={d} withDiscount />
+                  </span>
                 </Fact>
                 <Fact tone="deal" icon={<Clock3 />} label={p.validity}>
                   {d.validUntil

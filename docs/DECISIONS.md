@@ -347,3 +347,23 @@
 - Consequences: the admin inherits the same light tokens (green instead of blue). Bundle +2 kB gzip (Caveat subset for
   the hero's handwritten line). Cards keep every fact the acceptance tests require (full Pristina date-time, validity,
   source link, freshness, discount), so the locked suites are untouched.
+
+## ADR-047 — Public UI is ported from the client's Lovable design (supersedes ADR-046)
+- Date: 2026-10-15 · Status: accepted · Task: T057
+- Context: the client did not like the interpretation of the concept images (T056) and pointed at the design they had
+  just built themselves in Lovable ("Kosova Pulse", commit 9a8c4e58): white editorial surfaces, the official logo on
+  its dark plate, a city photo behind the hero, a radar on the right, a benefit band, a day switcher with a sliding
+  indicator, filter pills, bookmarks and compact four-column cards.
+- Decision: port that design's CSS and markup one to one into `web/src` (class names kept: `page-width`,
+  `discovery`, `benefit-band`, `day-switcher`, `feed-card`, `card-photo`, `countdown`, …) and connect it to the real
+  API instead of the sample feed. Theme tokens are their oklch values (emerald `--color-accent`, berry events, rose
+  discounts, amber sun). Differences forced by the product: the locked tablist (REQ-100) takes the day-switcher
+  position and keeps the names "Sot"/"Evente"/"Oferta" (sub-labels are `aria-hidden`), the filter pills become the
+  day filter inside the "Evente" tab, the weather widget becomes the city picker with today's date (no weather
+  service), card titles are links to the detail pages instead of a modal, and the demo disclaimer is gone. The hero
+  photo is today's first event picture, blurred as a backdrop, because the design's city photo is not ours to copy.
+  "Të ruajturat" is implemented for real with `localStorage` (`saved.ts`), filtering the loaded feed.
+- Consequences: the layout now lives mostly in component classes in `index.css` rather than utility classes; that is
+  deliberate so the client's design can be re-synced. The admin keeps the same tokens (emerald instead of blue).
+  Caveat and the SVG logo lockup of T056 are gone; `Logo.tsx` keeps only the mark used for placeholders and the
+  favicon.

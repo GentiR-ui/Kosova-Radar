@@ -1,7 +1,9 @@
+import { Timer } from 'lucide-react'
 import { useSyncExternalStore } from 'react'
 import { p } from './strings'
 
-export const DAY_MS = 86_400_000
+const HOUR_MS = 3_600_000
+const DAY_MS = 24 * HOUR_MS
 
 // One shared one-second clock for every countdown on the page.
 let now = Date.now()
@@ -28,7 +30,12 @@ function subscribe(listener: () => void) {
 
 const useNow = () => useSyncExternalStore(subscribe, () => now)
 
-function hms(ms: number): string {
+/** Below a day the strip ticks every second; further out it only says how long is left. */
+function left(ms: number): string {
+  if (ms >= DAY_MS) {
+    const days = Math.floor(ms / DAY_MS)
+    return days === 1 ? p.oneDay : p.days_(days)
+  }
   const s = Math.floor(ms / 1000)
   return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60]
     .map((v) => String(v).padStart(2, '0'))
@@ -36,56 +43,59 @@ function hms(ms: number): string {
 }
 
 /**
- * Live "starts in" / "ends in" strip. `start` (events) counts down to the start and then shows
- * "started" until `end`; without `start` (deals) it counts down to `end`. `allDay` = only the date is
- * known. With `within`, the strip appears only while a live countdown is below that many milliseconds —
- * that is how cards show urgency without a clock on every item.
+ * Live "starts in" / "ends in" strip on a card. `start` (events) counts down to the start and then
+ * shows "started" until `end`; without `start` (deals) it counts down to `end`. `allDay` = only the
+ * date is known. Nothing to count (a deal without an end date) renders nothing.
  */
 export default function Countdown({
   start,
   end,
   allDay = false,
-  within,
   tone,
 }: {
   start?: string
   end: string | null
   allDay?: boolean
-  within?: number
   tone: 'event' | 'deal'
 }) {
   const current = useNow()
   const startMs = start ? Date.parse(start) : null
   const endMs = end ? Date.parse(end) : null
+  if (startMs === null && endMs === null) return null
+
   let label: string
-  let remaining: number | null = null
-  if (endMs !== null && current >= endMs) label = p.ended
-  else if (allDay) label = p.allDay
+  let digits: string | null = null
+  let ended = false
+  if (endMs !== null && current >= endMs) {
+    label = p.ended
+    ended = true
+  } else if (allDay) label = p.allDay
   else if (startMs !== null && current < startMs) {
     label = p.startsIn
-    remaining = startMs - current
+    digits = left(startMs - current)
   } else if (startMs !== null) label = p.started
   else if (endMs !== null) {
     label = p.endsIn
-    remaining = endMs - current
-  } else label = p.ended
-
-  if (within !== undefined && (remaining === null || remaining > within)) return null
+    digits = left(endMs - current)
+  } else {
+    label = p.ended
+    ended = true
+  }
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full bg-surface/95 px-2.5 py-1.5 text-[11px] font-bold shadow-card backdrop-blur-sm ${
-        tone === 'event' ? 'text-event' : 'text-accent'
-      }`}
+    <p
+      className={`countdown ${tone === 'deal' ? 'countdown-deal' : ''} ${ended ? 'countdown-ended' : ''}`}
     >
-      <span aria-hidden="true" className="live-dot" />
-      {label}
-      {remaining !== null && (
+      <span className="countdown-label">
+        <Timer aria-hidden="true" size={13} />
+        {label}
+      </span>
+      {digits && (
         // The ticking digits are not announced every second.
-        <span aria-hidden="true" className="font-mono tabular-nums text-ink">
-          {hms(remaining)}
+        <span aria-hidden="true" className="countdown-digits">
+          {digits}
         </span>
       )}
-    </span>
+    </p>
   )
 }

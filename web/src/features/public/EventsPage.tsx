@@ -4,7 +4,6 @@ import { Field, selectClass } from './Field'
 import { EventCard } from './ItemCards'
 import ListShell from './ListShell'
 import Intro, { Panel } from './Intro'
-import { container } from './PublicLayout'
 import SearchInput from './SearchInput'
 import { p } from './strings'
 
@@ -96,7 +95,7 @@ export default function EventsPage() {
           </div>
         </Panel>
       </Intro>
-      <div className={`${container} pt-4`}>
+      <div className="page-width pt-4">
         <ListShell queries={[events]} grid>
           {flat(events).map((e, i) => (
             <EventCard key={e.id} event={e} index={i} />

@@ -4,7 +4,6 @@ import { Field, selectClass } from './Field'
 import { DealCard } from './ItemCards'
 import ListShell from './ListShell'
 import Intro, { Panel } from './Intro'
-import { container } from './PublicLayout'
 import SearchInput from './SearchInput'
 import { p } from './strings'
 
@@ -76,7 +75,7 @@ export default function DealsPage() {
           </div>
         </Panel>
       </Intro>
-      <div className={`${container} pt-4`}>
+      <div className="page-width pt-4">
         <ListShell queries={[deals]} grid>
           {flat(deals).map((d, i) => (
             <DealCard key={d.id} deal={d} index={i} />

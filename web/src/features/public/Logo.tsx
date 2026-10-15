@@ -4,7 +4,7 @@ import { useId } from 'react'
  * Brand mark: a map pin with radar waves and a signal blip, drawn as SVG so it stays crisp,
  * follows the surrounding text colour and animates without a background image.
  */
-export function LogoMark({ className = 'w-10' }: { className?: string }) {
+export default function LogoMark({ className = 'w-10' }: { className?: string }) {
   const id = useId()
   const grad = `${id}-g`
   const glow = `${id}-glow`
@@ -49,35 +49,5 @@ export function LogoMark({ className = 'w-10' }: { className?: string }) {
       />
       <circle cx="26" cy="21" r="4.6" fill={`url(#${grad})`} />
     </svg>
-  )
-}
-
-/** Full lockup: mark + "KOSOVA RADAR" + the tagline, as in the brand logo. */
-export default function Logo({
-  className = '',
-  markClass = 'w-9 sm:w-11',
-  compact = false,
-}: {
-  className?: string
-  markClass?: string
-  /** Hide the tagline (tight spaces such as the mobile header). */
-  compact?: boolean
-}) {
-  return (
-    <span className={`flex min-w-0 items-center gap-2 sm:gap-2.5 ${className}`}>
-      <LogoMark className={markClass} />
-      <span className="flex min-w-0 flex-col justify-center">
-        <span className="whitespace-nowrap text-[17px] font-extrabold leading-none tracking-tight sm:text-[22px]">
-          KOSOVA <span className="text-gradient">RADAR</span>
-        </span>
-        <span
-          className={`logo-tagline mt-1 whitespace-nowrap text-[6.5px] font-semibold uppercase leading-none tracking-[0.22em] text-muted sm:text-[8px] ${
-            compact ? 'max-sm:hidden' : ''
-          }`}
-        >
-          Digital tracking solutions
-        </span>
-      </span>
-    </span>
   )
 }
