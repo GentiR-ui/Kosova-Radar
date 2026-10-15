@@ -414,15 +414,17 @@ Every list has a loading state (`role="status"`, "Duke u ngarkuar…"), an empty
 and an error state ("Diçka shkoi keq." + button "Provo sërish"). Cards are `<article>` elements whose heading is the item title.
 List pages keep filters in the query string (`/?search=`, `/events?city=&category=&from=&to=&search=`, `/deals?city=&category=&search=`, `/search?q=`)
 and show a button "Shfaq më shumë" while more pages exist. Admin navigation stays visible at 360 px; the public header
-keeps the logo, the search link and a menu button below 1024 px, whose sheet holds the same links (ADR-048).
+keeps the logo, the city select, the search link and a menu button below 1024 px, whose sheet holds the same links and the city select (ADR-048, ADR-050).
 
-**Visual direction (ADR-048).** Light warm paper with charcoal header, hero and promo surfaces, and the logo's orange as
-the single accent (gradient fills carry ink text, never white). One typeface (Plus Jakarta Sans) for public and admin;
-tabular numerals for prices, discounts, dates and countdowns. Home follows the reference layout: hero + "Ofertat më të
-mira" panel, category row, tablist over the event/deal rows, promo card. Cards are 16 px radius with a 16:10 media
-frame (a category-tinted tile with its icon when an item has no picture) and lift on hover. Motion is opacity/transform
-only, 200–500 ms, and stops under `prefers-reduced-motion`; the LIVE dot is the only loop.
-Titles, descriptions and evidence are rendered as text (never `dangerouslySetInnerHTML`); `href` only for http(s) URLs.
+**Visual direction (ADR-050).** Light paper #F3F6FA with white cards and #03142E dark panels (hero, footer), the
+violet–blue brand (#6D4AF6, gradient #5B3FE8 → #2F5BEA with white text) and one fixed pastel icon tile per category,
+reused on chips, badges and picture placeholders. One typeface (Plus Jakarta Sans) for public and admin; tabular
+numerals for prices, discounts, dates and countdowns. Home: hero + "Ofertat më të mira" panel, category chips,
+"Sot në Kosovë" cards (ADR-049). List pages: page header with the result count, a sticky filter bar and the active
+filters as removable chips, over large cards (3 → 2 → 1 columns, four from 1536 px) with hover lift, image zoom and
+a light sweep. Motion is opacity/transform only, 200–500 ms, and stops under `prefers-reduced-motion`; the LIVE dot
+is the only loop. Libraries: Motion for React, lucide-react, Embla (swipeable rows), Radix Dialog (menu sheet),
+clsx + tailwind-merge.
 
 ### Public
 

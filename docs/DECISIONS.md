@@ -392,3 +392,23 @@
 - Context: the client wants the home page calmer and more premium: below the hero and categories only today's events, as large cards under the heading "Sot në Kosovë"; deals stay in the "Ofertat më të mira" panel beside the hero; full lists live on /events and /deals.
 - Decision: REQ-100 amended (tabs "Sot"/"Evente"/"Oferta" removed); its acceptance test now checks the two labelled regions. The redesign itself (T059) follows `docs/prompts/kosova-radar-redesign-v3.md` and `docs/design/reference-v3.png`, with the logo recoloured to the new palette (`web/public/brand/*-violet*`).
 - Consequences: "Nesër"/"Pasnesër" browsing moves to /events; the home page needs fewer requests.
+
+## ADR-050 — Public UI v4: the reference palette, premium cards, four new libraries
+- Date: 2026-10-16 · Status: accepted · Task: T059 (supersedes the look of ADR-048)
+- Context: `docs/prompts/kosova-radar-redesign-v3.md` asked for a warmer, premium public site built on
+  `docs/design/reference-v3.png`, with the card quality of the client's furniture shop and the logo recoloured to the
+  new palette (`web/public/brand/*-violet*`).
+- Decision: the palette of the reference lives in `.theme-radar` (paper #F3F6FA, white surfaces, ink #0B1B3F, violet
+  #6D4AF6, gradient #5B3FE8 → #2F5BEA with white text, hero #03142E, headline gradient only on the hero); every pair
+  in use is listed with its measured contrast in `index.css`. Each category keeps one pastel icon tile (eight pairs,
+  4.5:1 and up) reused on chips, card badges and placeholders. Cards follow the shop's product cards — rounded card
+  with a border, media frame with `object-cover`, hover lift and a 500 ms image zoom — extended with the light sweep,
+  tap scale and staggered reveal the prompt asks for; product pictures are shown whole (`object-contain`) on their
+  tile. Libraries added: Embla (swipeable deals panel and category chips below the breakpoint), Radix Dialog (menu
+  sheet with its own focus trap, Escape and focus return), clsx + tailwind-merge (`cn`). Native `<select>` elements
+  stay, restyled; the header's city select is labelled "Zgjidh qytetin".
+- Deviations: the header city select is still hidden on `/events` and `/deals` — Playwright's `getByLabel('Qyteti')`
+  matches substrings, so "Zgjidh qytetin" would collide with the locked filter label there. The client's furniture
+  shop was read at `C:/furniture project` (the path in the prompt, `C:/TiaraHomeFurniture`, is an empty folder).
+- Consequences: the main bundle grows to ~190 kB gzip (Radix + Embla). jsdom needs `matchMedia` and `ResizeObserver`
+  stubs in `web/src/test/setup.ts` for Embla.
