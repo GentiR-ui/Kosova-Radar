@@ -367,3 +367,22 @@
   deliberate so the client's design can be re-synced. The admin keeps the same tokens (emerald instead of blue).
   Caveat and the SVG logo lockup of T056 are gone; `Logo.tsx` keeps only the mark used for placeholders and the
   favicon.
+
+## ADR-048 — Public UI v3: brand from the logo, layout from the reference
+- Date: 2026-10-15 · Status: accepted · Task: T058 (supersedes the look of ADR-044/046/047)
+- Context: the client supplied `docs/prompts/kosova-radar-redesign-v2.md` with a reference layout
+  (`docs/design/reference-layout.png`), the official logo files in `web/public/brand` and a fixed palette taken from
+  the logo. The earlier Lovable-based look had no relation to the brand colours.
+- Decision: the public pages follow the reference structure and the logo's identity. Tokens live in `index.css`:
+  the `@theme` block keeps the admin's light theme and adds the brand palette; `.theme-radar` (the public layout)
+  switches to warm paper #FAF8F5, charcoal #121214 bands and the orange gradient. Text on orange is always ink
+  (7.0:1); white on orange is never used. Category badges use eight soft tints with dark text (6.3:1 and above).
+  Plus Jakarta Sans replaces Manrope for the whole app. The header is solid charcoal at every scroll position.
+- Deviations from the prompt, and why: (1) the header city select keeps the accessible name "Qyteti" but is hidden on
+  `/events` and `/deals`, whose own filter owns that name — two would break the locked REQ-102 selector; (2) the tab
+  panel uses a keyed fade instead of `AnimatePresence` cross-fade, because keeping the outgoing panel mounted shows
+  each item twice and breaks the strict locators of REQ-100; (3) the home list keeps the reference's rows, while
+  `/events` and `/deals` use the card grid; (4) the "Të ruajturat" bookmarks of ADR-047 are gone — the reference has
+  no place for them.
+- Consequences: `docs/design.md` §7 now allows a menu button below 1024 px on the public header (it still exposes
+  every link, with Escape, a focus trap and focus return). The admin keeps its own light theme and only changes font.
