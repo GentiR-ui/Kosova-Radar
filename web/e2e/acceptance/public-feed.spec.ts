@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { adminApi, card, dealItem, eventItem, expireItem, iso, pristinaAt, publish, token } from './helpers'
 
-test('REQ-100 home shows the tabs "Sot", "Evente", "Oferta" and "Sot" lists today\'s events and active deals', async ({ page }) => {
+test('REQ-100 home shows today\'s events in "Sot në Kosovë" and active deals in "Ofertat më të mira"', async ({ page }) => {
   const api = await adminApi()
   const g = token()
   const todayTitle = `Sot ${g} ${token()}`
@@ -15,24 +15,16 @@ test('REQ-100 home shows the tabs "Sot", "Evente", "Oferta" and "Sot" lists toda
 
   await page.goto(`/?search=${g}`)
   await expect(page.getByRole('heading', { level: 1, name: 'Çfarë ka sot në Kosovë' })).toBeVisible()
-  const tablist = page.getByRole('tablist')
-  for (const name of ['Sot', 'Evente', 'Oferta']) await expect(tablist.getByRole('tab', { name, exact: true })).toBeVisible()
 
-  await tablist.getByRole('tab', { name: 'Sot', exact: true }).click()
-  await expect(tablist.getByRole('tab', { name: 'Sot', exact: true })).toHaveAttribute('aria-selected', 'true')
-  const panel = page.getByRole('tabpanel')
-  await expect(panel.getByRole('heading', { name: todayTitle })).toBeVisible()
-  await expect(panel.getByRole('heading', { name: dealTitle })).toBeVisible()
-  await expect(panel.getByRole('heading', { name: tomorrowTitle })).toHaveCount(0)
+  const today = page.getByRole('region', { name: 'Sot në Kosovë' })
+  await expect(today.getByRole('heading', { level: 2, name: 'Sot në Kosovë' })).toBeVisible()
+  await expect(today.getByRole('heading', { name: todayTitle })).toBeVisible()
+  await expect(today.getByRole('heading', { name: tomorrowTitle })).toHaveCount(0)
+  await expect(today.getByRole('heading', { name: dealTitle })).toHaveCount(0)
 
-  await tablist.getByRole('tab', { name: 'Evente', exact: true }).click()
-  await expect(panel.getByRole('heading', { name: tomorrowTitle })).toBeVisible()
-  await expect(panel.getByRole('heading', { name: todayTitle })).toBeVisible()
-  await expect(panel.getByRole('heading', { name: dealTitle })).toHaveCount(0)
-
-  await tablist.getByRole('tab', { name: 'Oferta', exact: true }).click()
-  await expect(panel.getByRole('heading', { name: dealTitle })).toBeVisible()
-  await expect(panel.getByRole('heading', { name: todayTitle })).toHaveCount(0)
+  const deals = page.getByRole('region', { name: 'Ofertat më të mira' })
+  await expect(deals.getByRole('heading', { name: dealTitle })).toBeVisible()
+  await expect(deals.getByRole('heading', { name: todayTitle })).toHaveCount(0)
   await api.dispose()
 })
 

@@ -10,6 +10,10 @@
 - Next: T011.
 -->
 
+## 2026-10-16 · Spec amendment v5 (human)
+- Client: premium redesign (purple-blue palette from `docs/design/reference-v3.png`, modern header, icon tiles); home keeps hero + deals panel + categories, then only today's events as large cards under "Sot në Kosovë"; /events and /deals get large animated cards like the Tiara category pages.
+- Changed: REQ-100 (tabs replaced by the "Sot në Kosovë" and "Ofertat më të mira" regions) and its test; design.md §6 home row; ADR-049; task T059. Logo recoloured: `web/public/brand/kosova-radar-*-violet*`.
+
 ## 2026-10-15 · T058 done (public UI v3)
 - Built (ADR-048, three commits, from `docs/prompts/kosova-radar-redesign-v2.md`):
   1. Tokens and shared parts: `@theme` keeps the admin's light theme and adds the brand palette; `.theme-radar` turns the public pages warm-paper + charcoal + orange, with every contrast ratio computed and written into `index.css` (ink on paper 17.4:1, muted 6.0:1, brand-text 5.7:1, ink on the gradient 5.9–9.1:1, category tints ≥ 6.3:1; white on orange is never used). Plus Jakarta Sans replaces Manrope app-wide. The transparent logo files from `web/public/brand` are used in the header (mark only below 380 px) and footer, with `favicon-64.png`, the apple-touch icon and `theme-color #121214`. Header is solid charcoal at every scroll position, shrinks after 8 px, has the active-route underline, the "Qyteti" select (hidden where the page has its own), a search link and, below 1024 px, a menu sheet with Escape, focus trap and focus return. Shared `.btn/.card/.badge/.chip/.tab/.field/.skeleton/.empty-state` plus `media-frame` cards with the category-tile fallback.

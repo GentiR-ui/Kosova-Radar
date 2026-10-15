@@ -429,7 +429,7 @@ Titles, descriptions and evidence are rendered as text (never `dangerouslySetInn
 | Route | Purpose | Key elements (accessible names used by tests) | Req |
 |---|---|---|---|
 | (all public) | layout | header link "Kosova Radar" (home); nav links "Evente", "Oferta", "Kërko" | — |
-| / | feed | `h1` "Çfarë ka sot në Kosovë"; search input "Kërko" (filters both tabs); tablist with tabs "Sot", "Evente", "Oferta"; the selected tab panel lists cards | 100, 104, 108 |
+| / | feed | `h1` "Çfarë ka sot në Kosovë"; region "Ofertat më të mira" (`section` labelled by its `h2`; the top active deals by discount, each title a heading + link); category chips; region "Sot në Kosovë" (`h2`; only today's active events as large cards, each title a heading); `?search=` filters both (ADR-049) | 100, 104, 108 |
 | (cards and detail) | events with `startTimeKnown: false` | show the date and "gjatë ditës" instead of a time (ADR-040) | 025 |
 | /events | event list | `h1` "Evente"; selects "Qyteti" (option "Të gjitha qytetet" + city names), "Kategoria"; date inputs "Nga data", "Deri më"; search input "Kërko në evente"; event cards | 101, 102, 104, 107, 108 |
 | /events/:id | event detail | `h1` title; date/time text; city and venue; price or "Çmimi nuk dihet" when unknown; link "Burimi: {sourceName}" (external, `rel="noopener noreferrer"`, new tab); freshness text; banner "Ky event ka përfunduar" when expired; badge "Të dhëna testuese" when synthetic | 101, 103, 107 |

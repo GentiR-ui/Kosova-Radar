@@ -156,7 +156,7 @@
 
 ### Public web app (Albanian, mobile first)
 
-- **REQ-100** WHEN a visitor opens the home page THE SYSTEM SHALL show the tabs "Sot", "Evente" and "Oferta", where "Sot" lists the active events starting today in Europe/Pristina time and the active deals.
+- **REQ-100** WHEN a visitor opens the home page THE SYSTEM SHALL show the section "Sot në Kosovë" listing only the active events starting today in Europe/Pristina time, and the panel "Ofertat më të mira" listing the active deals with the highest discount; the home search (`?search=`) filters both.
 - **REQ-101** WHEN a visitor views an event or deal card or detail page THE SYSTEM SHALL show the title, the start time (events) or validity (deals) in Europe/Pristina time, a link "Burimi: {source name}" to the source URL, and the freshness label "Verifikuar së fundmi" (fresh) or "Kontrolluar së fundi më {date}" (stale).
 - **REQ-102** WHEN a visitor selects a city in the "Qyteti" filter on the events page THE SYSTEM SHALL show only events in that city.
 - **REQ-103** WHEN a visitor opens the detail page of an expired item THE SYSTEM SHALL show "Ky event ka përfunduar" (event) or "Kjo ofertë ka skaduar" (deal).

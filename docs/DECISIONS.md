@@ -386,3 +386,9 @@
   no place for them.
 - Consequences: `docs/design.md` §7 now allows a menu button below 1024 px on the public header (it still exposes
   every link, with Escape, a focus trap and focus return). The admin keeps its own light theme and only changes font.
+
+## ADR-049 — Home: "Sot në Kosovë" (events only) and the deals panel replace the three tabs
+- Date: 2026-10-16 · Status: accepted · Task: spec amendment v5 (T059)
+- Context: the client wants the home page calmer and more premium: below the hero and categories only today's events, as large cards under the heading "Sot në Kosovë"; deals stay in the "Ofertat më të mira" panel beside the hero; full lists live on /events and /deals.
+- Decision: REQ-100 amended (tabs "Sot"/"Evente"/"Oferta" removed); its acceptance test now checks the two labelled regions. The redesign itself (T059) follows `docs/prompts/kosova-radar-redesign-v3.md` and `docs/design/reference-v3.png`, with the logo recoloured to the new palette (`web/public/brand/*-violet*`).
+- Consequences: "Nesër"/"Pasnesër" browsing moves to /events; the home page needs fewer requests.
