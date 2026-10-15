@@ -19,12 +19,12 @@ describe('ListShell layout', () => {
         <p>kid</p>
       </ListShell>,
     )
-    expect(screen.getByText('kid').parentElement?.className ?? '').not.toContain('feed-grid')
+    expect(screen.getByText('kid').parentElement?.className ?? '').not.toContain('grid')
     rerender(
       <ListShell queries={[done]} grid>
         <p>kid</p>
       </ListShell>,
     )
-    expect(screen.getByText('kid').parentElement).toHaveClass('feed-grid')
+    expect(screen.getByText('kid').parentElement).toHaveClass('grid')
   })
 })

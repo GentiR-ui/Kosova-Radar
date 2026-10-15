@@ -1,9 +1,11 @@
 import type { UseInfiniteQueryResult } from '@tanstack/react-query'
-import { Radar } from 'lucide-react'
+import { CalendarSearch } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { t } from '../../lib/strings'
 import type { Page } from './api'
 import { p } from './strings'
+
+export const cardGrid = 'grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
 
 type Q = Pick<
   UseInfiniteQueryResult<{ pages: Page<unknown>[] }, Error>,
@@ -20,21 +22,21 @@ type Q = Pick<
 export default function ListShell({
   queries,
   grid = false,
-  isEmpty = false,
+  skeleton = grid,
   emptyHint,
   children,
 }: {
   queries: Q[]
-  /** Lay children out as the card grid of the design; otherwise they render as given. */
+  /** Lay children out as the responsive card grid; off when the children bring their own layout. */
   grid?: boolean
-  /** Force the empty state even when the lists returned items (a client-side filter removed them). */
-  isEmpty?: boolean
+  /** Show card skeletons while loading (on by default with `grid`). */
+  skeleton?: boolean
   emptyHint?: string
   children: ReactNode
 }) {
   const failed = queries.some((q) => q.isError)
   const loading = queries.some((q) => q.isPending)
-  const empty = isEmpty || queries.every((q) => q.data?.pages.every((pg) => pg.items.length === 0))
+  const empty = queries.every((q) => q.data?.pages.every((pg) => pg.items.length === 0))
   const more = queries.filter((q) => q.hasNextPage)
   const fetching = queries.some((q) => q.isFetchingNextPage)
 
@@ -54,16 +56,17 @@ export default function ListShell({
   if (loading)
     return (
       <div role="status">
-        <p className={grid ? 'sr-only' : 'py-6 text-muted'}>{t.loading}</p>
-        {grid && (
-          <div aria-hidden="true" className="feed-grid">
+        <p className={skeleton ? 'sr-only' : 'py-6 text-muted'}>{t.loading}</p>
+        {skeleton && (
+          <div aria-hidden="true" className={cardGrid}>
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="feed-card">
-                <div className="skeleton h-[157px]" />
-                <div className="card-body gap-3">
-                  <div className="skeleton h-4 w-4/5 rounded-full" />
-                  <div className="skeleton h-3 w-3/5 rounded-full" />
-                  <div className="skeleton h-8 rounded" />
+              <div key={i} className="card overflow-hidden">
+                <div className="skeleton aspect-[16/10]" />
+                <div className="space-y-3 p-4">
+                  <div className="skeleton h-4 w-2/5 rounded-full" />
+                  <div className="skeleton h-5 w-4/5 rounded-full" />
+                  <div className="skeleton h-4 w-3/5 rounded-full" />
+                  <div className="skeleton h-6 w-1/3 rounded-full" />
                 </div>
               </div>
             ))}
@@ -74,14 +77,16 @@ export default function ListShell({
   if (empty)
     return (
       <div className="empty-state">
-        <Radar aria-hidden="true" size={34} />
-        <h3>{p.empty}</h3>
-        <p>{emptyHint ?? p.emptyHint}</p>
+        <span className="grid size-14 place-items-center rounded-2xl bg-brand-soft text-brand-ink">
+          <CalendarSearch aria-hidden="true" className="size-7" />
+        </span>
+        <p className="mt-4 text-lg font-extrabold">{p.empty}</p>
+        <p className="mt-1.5 max-w-sm text-sm text-muted">{emptyHint ?? p.emptyHint}</p>
       </div>
     )
   return (
     <>
-      {grid ? <div className="feed-grid">{children}</div> : children}
+      {grid ? <div className={cardGrid}>{children}</div> : children}
       {more.length > 0 && (
         <div className="mt-8 flex justify-center">
           <button

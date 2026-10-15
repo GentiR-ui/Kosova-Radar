@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 
-export const selectClass =
-  'min-h-12 w-full rounded-xl border border-line bg-soft px-3.5 py-2.5 text-[0.95rem] text-ink transition-[border-color,background-color,box-shadow] duration-200 hover:border-accent/40 focus:border-accent focus:bg-surface focus:shadow-[0_0_0_4px_rgb(4_120_87/0.12)] focus:outline-none'
+export const selectClass = 'field'
 
 export function Field({
   label,
@@ -16,7 +15,7 @@ export function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-bold text-muted">
+      <label htmlFor={htmlFor} className="field-label">
         {label}
       </label>
       {children}

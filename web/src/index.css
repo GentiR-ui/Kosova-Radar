@@ -1,12 +1,21 @@
-@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/plus-jakarta-sans';
 @import 'tailwindcss';
 
 /*
- * Kosova Radar design system (ADR-046): ported from the client's own design
- * ("Kosova Pulse" in Lovable) — white editorial surfaces, emerald identity,
- * berry accents for events and a rose discount badge. All colours in oklch.
+ * Design tokens (ADR-048).
+ * `@theme` keeps the light theme the admin already uses and adds the brand palette taken from the logo.
+ * `.theme-radar` (the public layout) switches the surfaces to warm paper + charcoal + orange.
+ *
+ * Contrast (WCAG, computed for these exact values):
+ *   ink #141416 on paper #FAF8F5 17.4:1 · muted #5C5F66 on paper 6.0:1 / on white 6.4:1
+ *   brand-text #A84300 on paper 5.7:1 · brand-on-dark #FF8A1F on charcoal 7.9:1
+ *   on-dark #FFFFFF on charcoal 18.7:1 · on-dark-muted #B9BBC2 on charcoal 9.8:1
+ *   brand-ink #7A2E00 on brand-soft #FFE9D6 8.1:1 · ink on brand #FF7A00 7.0:1
+ *   ink on the gradient 5.9:1 (start #FF5A00) … 9.1:1 (end #FFA21A)
+ *   white on orange is 2.6:1 and is therefore never used.
  */
 @theme {
+  /* shared light theme (admin) */
   --color-paper: oklch(1 0 0);
   --color-surface: oklch(1 0 0);
   --color-soft: oklch(0.97 0.004 240);
@@ -17,37 +26,56 @@
   --color-accent-strong: oklch(0.45 0.12 164);
   --color-accent-soft: oklch(0.96 0.024 163);
   --color-accent-ink: oklch(1 0 0);
-  --color-event: oklch(0.52 0.15 330);
-  --color-event-soft: oklch(0.97 0.016 330);
-  --color-hot: oklch(0.57 0.22 18);
-  --color-weather: oklch(0.77 0.16 78);
-  --color-brand-surface: oklch(0.13 0.034 250);
-  --color-brand: oklch(0.65 0.16 164);
-  --color-brand-2: oklch(0.62 0.11 196);
-  --color-brand-3: oklch(0.8 0.17 150);
   --color-warn: oklch(0.52 0.12 70);
   --color-danger: oklch(0.52 0.2 25);
-  --radius-card: 0.5rem;
-  --shadow-card: 0 10px 32px oklch(0.25 0.02 240 / 9%);
-  --shadow-lift: 0 16px 44px oklch(0.25 0.02 240 / 14%);
-  --font-display: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* brand (from the logo) */
+  --color-charcoal: #121214;
+  --color-charcoal-soft: #1c1c20;
+  --color-brand: #ff7a00;
+  --color-brand-strong: #ff5a00;
+  --color-brand-text: #a84300;
+  --color-brand-on-dark: #ff8a1f;
+  --color-brand-soft: #ffe9d6;
+  --color-brand-ink: #7a2e00;
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: #b9bbc2;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(20 20 22 / 0.04), 0 8px 24px rgb(20 20 22 / 0.06);
+  --shadow-lift: 0 4px 10px rgb(20 20 22 / 0.06), 0 18px 40px rgb(20 20 22 / 0.12);
+  --font-display: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans:
-    'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial,
-    sans-serif;
+    'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    Arial, sans-serif;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --signal-glow: 0 0 12px oklch(0.7 0.17 163 / 35%);
-  --radar-line: oklch(0.81 0.14 164 / 45%);
-  --photo-shade: oklch(0.17 0.028 240);
+}
+
+/* The public pages: warm paper, charcoal bands, orange brand. */
+.theme-radar {
+  --color-paper: #faf8f5;
+  --color-surface: #ffffff;
+  --color-soft: #f4f1ec;
+  --color-ink: #141416;
+  --color-muted: #5c5f66;
+  --color-line: #ece7e1;
+  --color-accent: #ff7a00;
+  --color-accent-strong: #ff5a00;
+  --color-accent-soft: #ffe9d6;
+  --color-accent-ink: #141416; /* never white on orange */
+  --brand-gradient: linear-gradient(135deg, #ff5a00, #ffa21a);
+  background: var(--color-paper);
+  color: var(--color-ink);
 }
 
 @layer base {
   html {
-    scroll-padding-top: 6rem; /* keep focused elements clear of the sticky header */
     background: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow-wrap: anywhere; /* long unbroken source text must not widen the page */
+    scroll-padding-top: 5.5rem; /* height of the sticky header */
   }
   button,
   input,
@@ -60,85 +88,51 @@
   h3 {
     font-family: var(--font-display);
     font-weight: 800;
+    letter-spacing: -0.02em;
   }
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
+    border-radius: 4px;
   }
 }
 
 @layer components {
-  /* ---------- shared shell ---------- */
   .page-width {
-    width: min(1200px, calc(100% - 64px));
+    width: min(1280px, calc(100% - 40px));
     margin-inline: auto;
   }
-  .eyebrow {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--color-accent);
-  }
-  .live-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: var(--color-accent);
-    box-shadow: var(--signal-glow);
-    animation: signal-pulse 2.4s infinite;
-  }
-  .card {
-    border-radius: var(--radius-card);
-    border: 1px solid var(--color-line);
-    background: var(--color-surface);
-  }
-  .chip {
-    display: inline-flex;
-    width: fit-content;
-    align-items: center;
-    gap: 5px;
-    border-radius: 20px;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.3;
-  }
-  .skeleton {
-    background: linear-gradient(90deg, var(--color-soft), oklch(1 0 0), var(--color-soft));
-    background-size: 200% 100%;
-    animation: shimmer 1.6s linear infinite;
+  @media (min-width: 768px) {
+    .page-width {
+      width: min(1280px, calc(100% - 64px));
+    }
   }
 
   /* ---------- buttons ---------- */
   .btn {
     display: inline-flex;
-    min-height: 2.5rem;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 20px;
+    border-radius: 12px;
     border: 1px solid var(--color-line);
     background: var(--color-surface);
     color: var(--color-ink);
-    padding: 0.5rem 1.1rem;
-    font-size: 0.8rem;
+    padding-inline: 1.15rem;
+    font-size: 0.9rem;
     font-weight: 700;
     transition:
       background-color 200ms,
       border-color 200ms,
       color 200ms,
       box-shadow 250ms,
+      filter 200ms,
       transform 200ms var(--ease-out-expo);
   }
   .btn:hover:not(:disabled) {
-    border-color: color-mix(in oklch, var(--color-accent) 35%, var(--color-line));
-    color: var(--color-accent);
+    border-color: var(--color-ink);
+    transform: translateY(-1px);
   }
   .btn:active:not(:disabled) {
     transform: scale(0.97);
@@ -147,907 +141,301 @@
     opacity: 0.55;
     cursor: not-allowed;
   }
+  /* Primary: brand gradient with ink text (7.0:1). */
   .btn-primary {
     border-color: transparent;
-    background: var(--color-accent);
-    color: var(--color-accent-ink);
+    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
+    color: #141416;
+    box-shadow: 0 8px 20px rgb(255 122 0 / 0.28);
   }
   .btn-primary:hover:not(:disabled) {
     border-color: transparent;
-    color: var(--color-accent-ink);
-    background: var(--color-accent-strong);
+    filter: brightness(1.06);
+    box-shadow: 0 12px 26px rgb(255 122 0 / 0.36);
   }
-  .btn-outline {
-    border-color: color-mix(in oklch, var(--color-accent) 30%, var(--color-line));
-    color: var(--color-accent);
-    background: var(--color-accent-soft);
+  /* Secondary on a dark surface. */
+  .btn-on-dark {
+    border-color: rgb(255 255 255 / 0.28);
+    background: rgb(255 255 255 / 0.06);
+    color: var(--color-on-dark);
   }
-  .btn svg {
-    transition: transform 200ms var(--ease-out-expo);
+  .btn-on-dark:hover:not(:disabled) {
+    border-color: rgb(255 255 255 / 0.6);
+    background: rgb(255 255 255 / 0.12);
+    color: var(--color-on-dark);
   }
-  .btn:hover svg {
-    transform: translateX(2px);
-  }
-
-  /* ---------- header ---------- */
-  .site-header {
-    border-bottom: 1px solid var(--color-line);
-    background: var(--color-paper);
-  }
-  .header-inner {
-    height: 94px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 30px;
-  }
-  /* The official logo artwork keeps its own dark plate, as in the brand file. */
-  .official-logo {
-    position: relative;
-    display: block;
-    width: 274px;
-    flex-shrink: 0;
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--color-brand-surface);
-    padding: 7px 9px;
-  }
-  .official-logo img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-  .logo-pulse {
-    position: absolute;
-    left: 30px;
-    top: 27px;
-    width: 33px;
-    height: 33px;
-    border: 1px solid var(--radar-line);
-    border-radius: 50%;
-    animation: logo-wave 3s ease-out infinite;
-    pointer-events: none;
-  }
-  .header-nav {
-    display: flex;
-    gap: 12px;
-  }
-  /* The standalone search icon only fits between the logo plate and the city widget on wider phones. */
-  .header-search {
-    display: none;
-  }
-  .header-nav a {
-    display: inline-flex;
-    min-height: 2.5rem;
-    align-items: center;
-    gap: 7px;
-    border-radius: 20px;
-    padding: 0 14px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--color-muted);
+  .btn-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 12px;
     transition:
-      color 200ms,
-      background-color 200ms;
-  }
-  .header-nav a:hover {
-    color: var(--color-ink);
-  }
-  .header-nav a[aria-current='page'] {
-    color: var(--color-accent);
-    background: var(--color-accent-soft);
-  }
-  .weather-widget {
-    position: relative;
-    display: flex;
-    width: 167px;
-    height: 55px;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid var(--color-line);
-    border-radius: 8px;
-    background: var(--color-soft);
-    padding-inline: 10px;
-    text-align: left;
-    cursor: pointer;
-  }
-  .weather-sun {
-    width: 26px;
-    height: 26px;
-    flex-shrink: 0;
-    color: var(--color-weather);
-  }
-  .weather-copy {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    align-items: start;
-    gap: 3px;
-    font-size: 11px;
-  }
-  .weather-copy strong {
-    font-size: 13px;
-    font-weight: 800;
-  }
-  .weather-copy span {
-    color: var(--color-muted);
+      background-color 200ms,
+      color 200ms;
   }
 
-  /* ---------- hero ---------- */
-  .discovery {
-    position: relative;
-    min-height: 365px;
-    isolation: isolate;
+  /* ---------- cards ---------- */
+  .card {
+    border-radius: var(--radius-card);
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
   }
-  .city-backdrop {
-    position: absolute;
-    inset: 0;
-    z-index: -3;
+  .card-hover {
+    transition:
+      box-shadow 300ms var(--ease-out-expo),
+      transform 300ms var(--ease-out-expo),
+      border-color 200ms;
+  }
+  .card-hover:hover,
+  .card-hover:focus-within {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+  /* 16:10 media frame; the picture zooms a little on hover. */
+  .media-frame {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-soft);
+    aspect-ratio: 16 / 10;
+  }
+  .media-frame img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center 54%;
-    /* The backdrop is decoration: a light blur keeps a poster from competing with the headline. */
-    filter: blur(3px) saturate(1.05);
-    transform: scale(1.06);
+    transition: transform 500ms var(--ease-out-expo);
   }
-  .city-fade {
+  .card-hover:hover .media-frame img {
+    transform: scale(1.04);
+  }
+  /* Title stretches over the whole card; links above it stay clickable. */
+  .stretched::after {
+    content: '';
     position: absolute;
     inset: 0;
-    z-index: -2;
-    background: linear-gradient(
-      90deg,
-      var(--color-paper) 0%,
-      var(--color-paper) 20%,
-      oklch(1 0 0 / 95%) 32%,
-      oklch(1 0 0 / 40%) 52%,
-      transparent 70%
-    );
   }
-  .discovery-inner {
+  .above-stretched {
     position: relative;
-    display: flex;
-    min-height: 365px;
-    align-items: center;
-    justify-content: space-between;
+    z-index: 2;
   }
-  .discovery-copy {
-    width: 490px;
-    max-width: 100%;
-    padding-block: 32px;
-  }
-  .discovery-copy h1 {
-    margin-top: 12px;
-    font-size: 48px;
-    line-height: 1.13;
-  }
-  .discovery-copy h1 span {
-    color: var(--color-accent);
-  }
-  .intro-copy {
-    margin-top: 12px;
-    max-width: 405px;
-    font-size: 13px;
-    line-height: 1.8;
-    color: var(--color-muted);
-  }
-  .search-bar {
-    display: flex;
-    max-width: 460px;
-    align-items: center;
-    gap: 10px;
-    margin-top: 22px;
-    border: 1px solid var(--color-line);
-    border-radius: 30px;
-    background: var(--color-paper);
-    padding: 6px 7px 6px 15px;
-    box-shadow: var(--shadow-card);
-  }
-  .search-bar > svg {
-    flex-shrink: 0;
-    color: var(--color-muted);
-  }
-  .search-bar input {
-    height: 34px;
-    min-width: 0;
-    flex: 1;
-    border: 0;
-    background: transparent;
-    font-size: 12px;
-  }
-  .search-bar input:focus {
-    outline: none;
-  }
-  .search-bar button {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--color-accent);
-    color: var(--color-accent-ink);
-    transition:
-      background-color 200ms,
-      transform 200ms var(--ease-out-expo);
-  }
-  .search-bar button:hover {
-    background: var(--color-accent-strong);
-    transform: scale(1.05);
-  }
-  .city-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin-top: 14px;
-  }
-  .city-chip {
+
+  /* ---------- badges ---------- */
+  .badge {
     display: inline-flex;
-    height: 29px;
+    width: fit-content;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .badge-live {
+    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
+    color: #141416;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .badge-discount {
+    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
+    color: #141416;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .badge-soft {
+    background: var(--color-brand-soft);
+    color: var(--color-brand-ink);
+  }
+  .badge-outline {
     border: 1px solid var(--color-line);
-    border-radius: 20px;
-    background: var(--color-paper);
-    padding-inline: 10px;
-    font-size: 10px;
+    background: var(--color-surface);
+    color: var(--color-muted);
+  }
+  /* Category tints: soft background + dark text of the same hue, all ≥ 6.3:1 (see header comment). */
+  .cat-muzike {
+    background: #ede9fe;
+    color: #5b21b6;
+  }
+  .cat-teater {
+    background: #ffe4e6;
+    color: #9f1239;
+  }
+  .cat-art {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .cat-sport {
+    background: #dcfce7;
+    color: #166534;
+  }
+  .cat-ushqim {
+    background: #ffedd5;
+    color: #9a3412;
+  }
+  .cat-nate {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+  .cat-edukim {
+    background: #cffafe;
+    color: #155e75;
+  }
+  .cat-familje {
+    background: #fce7f3;
+    color: #9d174d;
+  }
+  .cat-default {
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  /* ---------- chips, tabs, inputs ---------- */
+  .chip {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding-inline: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--color-muted);
     transition:
       color 200ms,
       border-color 200ms,
-      background-color 200ms;
-  }
-  .city-chip:hover {
-    color: var(--color-ink);
-  }
-  .city-chip.active {
-    background: var(--color-accent-soft);
-    border-color: color-mix(in oklch, var(--color-accent) 30%, var(--color-line));
-    color: var(--color-accent);
-  }
-  .hero-radar {
-    display: grid;
-    justify-items: center;
-    gap: 15px;
-    margin-right: 70px;
-    color: oklch(1 0 0);
-  }
-  .hero-radar > span:last-child {
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1.5;
-    text-align: center;
-    text-shadow: 0 1px 12px oklch(0.17 0.028 240 / 55%);
-  }
-
-  /* ---------- radar graphic ---------- */
-  .radar-signal {
-    position: relative;
-    display: block;
-    width: 38px;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    border: 1px solid var(--radar-line);
-    overflow: hidden;
-    isolation: isolate;
-  }
-  .radar-large {
-    width: 220px;
-    background: color-mix(in oklch, var(--color-accent) 10%, transparent);
-    box-shadow: var(--signal-glow);
-  }
-  .radar-ring {
-    position: absolute;
-    inset: 17%;
-    border: 1px solid var(--radar-line);
-    border-radius: 50%;
-  }
-  .radar-ring.ring-three {
-    inset: 34%;
-  }
-  .radar-cross {
-    position: absolute;
-    inset: 0;
-  }
-  .radar-cross::before,
-  .radar-cross::after {
-    content: '';
-    position: absolute;
-    background: var(--radar-line);
-  }
-  .radar-cross::before {
-    width: 1px;
-    height: 100%;
-    left: 50%;
-  }
-  .radar-cross::after {
-    height: 1px;
-    width: 100%;
-    top: 50%;
-  }
-  .radar-sweep {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0deg 275deg,
-      oklch(0.8 0.15 164 / 4%) 275deg,
-      oklch(0.8 0.15 164 / 50%) 358deg,
-      transparent 360deg
-    );
-    animation: radar-spin 7s linear infinite;
-  }
-  .radar-sweep::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    bottom: 50%;
-    width: 1px;
-    height: 50%;
-    background: var(--radar-line);
-  }
-  .radar-center,
-  .radar-target {
-    position: absolute;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--radar-line);
-    box-shadow: var(--signal-glow);
-  }
-  .radar-center {
-    left: calc(50% - 2px);
-    top: calc(50% - 2px);
-  }
-  .radar-target.target-one {
-    top: 25%;
-    left: 65%;
-    animation: signal-pulse 3s infinite;
-  }
-  .radar-target.target-two {
-    top: 68%;
-    left: 28%;
-    animation: signal-pulse 3s 1s infinite;
-  }
-
-  /* ---------- benefit band ---------- */
-  .benefit-band {
-    background: var(--color-soft);
-    border-block: 1px solid var(--color-line);
-  }
-  .benefits {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    padding-block: 18px;
-  }
-  .benefits > div {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    border-right: 1px solid var(--color-line);
-  }
-  .benefits > div:last-child {
-    border: 0;
-  }
-  .benefits svg {
-    width: 25px;
-    height: 25px;
-    flex-shrink: 0;
-    color: var(--color-accent);
-  }
-  .benefits span {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .benefits strong {
-    font-size: 12px;
-  }
-  .benefits small {
-    font-size: 10px;
-    color: var(--color-muted);
-  }
-
-  /* ---------- feed ---------- */
-  .feed-section {
-    padding-block: 32px 24px;
-    scroll-margin-top: 20px;
-  }
-  .feed-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-  }
-  .feed-top h2 {
-    margin-top: 6px;
-    font-size: 25px;
-  }
-  .feed-top h2 span {
-    color: var(--color-accent);
-  }
-  .saved-toggle {
-    display: inline-flex;
-    min-height: 2.5rem;
-    align-items: center;
-    gap: 7px;
-    border-radius: 20px;
-    padding-inline: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--color-muted);
-    transition:
-      color 200ms,
-      background-color 200ms;
-  }
-  .saved-toggle:hover {
-    color: var(--color-ink);
-  }
-  .saved-toggle.active {
-    color: var(--color-accent);
-    background: var(--color-accent-soft);
-  }
-  .saved-toggle small {
-    font-weight: 800;
-  }
-  .feed-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    margin-top: 23px;
-  }
-  .day-switcher {
-    display: grid;
-    width: 420px;
-    max-width: 100%;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-    border: 1px solid var(--color-line);
-    border-radius: 8px;
-    background: var(--color-soft);
-    padding: 4px;
-  }
-  .day-tab {
-    position: relative;
-    isolation: isolate;
-    display: inline-flex;
-    height: 43px;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border-radius: 5px;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--color-muted);
-    transition: color 200ms;
-  }
-  .day-tab:hover {
-    color: var(--color-ink);
-  }
-  .day-tab small {
-    font-size: 10px;
-    font-weight: 400;
-  }
-  .day-tab.active,
-  .day-tab.active:hover {
-    color: var(--color-accent-ink);
-  }
-  .day-indicator {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: 5px;
-    background: var(--color-accent);
-  }
-  .filter-row {
-    display: flex;
-    gap: 7px;
-  }
-  .filter-pill {
-    position: relative;
-    isolation: isolate;
-    display: inline-flex;
-    height: 36px;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid var(--color-line);
-    border-radius: 20px;
-    padding-inline: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--color-muted);
-    transition:
-      color 200ms,
-      border-color 200ms;
-  }
-  .filter-pill:hover {
-    color: var(--color-ink);
-  }
-  .filter-pill.selected {
-    color: var(--color-accent);
-    border-color: color-mix(in oklch, var(--color-accent) 30%, var(--color-line));
-  }
-  .filter-indicator {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: 20px;
-    background: var(--color-accent-soft);
-  }
-  .feed-heading {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 22px 0 14px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .feed-heading > span:first-child > span {
-    font-weight: 400;
-    color: var(--color-muted);
-  }
-  .feed-heading > span:last-child {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 10px;
-    font-weight: 400;
-    color: var(--color-muted);
-  }
-  .feed-heading b {
-    display: grid;
-    width: 22px;
-    height: 22px;
-    place-items: center;
-    margin-left: 4px;
-    border-radius: 50%;
-    background: var(--color-soft);
-    color: var(--color-ink);
-  }
-  .feed-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
-  }
-
-  /* ---------- card ---------- */
-  .feed-card {
-    position: relative;
-    display: flex;
-    height: 100%;
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid var(--color-line);
-    border-radius: 8px;
-    background: var(--color-surface);
-    transition:
-      box-shadow 250ms,
-      border-color 250ms;
-  }
-  .feed-card:hover,
-  .feed-card:focus-within {
-    box-shadow: var(--shadow-card);
-    border-color: color-mix(in oklch, var(--color-accent) 30%, var(--color-line));
-  }
-  .card-photo {
-    position: relative;
-    height: 157px;
-    overflow: hidden;
-    background: var(--color-soft);
-  }
-  .card-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s;
-  }
-  .feed-card:hover .card-photo img {
-    transform: scale(1.04);
-  }
-  .discount-badge {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    border-radius: 20px;
-    background: var(--color-hot);
-    padding: 6px 10px;
-    font-size: 14px;
-    font-weight: 800;
-    color: oklch(1 0 0);
-  }
-  .event-date {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    display: flex;
-    width: 40px;
-    height: 46px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    background: var(--color-event-soft);
-    color: var(--color-event);
-  }
-  .event-date b {
-    font-size: 18px;
-    line-height: 1.2;
-  }
-  .event-date small {
-    font-size: 9px;
-    text-transform: uppercase;
-  }
-  .bookmark-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
-    display: grid;
-    width: 30px;
-    height: 30px;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--color-paper);
-    color: var(--color-ink);
-    transition:
-      color 200ms,
       background-color 200ms,
       transform 200ms var(--ease-out-expo);
   }
-  .bookmark-button:hover {
-    transform: scale(1.1);
+  .chip:hover {
+    color: var(--color-ink);
+    border-color: var(--color-ink);
   }
-  .bookmark-button.is-saved {
-    color: var(--color-accent);
-    background: var(--color-accent-soft);
+  .chip-active {
+    border-color: transparent;
+    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
+    color: #141416;
   }
-  .photo-empty {
-    display: grid;
-    width: 100%;
-    height: 100%;
-    place-items: center;
-    background: radial-gradient(circle at 50% 40%, var(--color-accent-soft), var(--color-soft) 70%);
+  .chip-active:hover {
+    color: #141416;
+    border-color: transparent;
   }
-  .photo-category {
-    position: absolute;
-    left: 12px;
-    bottom: 10px;
+  .tabs {
     display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .tab {
+    position: relative;
+    display: inline-flex;
+    min-height: 44px;
     align-items: center;
-    gap: 5px;
-    border-radius: 4px;
-    background: var(--color-paper);
-    padding: 4px 7px;
-    font-size: 9px;
+    padding: 0 14px 10px;
+    font-size: 15px;
     font-weight: 700;
-    color: var(--color-ink);
-  }
-  .card-body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    padding: 15px;
-  }
-  .card-title {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 9px;
-    min-height: 40px;
-    text-align: left;
-    font-size: 13px;
-    font-weight: 800;
-    line-height: 1.5;
-    color: var(--color-ink);
+    color: var(--color-muted);
     transition: color 200ms;
   }
-  .feed-card:hover .card-title {
-    color: var(--color-accent);
+  .tab:hover {
+    color: var(--color-ink);
   }
-  .card-title svg {
-    flex-shrink: 0;
-    margin-top: 2px;
-    color: var(--color-muted);
-    transition: transform 200ms var(--ease-out-expo);
+  .tab[aria-selected='true'] {
+    color: var(--color-ink);
   }
-  .feed-card:hover .card-title svg {
-    transform: translate(2px, -2px);
-    color: var(--color-accent);
+  .tab-indicator {
+    position: absolute;
+    inset-inline: 6px;
+    bottom: -1px;
+    height: 3px;
+    border-radius: 999px;
+    background: var(--brand-gradient, linear-gradient(135deg, #ff5a00, #ffa21a));
   }
-  .venue-line {
-    margin-top: 4px;
-    min-height: 16px;
-    font-size: 10px;
-    color: var(--color-muted);
+  .field {
+    min-height: 44px;
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 0 14px;
+    font-size: 15px;
+    color: var(--color-ink);
+    transition:
+      border-color 200ms,
+      box-shadow 200ms;
   }
-  .price-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
+  .field:hover {
+    border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-line));
   }
-  .price-row strong {
-    font-size: 18px;
-    color: var(--color-accent);
+  .field:focus {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 4px rgb(255 122 0 / 0.18);
+    outline: none;
   }
-  .event-card .price-row strong {
-    font-size: 14px;
-    color: var(--color-event);
-  }
-  .price-row s {
-    font-size: 11px;
-    color: var(--color-muted);
-  }
-  .price-row small {
-    margin-left: auto;
-    font-size: 9px;
+  .field-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
     font-weight: 700;
-    color: var(--color-accent);
-  }
-  .card-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    margin-top: 12px;
-    font-size: 9px;
     color: var(--color-muted);
-  }
-  .card-details > span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .card-details svg {
-    flex-shrink: 0;
-  }
-  .countdown {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 5px;
-    margin-top: 10px;
-    border-radius: 5px;
-    background: var(--color-event-soft);
-    padding: 8px 9px;
-    color: var(--color-event);
-  }
-  .countdown-deal {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
-  }
-  .countdown-ended {
-    background: var(--color-soft);
-    color: var(--color-muted);
-  }
-  .countdown-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .countdown-digits {
-    min-width: 64px;
-    text-align: right;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 13px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-  .card-bottom {
-    display: flex;
-    justify-content: space-between;
-    gap: 4px;
-    margin-top: auto;
-    padding-top: 10px;
-    border-top: 1px solid var(--color-line);
-    font-size: 9px;
-    color: var(--color-muted);
-  }
-  .card-bottom > span:first-child {
-    padding-top: 12px;
-    margin-top: -12px;
-  }
-  .source-link {
-    display: inline-flex;
-    width: fit-content;
-    align-items: center;
-    gap: 3px;
-    color: var(--color-accent);
-  }
-  .source-link:hover {
-    text-decoration: underline;
-  }
-  .card-bottom a {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    color: var(--color-accent);
-  }
-  .card-bottom a:hover {
-    text-decoration: underline;
   }
 
   /* ---------- states ---------- */
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-soft), #ffffff, var(--color-soft));
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
   .empty-state {
-    padding: 50px 20px;
-    border-block: 1px dashed var(--color-line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: var(--radius-card);
+    border: 1px dashed var(--color-line);
+    background: var(--color-surface);
+    padding: 48px 20px;
     text-align: center;
   }
-  .empty-state > svg {
-    margin-inline: auto;
-    color: var(--color-accent);
-  }
-  .empty-state h3 {
-    margin-top: 15px;
-  }
-  .empty-state p {
-    margin: 12px auto 20px;
-    max-width: 350px;
-    font-size: 12px;
-    color: var(--color-muted);
-  }
 
-  /* ---------- footer ---------- */
-  .site-footer {
-    border-top: 1px solid var(--color-line);
-    background: var(--color-soft);
+  /* ---------- brand surfaces ---------- */
+  .on-charcoal {
+    background: var(--color-charcoal);
+    color: var(--color-on-dark);
   }
-  .footer-inner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 15px;
-    padding-block: 24px;
-    color: var(--color-muted);
+  /* Faint repeated K-mark behind charcoal panels. */
+  .brand-pattern::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/brand/kosova-radar-mark.png');
+    background-size: 120px;
+    background-repeat: repeat;
+    opacity: 0.05;
+    pointer-events: none;
   }
-  .footer-inner > a {
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--color-ink);
+  .brand-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(60% 70% at 85% 10%, rgb(255 122 0 / 0.35), transparent 70%);
+    pointer-events: none;
   }
-  .footer-inner strong {
-    color: var(--color-accent);
+  .tnum {
+    font-variant-numeric: tabular-nums;
   }
-  .footer-inner p,
-  .footer-inner small {
-    font-size: 10px;
+  .live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: #141416;
+    animation: live-pulse 1.8s ease-in-out infinite;
   }
 }
 
-@keyframes radar-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes signal-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-@keyframes logo-wave {
-  0% {
-    transform: scale(0.7);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(2.3);
-    opacity: 0;
-  }
-}
 @keyframes shimmer {
   from {
     background-position: 200% 0;
@@ -1056,316 +444,15 @@
     background-position: -200% 0;
   }
 }
-
-@media (min-width: 400px) and (max-width: 999px) {
-  .header-search {
-    display: grid;
-  }
-}
-
-@media (max-width: 1000px) {
-  .header-nav {
-    display: none;
-  }
-  .feed-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .card-photo {
-    height: 200px;
-  }
-  .card-title {
-    font-size: 16px;
-  }
-  .hero-radar {
-    margin-right: 0;
-  }
-  .radar-large {
-    width: 175px;
-  }
-  .feed-controls {
-    flex-wrap: wrap;
-  }
-  .card-details {
-    font-size: 10px;
-  }
-  .card-bottom {
-    font-size: 10px;
-  }
-  .venue-line {
-    font-size: 12px;
-  }
-}
-
-@media (max-width: 600px) {
-  .page-width {
-    width: calc(100% - 32px);
-  }
-  .header-inner {
-    height: 80px;
-    gap: 12px;
-  }
-  .official-logo {
-    width: 193px;
-    padding: 6px;
-  }
-  .logo-pulse {
-    left: 17px;
-    top: 16px;
-    width: 27px;
-    height: 27px;
-  }
-  .weather-widget {
-    width: 122px;
-    height: 48px;
-    gap: 5px;
-    padding-inline: 8px;
-  }
-  .weather-sun {
-    width: 21px;
-    height: 21px;
-  }
-  .weather-copy {
-    font-size: 10px;
-  }
-  .weather-copy strong {
-    font-size: 12px;
-  }
-  .discovery,
-  .discovery-inner {
-    min-height: 340px;
-  }
-  .discovery-copy {
-    width: 100%;
-    padding: 27px 0 23px;
-  }
-  .city-backdrop {
-    object-position: 65% center;
-    opacity: 0.42;
-  }
-  .city-fade {
-    background: linear-gradient(
-      90deg,
-      var(--color-paper),
-      oklch(1 0 0 / 83%) 45%,
-      oklch(1 0 0 / 18%)
-    );
-  }
-  .discovery-copy h1 {
-    margin-top: 13px;
-    font-size: 36px;
-  }
-  .intro-copy {
-    max-width: 285px;
-    font-size: 12px;
-  }
-  .search-bar {
-    width: 100%;
-    margin-top: 21px;
-  }
-  .search-bar input {
-    font-size: 11px;
-  }
-  .city-chips {
-    gap: 5px;
-    margin-top: 13px;
-  }
-  .city-chip {
-    font-size: 9px;
-    padding-inline: 8px;
-  }
-  .hero-radar {
-    position: absolute;
-    right: 0;
-    top: 25px;
-    opacity: 0.75;
-  }
-  .radar-large {
-    width: 74px;
-  }
-  .hero-radar > span:last-child {
-    display: none;
-  }
-  .benefits {
-    gap: 7px;
-    padding-block: 16px;
-  }
-  .benefits > div {
-    align-items: flex-start;
-    justify-content: start;
-    gap: 6px;
-    padding-right: 3px;
-  }
-  .benefits svg {
-    width: 17px;
-    height: 17px;
-  }
-  .benefits strong {
-    font-size: 9px;
-    line-height: 1.5;
-  }
-  .benefits small {
-    font-size: 8px;
-    line-height: 1.6;
-  }
-  .feed-section {
-    padding-top: 25px;
-  }
-  .feed-top h2 {
-    font-size: 20px;
-    line-height: 1.4;
-  }
-  .saved-toggle {
-    padding-inline: 8px;
-  }
-  .saved-toggle > span {
-    display: none;
-  }
-  .feed-controls {
-    gap: 14px;
-    margin-top: 18px;
-  }
-  .day-switcher {
-    width: 100%;
-  }
-  .day-tab {
-    height: 48px;
-    flex-direction: column;
-    gap: 3px;
-  }
-  .day-tab small {
-    font-size: 9px;
-  }
-  .filter-row {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-  .filter-pill {
-    height: 38px;
-    gap: 5px;
-    padding-inline: 6px;
-    font-size: 10px;
-  }
-  .feed-heading {
-    margin-top: 18px;
-    font-size: 10px;
-  }
-  .feed-grid {
-    gap: 12px;
-  }
-  .card-photo {
-    height: 120px;
-  }
-  .card-body {
-    padding: 11px 9px;
-  }
-  .card-title {
-    min-height: 36px;
-    gap: 4px;
-    font-size: 12px;
-  }
-  .venue-line {
-    min-height: 27px;
-    font-size: 9px;
-  }
-  .price-row {
-    gap: 5px;
-    margin-top: 6px;
-  }
-  .price-row strong {
-    font-size: 17px;
-  }
-  .price-row s {
-    font-size: 9px;
-  }
-  .price-row small {
-    display: none;
-  }
-  .event-card .price-row strong {
-    font-size: 12px;
-  }
-  .discount-badge {
-    top: 8px;
-    left: 8px;
-    padding: 4px 7px;
-    font-size: 12px;
-  }
-  .event-date {
-    top: 8px;
-    left: 8px;
-    width: 33px;
-    height: 39px;
-  }
-  .event-date b {
-    font-size: 16px;
-  }
-  .bookmark-button {
-    top: 7px;
-    right: 7px;
-    width: 26px;
-    height: 26px;
-  }
-  .photo-category {
-    left: 7px;
-    bottom: 7px;
-    gap: 3px;
-    padding: 3px 5px;
-    font-size: 8px;
-  }
-  .card-details {
-    gap: 5px;
-    margin-top: 9px;
-    font-size: 8px;
-  }
-  .countdown {
-    flex-wrap: wrap;
-    gap: 3px;
-    margin-top: 8px;
-    padding: 6px;
-  }
-  .countdown-label {
-    font-size: 8px;
-  }
-  .countdown-digits {
-    min-width: 0;
-    margin-left: auto;
-    font-size: 12px;
-  }
-  .card-bottom {
-    margin-top: 8px;
-    padding-top: 8px;
-    font-size: 8px;
-  }
-  .footer-inner {
-    padding-block: 20px;
-  }
-  .footer-inner p {
-    display: none;
-  }
-}
-
-@media (max-width: 360px) {
-  .official-logo {
-    width: 165px;
-  }
-  .weather-widget {
-    width: 115px;
-  }
-  .feed-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .card-photo {
-    height: 180px;
-  }
-  .card-title {
-    font-size: 15px;
-  }
-  .venue-line {
-    min-height: 0;
-  }
-  .countdown {
-    flex-wrap: nowrap;
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
   }
 }
 

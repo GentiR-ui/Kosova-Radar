@@ -51,12 +51,10 @@ export default function Countdown({
   start,
   end,
   allDay = false,
-  tone,
 }: {
   start?: string
   end: string | null
   allDay?: boolean
-  tone: 'event' | 'deal'
 }) {
   const current = useNow()
   const startMs = start ? Date.parse(start) : null
@@ -83,19 +81,15 @@ export default function Countdown({
   }
 
   return (
-    <p
-      className={`countdown ${tone === 'deal' ? 'countdown-deal' : ''} ${ended ? 'countdown-ended' : ''}`}
-    >
-      <span className="countdown-label">
-        <Timer aria-hidden="true" size={13} />
-        {label}
-      </span>
+    <span className={`badge ${ended ? 'badge-outline' : 'badge-soft'}`}>
+      <Timer aria-hidden="true" className="size-3.5" />
+      {label}
       {digits && (
         // The ticking digits are not announced every second.
-        <span aria-hidden="true" className="countdown-digits">
+        <span aria-hidden="true" className="tnum font-extrabold">
           {digits}
         </span>
       )}
-    </p>
+    </span>
   )
 }

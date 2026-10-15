@@ -1,11 +1,13 @@
 /** Albanian strings of the public pages (ADR-009), wording from the client's design. */
 export const p = {
   // --- shell ---
-  logoAlt: 'Kosova Radar — Digital Tracking Solutions',
-  location: 'Vendndodhja',
-  allKosovo: 'Gjithë Kosova',
   footer: 'Qyteti yt. Planet e tua.',
   backHome: 'Kthehu te ballina',
+  openMenu: 'Hap menynë',
+  closeMenu: 'Mbyll menynë',
+  footerLead:
+    'Evente dhe oferta nga burime publike të Kosovës, me datë, vend dhe lidhje te burimi.',
+  footerNav: 'Faqet',
 
   // --- home ---
   eyebrow: 'Zbulo · Përjeto · Përfaqësohu',

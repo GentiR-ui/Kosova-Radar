@@ -9,7 +9,7 @@ describe('Countdown', () => {
 
   it('counts down to the start of an event', () => {
     at('2026-10-13T10:00:00Z')
-    render(<Countdown tone="event" start="2026-10-13T12:30:15Z" end={null} />)
+    render(<Countdown start="2026-10-13T12:30:15Z" end={null} />)
     expect(screen.getByText('Fillon për')).toBeInTheDocument()
     expect(screen.getByText('02:30:15')).toBeInTheDocument()
   })
@@ -17,36 +17,34 @@ describe('Countdown', () => {
   it('shows started, then ended after the end', () => {
     at('2026-10-13T13:00:00Z')
     const { unmount } = render(
-      <Countdown tone="event" start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00Z" />,
+      <Countdown start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00Z" />,
     )
     expect(screen.getByText('Ka filluar')).toBeInTheDocument()
     at('2026-10-13T15:00:00Z')
     unmount() // the shared clock re-reads the time on the next mount
-    render(<Countdown tone="event" start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00.001Z" />)
+    render(<Countdown start="2026-10-13T12:00:00Z" end="2026-10-13T14:00:00.001Z" />)
     expect(screen.getByText('Ka përfunduar')).toBeInTheDocument()
   })
 
   it('counts down to the end of a deal and labels date-only events', () => {
     at('2026-10-13T10:00:00Z')
-    render(<Countdown tone="deal" end="2026-10-13T16:30:45Z" />)
+    render(<Countdown end="2026-10-13T16:30:45Z" />)
     expect(screen.getByText('Përfundon për')).toBeInTheDocument()
     expect(screen.getByText('06:30:45')).toBeInTheDocument()
-    render(
-      <Countdown tone="event" start="2026-10-12T22:00:00Z" end="2026-10-13T22:00:00Z" allDay />,
-    )
+    render(<Countdown start="2026-10-12T22:00:00Z" end="2026-10-13T22:00:00Z" allDay />)
     expect(screen.getByText('Gjatë ditës')).toBeInTheDocument()
   })
 
   it('counts whole days while the target is more than a day away', () => {
     at('2026-10-13T10:00:00Z')
-    render(<Countdown tone="event" start="2026-10-16T12:00:00Z" end={null} />)
+    render(<Countdown start="2026-10-16T12:00:00Z" end={null} />)
     expect(screen.getByText('Fillon për')).toBeInTheDocument()
     expect(screen.getByText('3 ditë')).toBeInTheDocument()
   })
 
   it('shows nothing when there is no date to count', () => {
     at('2026-10-13T10:00:00Z')
-    const { container } = render(<Countdown tone="deal" end={null} />)
+    const { container } = render(<Countdown end={null} />)
     expect(container).toBeEmptyDOMElement()
   })
 

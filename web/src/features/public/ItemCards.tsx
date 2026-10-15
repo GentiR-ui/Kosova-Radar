@@ -1,26 +1,26 @@
 import { motion } from 'motion/react'
-import { ArrowUpRight, Bookmark, Check, Clock3, MapPin, Tag, Ticket } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, Clock3, MapPin, Store } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { DealSummaryDto, EventSummaryDto } from './api'
+import type { CategoryDto, DealSummaryDto, EventSummaryDto } from './api'
+import { categoryStyle } from './categories'
 import Countdown from './Countdown'
-import {
-  dayAndMonth,
-  endOfPristinaDay,
-  formatDate,
-  formatEventStart,
-  formatMoney,
-  safeHref,
-} from './format'
-import LogoMark from './Logo'
+import { endOfPristinaDay, formatDate, formatEventStart, formatMoney, safeHref } from './format'
 import { spring } from './motion'
-import { savedKey, useSaved } from './saved'
 import { p } from './strings'
 
-type Kind = 'event' | 'deal'
+export function CategoryBadge({ category }: { category: CategoryDto }) {
+  const { tint, Icon } = categoryStyle(category.slug, category.kind)
+  return (
+    <span className={`badge ${tint}`}>
+      <Icon aria-hidden="true" className="size-3.5" />
+      {category.name}
+    </span>
+  )
+}
 
 export function SyntheticBadge() {
-  return <span className="chip mt-2.5 border border-warn text-warn">{p.synthetic}</span>
+  return <span className="badge badge-outline">{p.synthetic}</span>
 }
 
 export function Freshness({
@@ -38,137 +38,107 @@ export function SourceLink({ name, url }: { name: string; url: string }) {
   const label = p.source(name)
   if (!href) return <span>{label}</span>
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="source-link">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="above-stretched inline-flex w-fit items-center gap-1 font-bold text-brand-text underline-offset-4 hover:underline"
+    >
       {label}
-      <ArrowUpRight aria-hidden="true" size={12} />
+      <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" />
     </a>
   )
 }
 
-/** Rose discount pill. The minus is a plain "-" so the published percentage stays searchable. */
-export function DiscountBadge({
-  percent,
-  className = '',
-}: {
-  percent: number
-  className?: string
-}) {
-  return <span className={`discount-badge ${className}`}>{`-${percent}%`}</span>
+/** Discount pill. The minus is a plain "-" so the published percentage stays searchable. */
+export function DiscountBadge({ percent }: { percent: number }) {
+  return <span className="badge badge-discount text-sm">{`-${percent}%`}</span>
 }
 
-/** Picture of the item, or the brand mark on a soft panel when the source has none. */
+/** Picture of the item, or a tile in the category colour with its icon. */
 export function Media({
   url,
+  category,
+  kind = 'event',
   eager = false,
-  alt = '',
-  children,
+  className = '',
 }: {
   url: string | null
+  category?: CategoryDto | null
+  kind?: 'event' | 'deal'
   /** The main picture of a detail page: load it first. */
   eager?: boolean
-  alt?: string
-  children?: ReactNode
+  className?: string
 }) {
   const href = url ? safeHref(url) : undefined
+  const { tint, Icon } = categoryStyle(category?.slug, kind)
   return (
-    <>
+    <div className={`media-frame ${className}`}>
       {href ? (
         <img
           src={href}
-          alt={alt}
+          alt=""
           width={1024}
-          height={768}
+          height={640}
           loading={eager ? 'eager' : 'lazy'}
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
           referrerPolicy="no-referrer"
         />
       ) : (
-        <div className="photo-empty">
-          <LogoMark className="w-12 opacity-70" />
+        <div className={`grid size-full place-items-center ${tint}`}>
+          <Icon aria-hidden="true" className="size-10 opacity-80" />
         </div>
       )}
+    </div>
+  )
+}
+
+function Meta({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span aria-hidden="true" className="shrink-0 [&_svg]:size-3.5">
+        {icon}
+      </span>
       {children}
-    </>
-  )
-}
-
-function SaveButton({ kind, id, title }: { kind: Kind; id: string; title: string }) {
-  const saved = useSaved()
-  const key = savedKey(kind, id)
-  const on = saved.has(key)
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      aria-label={on ? p.unsave(title) : p.save(title)}
-      onClick={() => saved.toggle(key)}
-      className={`bookmark-button ${on ? 'is-saved' : ''}`}
-    >
-      {on ? <Check aria-hidden="true" size={15} /> : <Bookmark aria-hidden="true" size={15} />}
-    </button>
-  )
-}
-
-function CategoryTag({ kind, name }: { kind: Kind; name: string }) {
-  const Icon = kind === 'deal' ? Tag : Ticket
-  return (
-    <span className="photo-category">
-      <Icon aria-hidden="true" size={12} />
-      {name}
-    </span>
-  )
-}
-
-/** Calendar-style date badge on an event picture. */
-function DateBadge({ iso }: { iso: string }) {
-  const { day, month } = dayAndMonth(iso)
-  return (
-    <span aria-hidden="true" className="event-date">
-      <b>{Number(day)}</b>
-      <small>{(p.months[month] ?? '').slice(0, 3)}</small>
     </span>
   )
 }
 
 function Card({
-  kind,
-  id,
   title,
   to,
   index,
-  photo,
+  media,
   children,
+  footer,
 }: {
-  kind: Kind
-  id: string
   title: string
   to: string
   index: number
-  photo: ReactNode
+  media: ReactNode
   children: ReactNode
+  footer: ReactNode
 }) {
   return (
     <motion.article
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '0px 0px -40px 0px' }}
-      whileHover={{ y: -5 }}
       transition={{ ...spring, delay: (index % 4) * 0.04 }}
-      className={`feed-card ${kind}-card`}
+      className="card card-hover relative flex h-full flex-col overflow-hidden"
     >
-      <div className="card-photo">
-        {photo}
-        <SaveButton kind={kind} id={id} title={title} />
-      </div>
-      <div className="card-body">
-        <h2>
-          <Link to={to} className="card-title after:absolute after:inset-0 after:content-['']">
+      {media}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
+        <h2 className="text-[17px] font-bold leading-snug">
+          <Link to={to} className="stretched rounded transition-colors hover:text-brand-text">
             {title}
-            <ArrowUpRight aria-hidden="true" size={17} />
           </Link>
         </h2>
         {children}
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line pt-3 text-xs text-muted">
+          {footer}
+        </div>
       </div>
     </motion.article>
   )
@@ -177,45 +147,44 @@ function Card({
 export function EventCard({ event, index = 0 }: { event: EventSummaryDto; index?: number }) {
   return (
     <Card
-      kind="event"
-      id={event.id}
       title={event.title}
       to={`/events/${event.id}`}
       index={index}
-      photo={
-        <Media url={event.imageUrl}>
-          <DateBadge iso={event.startsAt} />
-          {event.category && <CategoryTag kind="event" name={event.category.name} />}
-        </Media>
+      media={
+        <div className="relative">
+          <Media url={event.imageUrl} category={event.category} />
+          {event.isSynthetic && (
+            <span className="absolute right-3 top-3">
+              <SyntheticBadge />
+            </span>
+          )}
+        </div>
+      }
+      footer={
+        <>
+          <Freshness lastVerifiedAt={event.lastVerifiedAt} freshness={event.freshness} />
+          <SourceLink name={event.sourceName} url={event.sourceUrl} />
+        </>
       }
     >
-      <p className="venue-line">{event.venueName}</p>
-      {event.priceText && (
-        <p className="price-row">
-          <strong>{event.priceText}</strong>
-        </p>
-      )}
-      <p className="card-details">
-        <span>
-          <Clock3 aria-hidden="true" size={13} />
-          {formatEventStart(event.startsAt, event.startTimeKnown)}
-        </span>
-        <span>
-          <MapPin aria-hidden="true" size={13} />
-          {event.city.name}
-        </span>
+      <p className="order-first text-[13px] font-bold text-brand-text">
+        <Meta icon={<CalendarDays />}>
+          <span className="tnum">{formatEventStart(event.startsAt, event.startTimeKnown)}</span>
+        </Meta>
       </p>
-      <Countdown
-        tone="event"
-        start={event.startsAt}
-        end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
-        allDay={!event.startTimeKnown}
-      />
-      {event.isSynthetic && <SyntheticBadge />}
-      <p className="card-bottom">
-        <Freshness lastVerifiedAt={event.lastVerifiedAt} freshness={event.freshness} />
-        <SourceLink name={event.sourceName} url={event.sourceUrl} />
+      <p className="text-sm text-muted">
+        <Meta icon={<MapPin />}>
+          {[event.venueName, event.city.name].filter(Boolean).join(', ')}
+        </Meta>
       </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {event.category && <CategoryBadge category={event.category} />}
+        <Countdown
+          start={event.startsAt}
+          end={event.endsAt ?? endOfPristinaDay(event.startsAt)}
+          allDay={!event.startTimeKnown}
+        />
+      </div>
     </Card>
   )
 }
@@ -232,58 +201,73 @@ export function DealPrice({
     return <span>{deal.priceText ?? p.priceUnknown}</span>
   }
   return (
-    <>
-      {deal.newPrice !== null && <strong>{formatMoney(deal.newPrice, deal.currency)}</strong>}
-      {deal.oldPrice !== null && <s>{formatMoney(deal.oldPrice, deal.currency)}</s>}
-      {withDiscount && deal.discountPercent !== null && (
-        <DiscountBadge percent={deal.discountPercent} className="static" />
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      {deal.newPrice !== null && (
+        <strong className="tnum text-xl font-extrabold">
+          {formatMoney(deal.newPrice, deal.currency)}
+        </strong>
       )}
-    </>
+      {deal.oldPrice !== null && (
+        <s className="tnum text-sm text-muted">{formatMoney(deal.oldPrice, deal.currency)}</s>
+      )}
+      {withDiscount && deal.discountPercent !== null && (
+        <DiscountBadge percent={deal.discountPercent} />
+      )}
+    </span>
   )
 }
 
 export function DealCard({ deal, index = 0 }: { deal: DealSummaryDto; index?: number }) {
   return (
     <Card
-      kind="deal"
-      id={deal.id}
       title={deal.title}
       to={`/deals/${deal.id}`}
       index={index}
-      photo={
-        <Media url={deal.imageUrl}>
-          {deal.discountPercent !== null && <DiscountBadge percent={deal.discountPercent} />}
-          {deal.category && <CategoryTag kind="deal" name={deal.category.name} />}
-        </Media>
+      media={
+        <div className="relative">
+          <Media url={deal.imageUrl} category={deal.category} kind="deal" />
+          {deal.discountPercent !== null && (
+            <span className="absolute left-3 top-3">
+              <DiscountBadge percent={deal.discountPercent} />
+            </span>
+          )}
+          {deal.isSynthetic && (
+            <span className="absolute right-3 top-3">
+              <SyntheticBadge />
+            </span>
+          )}
+        </div>
+      }
+      footer={
+        <>
+          <Freshness lastVerifiedAt={deal.lastVerifiedAt} freshness={deal.freshness} />
+          <SourceLink name={deal.sourceName} url={deal.sourceUrl} />
+        </>
       }
     >
-      <p className="venue-line">{deal.merchantName}</p>
-      <p className="price-row">
+      <p className="order-first">
         <DealPrice deal={deal} />
-        {deal.isTodaysDeal && <small>{p.todayOnly}</small>}
       </p>
-      <p className="card-details">
-        <span>
-          <Clock3 aria-hidden="true" size={13} />
+      {(deal.merchantName || deal.city) && (
+        <p className="text-sm text-muted">
+          <Meta icon={<Store />}>
+            {[deal.merchantName, deal.city?.name].filter(Boolean).join(', ')}
+          </Meta>
+        </p>
+      )}
+      <p className="text-[13px] font-bold text-brand-text">
+        <Meta icon={<Clock3 />}>
           {deal.validUntil
             ? p.validUntil(formatDate(deal.validUntil))
             : deal.isTodaysDeal
               ? p.todaysDeal
               : p.validityUnknown}
-        </span>
-        {deal.city && (
-          <span>
-            <MapPin aria-hidden="true" size={13} />
-            {deal.city.name}
-          </span>
-        )}
+        </Meta>
       </p>
-      <Countdown tone="deal" end={deal.validUntil} />
-      {deal.isSynthetic && <SyntheticBadge />}
-      <p className="card-bottom">
-        <Freshness lastVerifiedAt={deal.lastVerifiedAt} freshness={deal.freshness} />
-        <SourceLink name={deal.sourceName} url={deal.sourceUrl} />
-      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {deal.category && <CategoryBadge category={deal.category} />}
+        <Countdown end={deal.validUntil} />
+      </div>
     </Card>
   )
 }
