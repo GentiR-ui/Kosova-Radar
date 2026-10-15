@@ -13,9 +13,9 @@ export function Reveal({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay }}
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay }}
       className={className}
     >
       {children}
@@ -23,7 +23,7 @@ export function Reveal({
   )
 }
 
-/** Opening of a sub-page: live eyebrow, large h1, lead text and an optional panel below. */
+/** Opening of a sub-page: h1, lead text and an optional filter panel below. */
 export default function Intro({
   eyebrow,
   title,
@@ -36,26 +36,26 @@ export default function Intro({
   children?: ReactNode
 }) {
   return (
-    <section className="page-width pb-2 pt-8 sm:pt-12">
+    <section className="page-width pt-8 sm:pt-10">
       {eyebrow && (
         <Reveal>
-          <p className="badge badge-soft">{eyebrow}</p>
+          <p className="badge badge-soft mb-3">{eyebrow}</p>
         </Reveal>
       )}
-      <Reveal delay={0.06}>
-        <h1 className="mt-3 text-[38px] leading-[1.06] sm:text-[52px]">{title}</h1>
+      <Reveal delay={0.04}>
+        <h1 className="text-[40px] leading-[1.05] sm:text-5xl">{title}</h1>
       </Reveal>
       {lead && (
-        <Reveal delay={0.12}>
+        <Reveal delay={0.1}>
           <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">{lead}</p>
         </Reveal>
       )}
-      {children && <Reveal delay={0.18}>{children}</Reveal>}
+      {children && <Reveal delay={0.16}>{children}</Reveal>}
     </section>
   )
 }
 
-/** White card that holds the filters or the search form under an {@link Intro}. */
+/** Card that holds the filters or the search form under an {@link Intro}. */
 export function Panel({ children }: { children: ReactNode }) {
-  return <div className="card mt-7 p-4 sm:p-5">{children}</div>
+  return <div className="card mt-6 p-4 sm:p-5">{children}</div>
 }

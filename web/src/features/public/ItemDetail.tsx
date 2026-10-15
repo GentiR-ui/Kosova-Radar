@@ -1,12 +1,13 @@
-import { ArrowLeft, CalendarDays, Clock3, MapPin, Store, Tag, Ticket } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, CalendarDays, Clock3, MapPin, Store, Tag } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../../lib/api'
 import { t } from '../../lib/strings'
+import { BrandMark } from './Brand'
 import { PageTitle } from './PublicLayout'
-import { useDeal, useEvent, type CategoryDto, type DealDetailDto, type EventDetailDto } from './api'
+import { useDeal, useEvent, type DealDetailDto, type EventDetailDto } from './api'
+import { CategoryBadge, DealPrice, Freshness, Media, SourceLink, SyntheticBadge } from './ItemCards'
 import { formatDate, formatEventStart, safeHref } from './format'
-import { DealPrice, Freshness, Media, SourceLink, SyntheticBadge } from './ItemCards'
 import { Reveal } from './Intro'
 import { p } from './strings'
 
@@ -34,7 +35,7 @@ function DetailShell<T>({
         <div aria-hidden="true" className="space-y-4">
           <div className="skeleton h-5 w-40 rounded-full" />
           <div className="skeleton h-12 w-3/4 rounded-xl" />
-          <div className="skeleton h-[240px] w-full rounded-card sm:h-[380px]" />
+          <div className="skeleton aspect-[16/10] w-full rounded-card" />
         </div>
       </div>
     )
@@ -50,20 +51,24 @@ function DetailShell<T>({
       </div>
     )
   }
-  return data ? <article className="page-width py-8 sm:py-12">{children(data)}</article> : null
+  return data ? <article className="page-width py-8 sm:py-10">{children(data)}</article> : null
 }
 
-type Tone = 'event' | 'deal'
-const toneClasses = {
-  event: { badge: 'bg-event', soft: 'bg-event-soft text-event', border: 'border-event/40' },
-  deal: { badge: 'bg-accent', soft: 'bg-accent-soft text-accent', border: 'border-accent/40' },
-} as const
+/** Shown instead of a picture: the brand plate, not an oversized category tile. */
+function BrandTile() {
+  return (
+    <div className="on-charcoal brand-pattern relative grid aspect-[16/10] max-h-[420px] place-items-center">
+      <span aria-hidden="true" className="brand-glow absolute inset-0" />
+      <BrandMark className="relative h-20" />
+    </div>
+  )
+}
 
 function BackLink({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="group inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-bold text-ink shadow-card transition-colors hover:border-accent hover:text-accent"
+      className="group inline-flex min-h-11 items-center gap-2 text-sm font-bold text-muted transition-colors hover:text-ink"
     >
       <ArrowLeft
         aria-hidden="true"
@@ -74,103 +79,52 @@ function BackLink({ to, label }: { to: string; label: string }) {
   )
 }
 
-function Header({
-  tone,
-  title,
-  category,
-  synthetic,
-  ended,
-}: {
-  tone: Tone
-  title: string
-  category: CategoryDto | null
-  synthetic: boolean
-  ended: string | null
-}) {
-  const Icon = tone === 'event' ? Ticket : Tag
+/** One line of the facts block. */
+function Fact({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
-    <Reveal delay={0.04}>
-      <div className="mt-8 flex flex-wrap items-center gap-2.5 text-xs">
-        <span className={`chip text-white ${toneClasses[tone].badge}`}>
-          <Icon aria-hidden="true" className="size-3" />
-          {tone === 'event' ? p.typeEvent : p.typeDeal}
-        </span>
-        {category && <span className="font-semibold text-muted">{category.name}</span>}
-        {synthetic && <SyntheticBadge />}
-        {ended && (
-          <p role="status" className="chip border border-line text-muted">
-            {ended}
-          </p>
-        )}
-      </div>
-      <h1 className="mt-4 max-w-4xl text-[34px] leading-[1.08] sm:text-5xl">{title}</h1>
-    </Reveal>
-  )
-}
-
-function Hero({ url }: { url: string | null }) {
-  // Without a picture the detail page starts with the text: an empty placeholder box would only take space.
-  if (!url || !safeHref(url)) return null
-  return (
-    <Reveal delay={0.1}>
-      <div className="h-[240px] overflow-hidden rounded-card border border-line sm:h-[380px] lg:h-[440px] [&_img]:size-full [&_img]:object-cover">
-        <Media url={url} eager />
-      </div>
-    </Reveal>
-  )
-}
-
-function Fact({
-  tone,
-  icon,
-  label,
-  children,
-}: {
-  tone: Tone
-  icon: ReactNode
-  label: string
-  children: ReactNode
-}) {
-  return (
-    <div className="flex gap-3.5 py-4 first:pt-0 last:pb-0">
+    <div className="flex gap-3 border-b border-line py-3.5 last:border-0">
       <span
         aria-hidden="true"
-        className={`grid size-10 shrink-0 place-items-center rounded-xl [&_svg]:size-[18px] ${toneClasses[tone].soft}`}
+        className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-ink [&_svg]:size-4"
       >
         {icon}
       </span>
       <div className="min-w-0">
-        <dt className="text-[11px] font-bold uppercase tracking-wide text-muted">{label}</dt>
-        <dd className="mt-0.5 font-semibold text-ink">{children}</dd>
+        <dt className="text-xs font-bold uppercase tracking-wide text-muted">{label}</dt>
+        <dd className="mt-0.5 font-bold">{children}</dd>
       </div>
     </div>
   )
 }
 
-/** Key facts, the source and the other sources, beside (desktop) or above (mobile) the text. */
-function InfoCard({
-  tone,
-  item,
-  children,
-}: {
-  tone: Tone
-  item: EventDetailDto | DealDetailDto
-  children: ReactNode
-}) {
+/** Facts, the source button and the other sources, beside (desktop) or above (mobile) the text. */
+function Facts({ item, children }: { item: EventDetailDto | DealDetailDto; children: ReactNode }) {
   // The primary source is shown first; list only the others below.
   const others = item.sources.filter(
     (s) => !(s.name === item.sourceName && s.url === item.sourceUrl),
   )
+  const href = safeHref(item.sourceUrl)
   return (
-    <aside className={`card p-5 sm:p-6 lg:sticky lg:top-28 ${toneClasses[tone].border}`}>
+    <aside className="card p-5 sm:p-6 lg:sticky lg:top-24">
       <h2 className="text-lg">{p.details}</h2>
-      <dl className="mt-5 divide-y divide-line">{children}</dl>
-      <div className="mt-6 flex flex-col gap-1.5 rounded-xl bg-soft p-4 text-sm text-muted">
+      <dl className="mt-3">{children}</dl>
+      {href && (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-primary mt-5 w-full"
+        >
+          {p.openSource}
+          <ArrowUpRight aria-hidden="true" className="size-4" />
+        </a>
+      )}
+      <div className="mt-4 flex flex-col gap-1.5 rounded-xl bg-soft p-4 text-sm text-muted">
         <SourceLink name={item.sourceName} url={item.sourceUrl} />
         <Freshness lastVerifiedAt={item.lastVerifiedAt} freshness={item.freshness} />
       </div>
       {others.length > 0 && (
-        <section aria-labelledby="other-sources" className="mt-6">
+        <section aria-labelledby="other-sources" className="mt-5">
           <h2 id="other-sources" className="text-base">
             {p.otherSources}
           </h2>
@@ -187,36 +141,57 @@ function InfoCard({
   )
 }
 
-function Body({
-  hero,
-  description,
-  info,
+function Header({
+  kind,
+  item,
+  ended,
 }: {
-  hero: ReactNode
-  description: string | null
-  info: ReactNode
+  kind: 'event' | 'deal'
+  item: EventDetailDto | DealDetailDto
+  ended: string | null
 }) {
-  // With neither a picture nor a description the facts card carries the page on its own.
-  if (!hero && !description)
-    return (
-      <Reveal delay={0.12} className="mt-8 max-w-xl">
-        {info}
-      </Reveal>
-    )
+  return (
+    <Reveal delay={0.04}>
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <span className="badge badge-soft">{kind === 'event' ? p.typeEvent : p.typeDeal}</span>
+        {item.category && <CategoryBadge category={item.category} />}
+        {item.isSynthetic && <SyntheticBadge />}
+        {ended && (
+          <p role="status" className="badge bg-ink text-white">
+            {ended}
+          </p>
+        )}
+      </div>
+      <h1 className="mt-4 max-w-4xl text-[34px] leading-[1.08] sm:text-5xl">{item.title}</h1>
+    </Reveal>
+  )
+}
+
+function Body({
+  media,
+  description,
+  facts,
+}: {
+  media: ReactNode
+  description: string | null
+  facts: ReactNode
+}) {
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
-      <div className="min-w-0 space-y-8">
-        {hero}
+      <div className="min-w-0 space-y-6">
+        <Reveal delay={0.1}>
+          <div className="overflow-hidden rounded-card border border-line">{media}</div>
+        </Reveal>
         {description && (
           <Reveal delay={0.14}>
-            <p className="max-w-[68ch] whitespace-pre-line leading-[1.8] text-muted sm:text-lg">
+            <p className="max-w-[68ch] whitespace-pre-line text-[15px] leading-[1.8] text-muted sm:text-base">
               {description}
             </p>
           </Reveal>
         )}
       </div>
       <Reveal delay={0.12} className="order-first lg:order-none">
-        {info}
+        {facts}
       </Reveal>
     </div>
   )
@@ -230,30 +205,28 @@ export function EventDetailPage() {
       {(e) => (
         <>
           <BackLink to="/events" label={p.backToEvents} />
-          <Header
-            tone="event"
-            title={e.title}
-            category={e.category}
-            synthetic={e.isSynthetic}
-            ended={e.status === 'expired' ? p.eventEnded : null}
-          />
+          <Header kind="event" item={e} ended={e.status === 'expired' ? p.eventEnded : null} />
           <Body
-            hero={<Hero url={e.imageUrl} />}
+            media={
+              safeHref(e.imageUrl ?? '') ? (
+                <Media url={e.imageUrl} category={e.category} eager className="max-h-[420px]" />
+              ) : (
+                <BrandTile />
+              )
+            }
             description={e.description}
-            info={
-              <InfoCard tone="event" item={e}>
-                <Fact tone="event" icon={<CalendarDays />} label={p.when}>
-                  {formatEventStart(e.startsAt, e.startTimeKnown)}
+            facts={
+              <Facts item={e}>
+                <Fact icon={<CalendarDays />} label={p.when}>
+                  <span className="tnum">{formatEventStart(e.startsAt, e.startTimeKnown)}</span>
                 </Fact>
-                <Fact tone="event" icon={<MapPin />} label={p.where}>
+                <Fact icon={<MapPin />} label={p.where}>
                   {[e.city.name, e.venueName].filter(Boolean).join(' · ')}
                 </Fact>
-                {e.priceText && (
-                  <Fact tone="event" icon={<Tag />} label={p.price}>
-                    {e.priceText}
-                  </Fact>
-                )}
-              </InfoCard>
+                <Fact icon={<Tag />} label={p.price}>
+                  {e.priceText ?? p.priceUnknown}
+                </Fact>
+              </Facts>
             }
           />
         </>
@@ -270,24 +243,28 @@ export function DealDetailPage() {
       {(d) => (
         <>
           <BackLink to="/deals" label={p.backToDeals} />
-          <Header
-            tone="deal"
-            title={d.title}
-            category={d.category}
-            synthetic={d.isSynthetic}
-            ended={d.status === 'expired' ? p.dealExpired : null}
-          />
+          <Header kind="deal" item={d} ended={d.status === 'expired' ? p.dealExpired : null} />
           <Body
-            hero={<Hero url={d.imageUrl} />}
+            media={
+              safeHref(d.imageUrl ?? '') ? (
+                <Media
+                  url={d.imageUrl}
+                  category={d.category}
+                  kind="deal"
+                  eager
+                  className="max-h-[420px]"
+                />
+              ) : (
+                <BrandTile />
+              )
+            }
             description={d.description}
-            info={
-              <InfoCard tone="deal" item={d}>
-                <Fact tone="deal" icon={<Tag />} label={p.price}>
-                  <span className="price-row">
-                    <DealPrice deal={d} withDiscount />
-                  </span>
+            facts={
+              <Facts item={d}>
+                <Fact icon={<Tag />} label={p.price}>
+                  <DealPrice deal={d} withDiscount />
                 </Fact>
-                <Fact tone="deal" icon={<Clock3 />} label={p.validity}>
+                <Fact icon={<Clock3 />} label={p.validity}>
                   {d.validUntil
                     ? p.validUntil(formatDate(d.validUntil))
                     : d.isTodaysDeal
@@ -295,11 +272,11 @@ export function DealDetailPage() {
                       : p.validityUnknown}
                 </Fact>
                 {(d.merchantName || d.city) && (
-                  <Fact tone="deal" icon={<Store />} label={p.merchant}>
+                  <Fact icon={<Store />} label={p.merchant}>
                     {[d.merchantName, d.city?.name].filter(Boolean).join(' · ')}
                   </Fact>
                 )}
-              </InfoCard>
+              </Facts>
             }
           />
         </>

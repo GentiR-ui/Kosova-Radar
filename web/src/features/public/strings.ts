@@ -83,6 +83,7 @@ export const p = {
   ended: 'Ka përfunduar',
   allDay: 'Gjatë ditës',
   details: 'Detajet',
+  openSource: 'Hap burimin',
   when: 'Kur',
   where: 'Ku',
   price: 'Çmimi',
