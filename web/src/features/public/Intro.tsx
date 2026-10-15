@@ -28,11 +28,14 @@ export default function Intro({
   eyebrow,
   title,
   lead,
+  count,
   children,
 }: {
   eyebrow?: string
   title: ReactNode
   lead?: ReactNode
+  /** Result count shown next to the lead (e.g. "12 evente"). */
+  count?: string
   children?: ReactNode
 }) {
   return (
@@ -45,9 +48,12 @@ export default function Intro({
       <Reveal delay={0.04}>
         <h1 className="text-[40px] leading-[1.05] sm:text-5xl">{title}</h1>
       </Reveal>
-      {lead && (
+      {(lead || count) && (
         <Reveal delay={0.1}>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">{lead}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {lead && <p className="max-w-2xl text-[15px] leading-relaxed text-muted">{lead}</p>}
+            {count && <span className="badge badge-soft">{count}</span>}
+          </div>
         </Reveal>
       )}
       {children && <Reveal delay={0.16}>{children}</Reveal>}

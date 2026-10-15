@@ -85,7 +85,7 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
     <div className="flex gap-3 border-b border-line py-3.5 last:border-0">
       <span
         aria-hidden="true"
-        className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-ink [&_svg]:size-4"
+        className="grid size-9 shrink-0 place-items-center rounded-xl tile tile-violet [&_svg]:size-4"
       >
         {icon}
       </span>
@@ -252,6 +252,7 @@ export function DealDetailPage() {
                   category={d.category}
                   kind="deal"
                   eager
+                  contain
                   className="max-h-[420px]"
                 />
               ) : (

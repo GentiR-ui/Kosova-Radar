@@ -32,7 +32,7 @@ export default function HomePage() {
 
   return (
     <div className="page-width py-6 sm:py-8">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(330px,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(330px,1fr)]">
         <Hero image={heroImage} live={items.length > 0} />
         <DealsPanel deals={topDeals} loading={deals.isPending} />
       </div>
@@ -138,15 +138,17 @@ function Hero({ image, live }: { image: string | null; live: boolean }) {
         )}
         <h1 className="mt-4 text-[36px] font-extrabold leading-[1.05] sm:text-[46px] lg:text-[56px]">
           {words.map((w, i) => (
-            <motion.span
-              key={`${w}-${i}`}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease, delay: 0.05 * i }}
-              className="inline-block"
-            >
-              {w}&nbsp;
-            </motion.span>
+            // A plain space between the spans keeps the headline breakable on narrow phones.
+            <span key={`${w}-${i}`}>
+              <motion.span
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease, delay: 0.05 * i }}
+                className="inline-block"
+              >
+                {w}
+              </motion.span>{' '}
+            </span>
           ))}
           <motion.span
             initial={{ opacity: 0, y: 12 }}
@@ -229,7 +231,7 @@ function DealsPanel({ deals, loading }: { deals: DealSummaryDto[]; loading: bool
           </p>
         )}
         {deals.length > 0 && (
-          <div ref={emblaRef} className="overflow-hidden lg:overflow-visible">
+          <div ref={emblaRef} className="min-w-0 overflow-hidden lg:overflow-visible">
             <div className="flex gap-3 lg:flex-col">
               {deals.map((d, i) => (
                 <div key={d.id} className="w-[86%] shrink-0 sm:w-[46%] lg:w-auto">
@@ -253,7 +255,7 @@ function CategoryChips() {
   })
   return (
     <nav aria-label={p.categoriesLabel} className="mt-8">
-      <div ref={emblaRef} className="overflow-hidden md:overflow-visible">
+      <div ref={emblaRef} className="min-w-0 overflow-hidden md:overflow-visible">
         <ul className="flex gap-3 md:flex-wrap">
           <Chip to="/events" label={p.allCategories2} style={allCategoriesStyle} active />
           {(categories.data ?? []).map((c) => (

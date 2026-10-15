@@ -1,9 +1,10 @@
 import { useSearchParams } from 'react-router'
 import { flat, useCategories, useCities, useDeals } from './api'
 import { Field, selectClass } from './Field'
+import { ActiveFilters, FilterBar, type ActiveFilter } from './Filters'
+import Intro from './Intro'
 import { DealCard } from './ItemCards'
 import ListShell from './ListShell'
-import Intro, { Panel } from './Intro'
 import SearchInput from './SearchInput'
 import { p } from './strings'
 
@@ -17,6 +18,7 @@ export default function DealsPage() {
   const deals = useDeals(filters)
   const cities = useCities()
   const categories = useCategories('deal')
+  const total = deals.data?.pages[0]?.totalCount ?? 0
 
   const set = (key: keyof typeof filters, value: string) =>
     setParams(
@@ -29,12 +31,30 @@ export default function DealsPage() {
       { replace: true },
     )
 
+  const active: ActiveFilter[] = [
+    filters.city && {
+      key: 'city',
+      label: cities.data?.find((c) => c.slug === filters.city)?.name ?? filters.city,
+      onClear: () => set('city', ''),
+    },
+    filters.category && {
+      key: 'category',
+      label: categories.data?.find((c) => c.slug === filters.category)?.name ?? filters.category,
+      onClear: () => set('category', ''),
+    },
+    filters.search && {
+      key: 'search',
+      label: `“${filters.search}”`,
+      onClear: () => set('search', ''),
+    },
+  ].filter(Boolean) as ActiveFilter[]
+
   return (
     <>
-      <Intro title={p.dealsHeading} lead={p.dealsLead}>
-        <Panel>
-          <h2 className="sr-only">{p.filters}</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
+      <Intro title={p.dealsHeading} lead={p.dealsLead} count={p.count(total)} />
+      <div className="page-width">
+        <FilterBar>
+          <div className="grid gap-3 sm:grid-cols-3">
             <Field label={p.city} htmlFor="f-city">
               <select
                 id="f-city"
@@ -73,14 +93,19 @@ export default function DealsPage() {
               />
             </Field>
           </div>
-        </Panel>
-      </Intro>
-      <div className="page-width pt-4">
-        <ListShell queries={[deals]} grid>
-          {flat(deals).map((d, i) => (
-            <DealCard key={d.id} deal={d} index={i} />
-          ))}
-        </ListShell>
+        </FilterBar>
+
+        {active.length > 0 && (
+          <ActiveFilters filters={active} onClearAll={() => setParams({}, { replace: true })} />
+        )}
+
+        <div className="mt-6 pb-4">
+          <ListShell queries={[deals]} grid>
+            {flat(deals).map((d, i) => (
+              <DealCard key={d.id} deal={d} index={i} />
+            ))}
+          </ListShell>
+        </div>
       </div>
     </>
   )

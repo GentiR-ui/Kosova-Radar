@@ -70,7 +70,7 @@ export default function SearchPage() {
                     <p className="mt-2 text-base font-bold leading-snug sm:text-lg">
                       <Link
                         to={`/${r.kind === 'event' ? 'events' : 'deals'}/${r.id}`}
-                        className="stretched rounded transition-colors hover:text-brand-text"
+                        className="stretched rounded transition-colors hover:text-violet"
                       >
                         {r.title}
                       </Link>
