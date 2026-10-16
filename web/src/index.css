@@ -35,16 +35,6 @@
   --color-warn: oklch(0.52 0.12 70);
   --color-danger: oklch(0.52 0.2 25);
 
-  /* The K mark's own gradient: cyan-blue at the top, violet through the middle, pink at the foot. */
-  --k-gradient: linear-gradient(
-    190deg,
-    #18a8ff 0%,
-    #4f6bf6 26%,
-    #8b3bef 56%,
-    #c341de 78%,
-    #f0459b 100%
-  );
-
   /* public brand (from the logo) */
   --color-violet: #7c3aed;
   --color-violet-bright: #a855f7;
@@ -312,25 +302,26 @@
     background: var(--brand-gradient-solid, linear-gradient(110deg, #9333ea, #2563eb));
     color: #ffffff;
   }
-  /* Logo lockup: the K is the original mark shape filled with the brand gradient (mask, not a
-     redraw); the wordmark is the original artwork with the mark cropped away, so "Kosova" keeps
-     its navy and "Radar" its gradient exactly as drawn. */
+  /* Logo lockup: the client's artwork with its background removed and split in two, so each part
+     scales on its own. Nothing is redrawn — the K keeps its blue→violet→pink gradient, "Kosova"
+     its navy and "Radar" its violet. The dark file is the same artwork with "Kosova" in white.
+     Both are trimmed to the ink, so the aspect ratios below are the artwork's own. */
   .brand-k {
-    aspect-ratio: 336 / 312;
-    background: var(--k-gradient);
-    -webkit-mask: url('/brand/kosova-radar-mark-violet.png') center / contain no-repeat;
-    mask: url('/brand/kosova-radar-mark-violet.png') center / contain no-repeat;
+    aspect-ratio: 393 / 371;
+    background-image: url('/brand/kr-mark.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
   }
-  /* The wordmark occupies x 358–1619 of the 1636 px artwork; this window shows exactly that. */
   .brand-word {
-    aspect-ratio: 1268 / 312;
-    background-image: url('/brand/kosova-radar-logo-violet-on-light.png');
-    background-size: auto 100%;
-    background-position: 97.3% center;
+    aspect-ratio: 1471 / 188;
+    background-image: url('/brand/kr-word-light.png');
+    background-size: contain;
+    background-position: left center;
     background-repeat: no-repeat;
   }
   .brand-word-dark {
-    background-image: url('/brand/kosova-radar-logo-violet-on-dark.png');
+    background-image: url('/brand/kr-word-dark.png');
   }
 
   /* Decorative gradient bar: the active navigation indicator. */
@@ -484,7 +475,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: url('/brand/kosova-radar-mark-violet.png');
+    background-image: url('/brand/kr-mark.png');
     background-size: 130px;
     background-repeat: repeat;
     opacity: 0.06;

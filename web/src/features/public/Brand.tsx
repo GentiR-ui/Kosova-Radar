@@ -2,9 +2,9 @@ import { cn } from '../../lib/cn'
 import { p } from './strings'
 
 /**
- * The logo lockup. Both parts come from the original artwork in `web/public/brand`: the K is that
- * mark's shape used as a mask and filled with the brand gradient, the wordmark is the logo file
- * with the mark cropped away, so "Kosova" keeps its navy and "Radar" its gradient.
+ * The logo lockup: the K and the wordmark are the two halves of the original artwork in
+ * `web/public/brand` (background removed, trimmed to the ink), so the colours are the client's own.
+ * The wordmark is sized to about half the K's height, the proportion it has in that artwork.
  */
 export function BrandLogo({
   tone = 'light',
@@ -26,7 +26,7 @@ export function BrandLogo({
           aria-label="Kosova Radar"
           className={cn(
             // self-start: the width must come from the artwork's ratio, not from the tagline below.
-            'brand-word h-[21px] self-start md:h-6',
+            'brand-word h-[17px] self-start md:h-[19px]',
             tone === 'dark' && 'brand-word-dark',
           )}
         />

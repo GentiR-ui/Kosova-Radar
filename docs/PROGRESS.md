@@ -14,6 +14,10 @@
 - Client: premium redesign (purple-blue palette from `docs/design/reference-v3.png`, modern header, icon tiles); home keeps hero + deals panel + categories, then only today's events as large cards under "Sot në Kosovë"; /events and /deals get large animated cards like the Tiara category pages.
 - Changed: REQ-100 (tabs replaced by the "Sot në Kosovë" and "Ofertat më të mira" regions) and its test; design.md §6 home row; ADR-049; task T059. Logo recoloured: `web/public/brand/kosova-radar-*-violet*`.
 
+## 2026-10-16 · T060 follow-up (final logo artwork)
+- Built: the client's finished logo file is now the logo. Its background (a checkerboard baked into the RGB pixels) was removed by keying the two checker greys with distance-based alpha and un-premultiplying, then trimmed to the ink and split into `web/public/brand/kr-mark.png` (K), `kr-word-light.png` / `kr-word-dark.png` (wordmark, "Kosova" white on dark surfaces) and `kr-icon-512.png` / `kr-favicon-64.png`. `.brand-k` / `.brand-word` are now plain contained background images — the CSS mask, the background-window crop, `--k-gradient` and all `kosova-radar-*` PNGs are gone (ADR-051). The brand line stays live text under the wordmark.
+- Tests: prettier + oxlint (only pre-existing admin warnings), typecheck, web unit 78 green, production build passes, `verify.sh --quick` PASS, `npm run e2e:acceptance` **42/42 green**; header and footer checked at 390 and 1280 px.
+
 ## 2026-10-16 · T060 follow-up (hero photograph)
 - Built: the client's photograph of a concert in Prishtina at dusk is now the hero background (`web/src/assets/hero-prishtina.webp`, re-encoded from the 2.2 MB PNG to 183 kB WebP at 1672×941, loaded eagerly with `fetchPriority="high"`). It replaces "today's first event picture", which changed with the feed and was usually a portrait poster; the charcoal gradient over it keeps the headline at 18:1. Removed the unused `src/assets/kosova-radar-logo.jpg` left over from T057.
 - Tests: web unit 78 green; production build passes; `npm run e2e:acceptance` **42/42 green**; `verify.sh --quick` PASS; screenshots at 360/768/1280 in `web/test-results/hero/`.

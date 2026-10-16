@@ -437,3 +437,12 @@
   background instead of today's first event picture, which changed with the feed and often was a portrait poster.
 - Consequences: only tokens, the logo lockup, the hero picture and a handful of class usages changed; no component,
   route or data change. Category tiles keep their own colours so event types stay distinguishable.
+- Logo, final artwork (2026-10-16): the client sent the finished lockup as a PNG with a checkerboard baked into the
+  pixels (RGB, no alpha channel). It was keyed out by learning the two checker greys and deriving alpha from the
+  colour distance, then un-premultiplying, so the anti-aliased edges stay clean; the result was trimmed to the ink
+  and split into `kr-mark.png` (the K, 393×371) and `kr-word-light.png` (the wordmark, 1471×188), plus
+  `kr-word-dark.png` where only the navy "Kosova" is lifted to white for dark surfaces, and the icons
+  `kr-icon-512.png` / `kr-favicon-64.png` from the K. Nothing is recoloured or redrawn any more: the CSS mask and
+  the background-window crop are gone, both halves are plain `background-image: contain`, and `--k-gradient` with
+  the earlier `kosova-radar-*` files were deleted. The brand line stays live text under the wordmark (it scales,
+  stays readable at 11 px and is translatable), so the tagline baked into the artwork is not used.
