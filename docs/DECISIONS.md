@@ -432,5 +432,8 @@
   and the wordmark is the logo file with the mark cropped out by a background window (x 358–1619 of 1636), so
   "Kosova" keeps its navy and "Radar" its gradient. The brand line sits directly under the wordmark and now reads
   "Më afër gjërave që të interesojnë"; the hero lead is the client's sentence about events, deals and what is on.
-- Consequences: only tokens and a handful of class usages changed; no component, route or data change. Category
-  tiles keep their own colours so event types stay distinguishable.
+- Hero picture: the client supplied a photograph of a concert in Prishtina at dusk (NEWBORN and the flags visible),
+  re-encoded to WebP (1672×941, 183 kB) as `web/src/assets/hero-prishtina.webp`. It is now the fixed hero
+  background instead of today's first event picture, which changed with the feed and often was a portrait poster.
+- Consequences: only tokens, the logo lockup, the hero picture and a handful of class usages changed; no component,
+  route or data change. Category tiles keep their own colours so event types stay distinguishable.

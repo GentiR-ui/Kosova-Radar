@@ -6,7 +6,8 @@ import { cn } from '../../lib/cn'
 import { t } from '../../lib/strings'
 import { flat, useCategories, useDeals, useEvents, type DealSummaryDto } from './api'
 import { allCategoriesStyle, categoryStyle, dealsStyle } from './categories'
-import { pristinaToday, safeHref } from './format'
+import heroPhoto from '../../assets/hero-prishtina.webp'
+import { pristinaToday } from './format'
 import { DealRow, EventCard } from './ItemCards'
 import ListShell from './ListShell'
 import { p } from './strings'
@@ -25,7 +26,6 @@ export default function HomePage() {
   const deals = useDeals(filters)
 
   const items = flat(events)
-  const heroImage = items.find((e) => e.imageUrl && safeHref(e.imageUrl))?.imageUrl ?? null
   const topDeals = [...flat(deals)]
     .sort((a, b) => (b.discountPercent ?? 0) - (a.discountPercent ?? 0))
     .slice(0, 3)
@@ -33,7 +33,7 @@ export default function HomePage() {
   return (
     <div className="page-width py-6 sm:py-8">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(330px,1fr)]">
-        <Hero image={heroImage} live={items.length > 0} />
+        <Hero live={items.length > 0} />
         <DealsPanel deals={topDeals} loading={deals.isPending} />
       </div>
 
@@ -91,36 +91,23 @@ function TomorrowLink() {
   )
 }
 
-function Hero({ image, live }: { image: string | null; live: boolean }) {
-  const href = image ? safeHref(image) : undefined
+function Hero({ live }: { live: boolean }) {
   const words = t.pages.home.split(' ')
   const last = words.pop() ?? ''
   const scrollToToday = () =>
     document.getElementById('today')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   return (
-    <section
-      className={cn(
-        'on-hero relative isolate flex min-h-[400px] flex-col justify-center overflow-hidden rounded-[28px] p-7 sm:p-10 lg:min-h-[440px]',
-        href ? '' : 'brand-pattern',
-      )}
-    >
-      {href ? (
-        <img
-          src={href}
-          alt=""
-          width={1600}
-          height={900}
-          fetchPriority="high"
-          referrerPolicy="no-referrer"
-          className="absolute inset-0 -z-20 size-full object-cover"
-        />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 -z-20 bg-[radial-gradient(70%_80%_at_80%_10%,#7C3AED,transparent_70%),radial-gradient(50%_60%_at_15%_90%,#06B6D4,transparent_70%)]"
-        />
-      )}
+    <section className="on-hero relative isolate flex min-h-[400px] flex-col justify-center overflow-hidden rounded-[28px] p-7 sm:p-10 lg:min-h-[440px]">
+      {/* Brand hero photo: Prishtina at dusk. Decorative, so it carries no alt text. */}
+      <img
+        src={heroPhoto}
+        alt=""
+        width={1672}
+        height={941}
+        fetchPriority="high"
+        className="absolute inset-0 -z-20 size-full object-cover"
+      />
       <span
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgb(3_20_46/0.95),rgb(3_20_46/0.82)_45%,rgb(3_20_46/0.45))]"
