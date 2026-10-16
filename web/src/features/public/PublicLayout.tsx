@@ -139,12 +139,7 @@ function Header() {
     >
       <div className="page-width flex h-[72px] items-center justify-between gap-3 md:h-20">
         <Link to="/" className="flex shrink-0 items-center rounded-lg">
-          <span className="flex flex-col">
-            <BrandLogo className="h-8 md:h-9" />
-            <span className="mt-1 hidden text-[11px] font-semibold text-muted sm:block">
-              {p.tagline}
-            </span>
-          </span>
+          <BrandLogo tagline />
         </Link>
 
         <nav aria-label={t.nav.label} className="hidden lg:block">
@@ -201,7 +196,7 @@ function Footer() {
     <footer className="on-hero relative mt-20 overflow-hidden">
       <div className="page-width relative grid gap-8 py-14 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div>
-          <BrandLogo tone="dark" className="h-9" />
+          <BrandLogo tone="dark" />
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-on-dark-muted">{p.footerLead}</p>
         </div>
         <nav aria-label={p.footerNav}>

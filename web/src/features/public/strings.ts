@@ -3,7 +3,7 @@ export const p = {
   // --- shell ---
   footer: 'Qyteti yt. Planet e tua.',
   backHome: 'Kthehu te ballina',
-  tagline: 'Zbulo më të mirën në Kosovë',
+  tagline: 'Më afër gjërave që të interesojnë',
   pickCity: 'Zgjidh qytetin',
   openMenu: 'Hap menynë',
   closeMenu: 'Mbyll menynë',
@@ -14,7 +14,7 @@ export const p = {
   // --- home ---
   live: 'Live',
   heroLead:
-    'Eventet e tri ditëve të ardhshme dhe ofertat e sotme mbi 35%, me datë, vend dhe lidhje te burimi.',
+    'Zbulo eventet më të mira, ofertat më të volitshme dhe gjërat interesante që po ndodhin, të gjitha në një vend.',
   ctaEvents: 'Shiko eventet e sotme',
   ctaDeals: 'Ofertat e sotme',
   todayTitle: 'Sot në Kosovë',

@@ -427,7 +427,10 @@
   measures 5.4:1 … 5.2:1. The brief's secondary text #64748B is 4.4:1 on this paper, so the token is the same slate
   one step darker (#5F6E85, 4.8:1 on paper, 5.2:1 on white, 4.5:1 on the soft tint). Both choices are written into
   the contrast comment in `index.css`.
-- Logo: the existing assets already show the K in the brand gradient with "Kosova" navy and "Radar" gradient, so
-  they are used unchanged (no recreation, no replacement).
+- Logo: the artwork is never redrawn. The lockup is built from the two original files — the K is that mark's shape
+  used as a CSS mask filled with `--k-gradient` (blue #18A8FF → violet → pink #F0459B, the colours the client sent),
+  and the wordmark is the logo file with the mark cropped out by a background window (x 358–1619 of 1636), so
+  "Kosova" keeps its navy and "Radar" its gradient. The brand line sits directly under the wordmark and now reads
+  "Më afër gjërave që të interesojnë"; the hero lead is the client's sentence about events, deals and what is on.
 - Consequences: only tokens and a handful of class usages changed; no component, route or data change. Category
   tiles keep their own colours so event types stay distinguishable.
