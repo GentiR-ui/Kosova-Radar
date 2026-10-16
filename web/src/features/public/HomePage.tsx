@@ -42,7 +42,7 @@ export default function HomePage() {
       <section aria-labelledby="today-title" className="mt-10 scroll-mt-28" id="today">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="today-title" className="flex items-center gap-2.5 text-2xl sm:text-[28px]">
-            <span className="tile tile-violet size-9">
+            <span className="tile tile-brand size-9">
               <CalendarDays aria-hidden="true" className="size-5" />
             </span>
             {p.todayTitle}
@@ -118,7 +118,7 @@ function Hero({ image, live }: { image: string | null; live: boolean }) {
       ) : (
         <span
           aria-hidden="true"
-          className="absolute inset-0 -z-20 bg-[radial-gradient(70%_80%_at_80%_10%,#5B3FE8,transparent_70%)]"
+          className="absolute inset-0 -z-20 bg-[radial-gradient(70%_80%_at_80%_10%,#7C3AED,transparent_70%),radial-gradient(50%_60%_at_15%_90%,#06B6D4,transparent_70%)]"
         />
       )}
       <span

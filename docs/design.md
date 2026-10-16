@@ -416,8 +416,9 @@ List pages keep filters in the query string (`/?search=`, `/events?city=&categor
 and show a button "Shfaq më shumë" while more pages exist. Admin navigation stays visible at 360 px; the public header
 keeps the logo, the city select, the search link and a menu button below 1024 px, whose sheet holds the same links and the city select (ADR-048, ADR-050).
 
-**Visual direction (ADR-050).** Light paper #F3F6FA with white cards and #03142E dark panels (hero, footer), the
-violet–blue brand (#6D4AF6, gradient #5B3FE8 → #2F5BEA with white text) and one fixed pastel icon tile per category,
+**Visual direction (ADR-050, colours refined in ADR-051).** Light lavender paper #F7F5FF with white cards and #03142E
+dark panels (hero, footer), navy type #172554, and the logo's brand gradient (#A855F7 → #7C3AED → #2563EB; the deeper
+`--brand-gradient-solid` wherever white text sits on it) and one fixed pastel icon tile per category,
 reused on chips, badges and picture placeholders. One typeface (Plus Jakarta Sans) for public and admin; tabular
 numerals for prices, discounts, dates and countdowns. Home: hero + "Ofertat më të mira" panel, category chips,
 "Sot në Kosovë" cards (ADR-049). List pages: page header with the result count, a sticky filter bar and the active

@@ -168,7 +168,7 @@ function Header() {
                         <motion.span
                           layoutId="nav-underline"
                           aria-hidden="true"
-                          className="absolute inset-x-4 bottom-1 h-0.5 rounded-full bg-violet"
+                          className="brand-bar absolute inset-x-4 bottom-1 h-0.5 rounded-full"
                           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                         />
                       )}

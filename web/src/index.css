@@ -2,19 +2,23 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (ADR-050, palette from docs/design/reference-v3.png).
+ * Design tokens (ADR-051: brand colours refined from the logo).
  * `@theme` keeps the light theme the admin already uses and adds the public brand palette;
- * `.theme-radar` (the public layout) switches the surfaces to the violet–blue system.
+ * `.theme-radar` (the public layout) switches the surfaces to the lavender + purple–blue system.
  *
  * Contrast (WCAG, computed for these exact values):
- *   ink #0B1B3F on paper #F3F6FA 15.6:1 · on white 16.9:1
- *   muted #5B6478 on paper 5.5:1 · on white 5.9:1
- *   violet #6D4AF6 on white 5.3:1 · on paper 4.9:1 · white on violet 5.3:1
- *   white on the brand gradient 6.3:1 (start #5B3FE8) … 5.5:1 (end #2F5BEA)
+ *   ink #172554 on paper #F7F5FF 13.6:1 · on white 14.7:1 · on soft #F1EEFC 12.9:1
+ *   muted #5F6E85 on paper 4.8:1 · on white 5.2:1 · on soft 4.5:1
+ *     (the brief asked for #64748B, which is 4.4:1 on this paper; this is the same slate one step darker)
+ *   purple #7C3AED on white 5.7:1 · on paper 5.3:1 · on violet-soft #EDE9FE 4.8:1
+ *   blue #2563EB on white 5.2:1 · #5B21B6 on violet-soft 7.6:1
+ *   white on the brand gradient: 4.0:1 at #A855F7, so surfaces that carry white text use
+ *     --brand-gradient-solid (#9333EA → #7C3AED → #2563EB) = 5.4:1 … 5.2:1; the lighter
+ *     --brand-gradient stays for decoration (indicators, accents, hairlines)
  *   white on hero #03142E 18.4:1 · on-dark-muted #B9C0D4 on hero 10.1:1
- *   headline gradient on hero 4.8:1 (#C044FA) … 6.8:1 (#A78BFA), used only at 40 px+
- *   icon tiles (text/icon on tile): orange 4.7:1, cyan 4.8:1, pink 5.1:1, indigo 6.4:1,
- *   violet 6.0:1, green 4.6:1, red 5.3:1, amber 4.5:1
+ *   headline gradient on hero 4.8:1 (#C044FA) … 6.8:1 (#A78BFA), used only at 36 px+
+ *   cyan #06B6D4 is decorative only (2.4:1 on white); category tiles keep their own
+ *   dark-on-tint pairs (4.5:1 … 6.4:1)
  */
 @theme {
   /* shared light theme (admin) */
@@ -31,18 +35,20 @@
   --color-warn: oklch(0.52 0.12 70);
   --color-danger: oklch(0.52 0.2 25);
 
-  /* public brand */
-  --color-violet: #6d4af6;
+  /* public brand (from the logo) */
+  --color-violet: #7c3aed;
+  --color-violet-bright: #a855f7;
   --color-violet-soft: #ede9fe;
-  --color-blue: #2f5bea;
+  --color-blue: #2563eb;
+  --color-cyan: #06b6d4;
   --color-hero: #03142e;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: #b9c0d4;
 
   --radius-card: 1.25rem;
-  --shadow-card: 0 1px 2px rgb(11 27 63 / 0.04), 0 8px 24px rgb(11 27 63 / 0.06);
-  --shadow-lift: 0 6px 14px rgb(11 27 63 / 0.08), 0 24px 48px rgb(11 27 63 / 0.14);
-  --shadow-brand: 0 10px 24px rgb(91 63 232 / 0.32);
+  --shadow-card: 0 1px 2px rgb(23 37 84 / 0.04), 0 8px 24px rgb(23 37 84 / 0.06);
+  --shadow-lift: 0 6px 14px rgb(23 37 84 / 0.08), 0 22px 44px rgb(124 58 237 / 0.14);
+  --shadow-brand: 0 10px 24px rgb(124 58 237 / 0.3);
   --font-display: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
   --font-sans:
     'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
@@ -52,19 +58,23 @@
 
 /* The public pages. */
 .theme-radar {
-  --color-paper: #f3f6fa;
+  --color-paper: #f7f5ff;
   --color-surface: #ffffff;
-  --color-soft: #eef2f8;
-  --color-ink: #0b1b3f;
-  --color-muted: #5b6478;
-  --color-line: #e6eaf2;
-  --color-accent: #6d4af6;
-  --color-accent-strong: #5b3fe8;
+  --color-soft: #f1eefc;
+  --color-ink: #172554;
+  --color-muted: #5f6e85;
+  --color-line: #e8e5f5;
+  --color-accent: #7c3aed;
+  --color-accent-strong: #6d28d9;
   --color-accent-soft: #ede9fe;
   --color-accent-ink: #ffffff;
-  --brand-gradient: linear-gradient(135deg, #5b3fe8, #2f5bea);
+  /* Decoration: the full brand gradient of the logo. */
+  --brand-gradient: linear-gradient(110deg, #a855f7 0%, #7c3aed 40%, #2563eb 100%);
+  /* Same gradient, one step deeper, wherever white text sits on top (AA at every stop). */
+  --brand-gradient-solid: linear-gradient(110deg, #9333ea 0%, #7c3aed 40%, #2563eb 100%);
   --headline-gradient: linear-gradient(90deg, #c044fa, #a78bfa);
-  background: var(--color-paper);
+  /* A breath of lavender under the white header, settling into the page colour. */
+  background: linear-gradient(180deg, #fdfcff 0%, var(--color-paper) 420px);
   color: var(--color-ink);
 }
 
@@ -145,7 +155,7 @@
   /* Primary: brand gradient with white text (5.5–6.3:1). */
   .btn-primary {
     border-color: transparent;
-    background: var(--brand-gradient, linear-gradient(135deg, #5b3fe8, #2f5bea));
+    background: var(--brand-gradient-solid, linear-gradient(110deg, #9333ea, #2563eb));
     color: #ffffff;
     box-shadow: var(--shadow-brand);
   }
@@ -153,18 +163,18 @@
     border-color: transparent;
     color: #ffffff;
     filter: brightness(1.07);
-    box-shadow: 0 14px 30px rgb(91 63 232 / 0.4);
+    box-shadow: 0 14px 30px rgb(124 58 237 / 0.38);
   }
-  /* Glass button for dark surfaces (hero, footer). */
+  /* Secondary button on dark surfaces: dark and understated, with a hairline border. */
   .btn-glass {
-    border-color: rgb(255 255 255 / 0.25);
-    background: rgb(255 255 255 / 0.1);
+    border-color: rgb(255 255 255 / 0.22);
+    background: rgb(3 20 46 / 0.55);
     color: var(--color-on-dark);
     backdrop-filter: blur(6px);
   }
   .btn-glass:hover:not(:disabled) {
-    border-color: rgb(255 255 255 / 0.55);
-    background: rgb(255 255 255 / 0.18);
+    border-color: rgb(255 255 255 / 0.5);
+    background: rgb(3 20 46 / 0.72);
     color: var(--color-on-dark);
   }
   .btn-icon {
@@ -255,7 +265,7 @@
     line-height: 1.3;
   }
   .badge-brand {
-    background: var(--brand-gradient, linear-gradient(135deg, #5b3fe8, #2f5bea));
+    background: var(--brand-gradient-solid, linear-gradient(110deg, #9333ea, #2563eb));
     color: #ffffff;
     font-variant-numeric: tabular-nums;
   }
@@ -286,6 +296,15 @@
     display: grid;
     place-items: center;
     border-radius: 12px;
+  }
+  /* Gradient tile for a section heading's icon (white icon on the brand gradient). */
+  .tile-brand {
+    background: var(--brand-gradient-solid, linear-gradient(110deg, #9333ea, #2563eb));
+    color: #ffffff;
+  }
+  /* Decorative gradient bar: the active navigation indicator. */
+  .brand-bar {
+    background: var(--brand-gradient, linear-gradient(110deg, #a855f7, #2563eb));
   }
   .tile-orange {
     background: #fff1e6;
@@ -347,7 +366,7 @@
   }
   .chip-active {
     border-color: transparent;
-    background: var(--brand-gradient, linear-gradient(135deg, #5b3fe8, #2f5bea));
+    background: var(--brand-gradient-solid, linear-gradient(110deg, #9333ea, #2563eb));
     color: #ffffff;
     box-shadow: var(--shadow-brand);
   }
@@ -386,7 +405,7 @@
   }
   .field:focus {
     border-color: var(--color-violet);
-    box-shadow: 0 0 0 4px rgb(109 74 246 / 0.18);
+    box-shadow: 0 0 0 4px rgb(124 58 237 / 0.18);
     outline: none;
   }
   /* Native selects keep their behaviour; only the chrome changes. */

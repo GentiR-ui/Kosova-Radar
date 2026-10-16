@@ -412,3 +412,22 @@
   shop was read at `C:/furniture project` (the path in the prompt, `C:/TiaraHomeFurniture`, is an empty folder).
 - Consequences: the main bundle grows to ~190 kB gzip (Radix + Embla). jsdom needs `matchMedia` and `ResizeObserver`
   stubs in `web/src/test/setup.ts` for Embla.
+
+## ADR-051 — Brand colour refinement: lavender surfaces and the purple–blue gradient
+- Date: 2026-10-16 · Status: accepted · Task: T060 (refines the palette of ADR-050; layout unchanged)
+- Context: the client asked for a warmer, more premium colour system built on the logo's own gradient, without
+  rebuilding the site: lavender page, white cards, navy type, one reusable purple→blue gradient used sparingly.
+- Decision: `.theme-radar` now carries paper #F7F5FF (with a very light lavender-to-white wash under the header),
+  white surfaces, soft #F1EEFC, ink #172554, muted #5F6E85, line #E8E5F5 and accent #7C3AED, plus the brand tokens
+  `--color-violet-bright` #A855F7, `--color-blue` #2563EB and `--color-cyan` #06B6D4 (decorative). Two gradient
+  tokens: `--brand-gradient` (110deg #A855F7 → #7C3AED → #2563EB) for decoration — the active nav indicator, small
+  accents — and `--brand-gradient-solid` (#9333EA → #7C3AED → #2563EB) for anything carrying white text: primary
+  buttons, discount badges, the selected category chip and the "Sot në Kosovë" heading tile.
+- Accessibility: white on #A855F7 is only 4.0:1, so white text never sits on the lighter gradient; the solid variant
+  measures 5.4:1 … 5.2:1. The brief's secondary text #64748B is 4.4:1 on this paper, so the token is the same slate
+  one step darker (#5F6E85, 4.8:1 on paper, 5.2:1 on white, 4.5:1 on the soft tint). Both choices are written into
+  the contrast comment in `index.css`.
+- Logo: the existing assets already show the K in the brand gradient with "Kosova" navy and "Radar" gradient, so
+  they are used unchanged (no recreation, no replacement).
+- Consequences: only tokens and a handful of class usages changed; no component, route or data change. Category
+  tiles keep their own colours so event types stay distinguishable.
