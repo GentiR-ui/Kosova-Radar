@@ -17,6 +17,30 @@ import {
 } from './format'
 import { p } from './strings'
 
+// Curated fallback photos — one per category slug (no external calls, no AI).
+import catArt from '../../assets/categories/art.jpg'
+import catEdukim from '../../assets/categories/edukim.jpg'
+import catMuzike from '../../assets/categories/muzike.jpg'
+import catNate from '../../assets/categories/nate.jpg'
+import catOther from '../../assets/categories/other.jpg'
+import catTeater from '../../assets/categories/teater.jpg'
+import catUshqim from '../../assets/categories/ushqim.jpg'
+
+const categoryFallbacks: Record<string, string> = {
+  art: catArt,
+  edukim: catEdukim,
+  familje: catOther,
+  muzike: catMuzike,
+  nate: catNate,
+  sport: catOther,
+  teater: catTeater,
+  ushqim: catUshqim,
+}
+
+function getCategoryFallback(slug: string | undefined): string {
+  return (slug ? categoryFallbacks[slug] : undefined) ?? catOther
+}
+
 const ease = [0.16, 1, 0.3, 1] as const
 
 export function CategoryBadge({
@@ -71,7 +95,7 @@ export function DiscountBadge({ percent, className }: { percent: number; classNa
   return <span className={cn('badge badge-brand', className)}>{`-${percent}%`}</span>
 }
 
-/** Picture of the item, or a tile in the category colour with its icon. */
+/** Picture of the item, or a curated category photo (then icon tile) as fallback. */
 export function Media({
   url,
   category,
@@ -91,15 +115,24 @@ export function Media({
   contain?: boolean
   children?: ReactNode
 }) {
-  // Sources sometimes publish a broken image URL; fall back to the category tile instead of a broken icon.
-  const [failed, setFailed] = useState(false)
-  const href = url && !failed ? safeHref(url) : undefined
+  // Tracks whether the primary URL (event poster) failed to load.
+  const [primaryFailed, setPrimaryFailed] = useState(false)
+  // Tracks whether the category fallback photo also failed (unlikely — it's a bundled asset).
+  const [fallbackFailed, setFallbackFailed] = useState(false)
+
+  const primaryHref = url && !primaryFailed ? safeHref(url) : undefined
   const { tile, Icon } = categoryStyle(category?.slug, kind)
+
+  // For deals (product shots) keep the icon tile — category photos are events only.
+  const fallbackPhoto = kind === 'event' && !fallbackFailed
+    ? getCategoryFallback(category?.slug)
+    : undefined
+
   return (
     <div className={cn('media-frame', className)}>
-      {href ? (
+      {primaryHref ? (
         <img
-          src={href}
+          src={primaryHref}
           alt=""
           width={1024}
           height={640}
@@ -107,10 +140,24 @@ export function Media({
           fetchPriority={eager ? 'high' : 'auto'}
           decoding="async"
           referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
+          onError={() => setPrimaryFailed(true)}
           className={contain ? 'object-contain p-3' : undefined}
         />
+      ) : fallbackPhoto ? (
+        // No poster from the source → show the curated category photo.
+        <img
+          src={fallbackPhoto}
+          alt=""
+          width={1024}
+          height={640}
+          loading={eager ? 'eager' : 'lazy'}
+          fetchPriority="auto"
+          decoding="async"
+          onError={() => setFallbackFailed(true)}
+          className="opacity-80"
+        />
       ) : (
+        // Last resort: the coloured tile with the category icon.
         <div className={cn('grid size-full place-items-center', tile)}>
           <Icon aria-hidden="true" className="size-10 opacity-85" />
         </div>

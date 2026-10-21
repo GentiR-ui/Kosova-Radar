@@ -99,6 +99,7 @@ app.UseStaticFiles(new StaticFileOptions
             : "no-cache";
     },
 });                // built SPA assets in wwwroot: public, served before auth
+app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

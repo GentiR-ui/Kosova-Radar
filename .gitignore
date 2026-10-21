@@ -16,3 +16,4 @@ coverage/
 !.env.example
 .factory/state/
 *.bak
+cookies.txt

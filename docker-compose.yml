@@ -21,7 +21,16 @@ services:
     build: .
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=app
+      ConnectionStrings__Default: Host=db;Database=kosovaradar_local;Username=app;Password=app
+      Site__BaseUrl: http://localhost:8080
+      Proxy__KnownNetworks: 127.0.0.0/8 172.16.0.0/12 192.168.0.0/16 10.0.0.0/8
+      Bootstrap__AdminEmail: admin@kosovaradar.com
+      Bootstrap__AdminPassword: Radar-prod-test-2026!
+      Seed__KnownSourcesActive: "true"
+      Seed__KnownSourcesAutoPublish: "true"
+      Logging__LogLevel__Microsoft.AspNetCore.StaticFiles: Debug
+      Logging__LogLevel__Microsoft.AspNetCore.Routing: Debug
+      Logging__LogLevel__Microsoft.AspNetCore.Hosting: Debug
     ports:
       - "8080:8080"
     depends_on:
